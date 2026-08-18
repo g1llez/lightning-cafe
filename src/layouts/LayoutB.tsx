@@ -1,47 +1,69 @@
 import { useState } from 'react'
-import { LayoutPreviewShell, MockAssetsPanel, MockSandbox, MockServicesPanel } from './LayoutPreviewShell'
-
-type Tab = 'sandbox' | 'assets' | 'services'
+import {
+  AssetTable,
+  L1_SERVICES,
+  L2_SERVICES,
+  LayoutPreviewShell,
+  NODE_ROWS,
+  PlusMenu,
+  WALLET_ROWS,
+} from './LayoutPreviewShell'
 
 export function LayoutB() {
-  const [tab, setTab] = useState<Tab>('sandbox')
+  const [openL2, setOpenL2] = useState(false)
+  const [openL1, setOpenL1] = useState(false)
 
   return (
     <LayoutPreviewShell
-      title="Layout B — Onglets"
-      subtitle="Sandbox, Assets et Services = 3 écrans séparés via la nav."
-      pros={['Interface très propre', 'Scale bien', 'Moins de bruit visuel']}
+      title="B — Visuel + table côte à côte"
+      subtitle="Dans chaque layer : graphe/chaine à gauche, tableau + à droite."
+      pros={['Lecture et actions séparées', 'Tables toujours visibles', 'Bonne densité desktop']}
     >
-      <nav className="flex shrink-0 gap-1 border-b border-border bg-bg-secondary px-4 py-2">
-        {(['sandbox', 'assets', 'services'] as const).map((item) => (
-          <button
-            key={item}
-            type="button"
-            onClick={() => setTab(item)}
-            className={`rounded-md px-4 py-2 text-sm capitalize ${
-              tab === item ? 'bg-accent text-bg-primary' : 'text-text-muted hover:text-text-primary'
-            }`}
-          >
-            {item === 'sandbox' ? 'Sandbox' : item === 'assets' ? 'Assets' : 'Services'}
-          </button>
-        ))}
-      </nav>
+      <div className="flex min-h-0 flex-1 flex-col">
+        <section className="flex min-h-0 flex-1 border-b border-border">
+          <div className="flex min-w-0 flex-1 items-center justify-center text-sm text-text-muted">
+            Graphe Lightning (L2)
+          </div>
+          <aside className="flex w-72 shrink-0 flex-col border-l border-border bg-bg-secondary p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-text-muted">
+                L2
+              </h2>
+              <PlusMenu
+                open={openL2}
+                onToggle={() => {
+                  setOpenL2((value) => !value)
+                  setOpenL1(false)
+                }}
+                items={L2_SERVICES}
+              />
+            </div>
+            <AssetTable headers={['Node', 'Canaux', 'LN']} rows={NODE_ROWS} />
+          </aside>
+        </section>
 
-      {tab === 'sandbox' && <MockSandbox />}
-      {tab === 'assets' && (
-        <div className="flex flex-1 justify-center p-8">
-          <div className="w-full max-w-md">
-            <MockAssetsPanel />
+        <section className="flex h-72 shrink-0 bg-bg-secondary">
+          <div className="flex min-w-0 flex-1 items-center justify-center text-sm text-text-muted">
+            Mempool + blocs (L1)
           </div>
-        </div>
-      )}
-      {tab === 'services' && (
-        <div className="flex flex-1 justify-center p-8">
-          <div className="w-full max-w-md">
-            <MockServicesPanel />
-          </div>
-        </div>
-      )}
+          <aside className="flex w-72 shrink-0 flex-col border-l border-border bg-bg-panel/40 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-text-muted">
+                L1
+              </h2>
+              <PlusMenu
+                open={openL1}
+                onToggle={() => {
+                  setOpenL1((value) => !value)
+                  setOpenL2(false)
+                }}
+                items={L1_SERVICES}
+              />
+            </div>
+            <AssetTable headers={['Wallet', 'Sats', 'Addr']} rows={WALLET_ROWS} />
+          </aside>
+        </section>
+      </div>
     </LayoutPreviewShell>
   )
 }

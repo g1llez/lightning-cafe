@@ -1,48 +1,99 @@
 import { useState } from 'react'
-import { LayoutPreviewShell, MockAssetsPanel, MockSandbox, MockServicesPanel } from './LayoutPreviewShell'
+import {
+  AssetTable,
+  L1_SERVICES,
+  L2_SERVICES,
+  LayoutPreviewShell,
+  NODE_ROWS,
+  WALLET_ROWS,
+} from './LayoutPreviewShell'
+
+function LayerPlus({
+  open,
+  onToggle,
+  services,
+  table,
+}: {
+  open: boolean
+  onToggle: () => void
+  services: string[]
+  table: { headers: string[]; rows: string[][] }
+}) {
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex h-8 w-8 items-center justify-center rounded-md border border-accent/70 bg-bg-panel text-lg leading-none text-accent"
+      >
+        +
+      </button>
+      {open && (
+        <div className="absolute right-0 z-20 mt-2 w-80 rounded-md border border-border bg-bg-panel p-3 shadow-lg">
+          <p className="mb-2 text-xs uppercase tracking-[0.14em] text-text-muted">Assets</p>
+          <AssetTable headers={table.headers} rows={table.rows} />
+          <p className="mt-3 mb-1 text-xs uppercase tracking-[0.14em] text-text-muted">Services</p>
+          {services.map((item) => (
+            <button
+              key={item}
+              type="button"
+              className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-bg-secondary"
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export function LayoutC() {
-  const [servicesOpen, setServicesOpen] = useState(false)
+  const [openL2, setOpenL2] = useState(false)
+  const [openL1, setOpenL1] = useState(false)
 
   return (
     <LayoutPreviewShell
-      title="Layout C — Assets fixe + drawer Services"
-      subtitle="Inventaire toujours visible. Services s'ouvrent en panneau coulissant."
-      pros={['Sandbox toujours visible', 'Services à la demande', 'Bon compromis mobile']}
+      title="C — Sandbox propre, tout dans le +"
+      subtitle="L1 et L2 restent visuels. Le + ouvre le tableau de la couche et ses services."
+      pros={['Interface la plus propre', 'Tables à la demande', 'Services toujours contextuels']}
     >
-      <div className="relative flex min-h-0 flex-1 flex-col md:flex-row">
-        <aside className="flex w-full shrink-0 flex-col border-b border-border bg-bg-secondary p-4 md:w-56 md:border-r md:border-b-0">
-          <MockAssetsPanel compact />
-          <button
-            type="button"
-            onClick={() => setServicesOpen(true)}
-            className="mt-3 w-full rounded-md border border-accent/60 bg-bg-panel px-3 py-2 text-sm text-accent"
-          >
-            Ouvrir Services →
-          </button>
-        </aside>
-
-        <MockSandbox />
-
-        {servicesOpen && (
-          <>
-            <button
-              type="button"
-              aria-label="Fermer"
-              className="absolute inset-0 z-10 bg-black/50 md:left-56"
-              onClick={() => setServicesOpen(false)}
+      <div className="flex min-h-0 flex-1 flex-col">
+        <section className="flex min-h-0 flex-1 flex-col border-b border-border">
+          <header className="flex items-center justify-between px-4 py-3">
+            <h2 className="text-xl font-semibold">Lightning (L2)</h2>
+            <LayerPlus
+              open={openL2}
+              onToggle={() => {
+                setOpenL2((value) => !value)
+                setOpenL1(false)
+              }}
+              services={L2_SERVICES}
+              table={{ headers: ['Node', 'Canaux', 'LN'], rows: NODE_ROWS }}
             />
-            <aside className="absolute top-0 right-0 z-20 flex h-full w-72 flex-col border-l border-border bg-bg-secondary p-4 shadow-xl">
-              <div className="mb-3 flex items-center justify-between">
-                <span className="text-sm font-semibold">Services</span>
-                <button type="button" onClick={() => setServicesOpen(false)} className="text-text-muted">
-                  ✕
-                </button>
-              </div>
-              <MockServicesPanel />
-            </aside>
-          </>
-        )}
+          </header>
+          <div className="flex flex-1 items-center justify-center text-sm text-text-muted">
+            Graphe Lightning
+          </div>
+        </section>
+
+        <section className="flex h-72 shrink-0 flex-col bg-bg-secondary">
+          <header className="flex items-center justify-between px-4 py-3">
+            <h2 className="text-xl font-semibold">Bitcoin (L1)</h2>
+            <LayerPlus
+              open={openL1}
+              onToggle={() => {
+                setOpenL1((value) => !value)
+                setOpenL2(false)
+              }}
+              services={L1_SERVICES}
+              table={{ headers: ['Portefeuille', 'Sats', 'Adresse'], rows: WALLET_ROWS }}
+            />
+          </header>
+          <div className="flex flex-1 items-center justify-center text-sm text-text-muted">
+            Mempool + blocs
+          </div>
+        </section>
       </div>
     </LayoutPreviewShell>
   )

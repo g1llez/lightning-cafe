@@ -3,18 +3,18 @@ import { LayoutLink } from './routing'
 const OPTIONS = [
   {
     id: 'layout-a' as const,
-    name: 'A — Sidebar empilée',
-    desc: 'Assets (haut) + Services (bas) à gauche. Créer wallet/node dans Services → apparaît dans Assets.',
+    name: 'A — Table dans la couche',
+    desc: 'Tableau d assets sous le titre L1 / L2. Le + ouvre uniquement les services de cette couche (wallet/achat en L1, node/canal en L2).',
   },
   {
     id: 'layout-b' as const,
-    name: 'B — Onglets',
-    desc: 'Sandbox | Assets | Services en nav. Chaque zone a son écran. Le plus propre à long terme.',
+    name: 'B — Visuel + table côte à côte',
+    desc: 'Chaque layer est coupé : graphe ou chaine à gauche, tableau + menu à droite. Inventaire toujours visible.',
   },
   {
     id: 'layout-c' as const,
-    name: 'C — Drawer Services',
-    desc: 'Assets toujours visible à gauche. Services en panneau coulissant. Sandbox jamais caché.',
+    name: 'C — Sandbox propre',
+    desc: 'L1 et L2 restent visuels. Le + ouvre à la fois le menu de services et le tableau de cette couche.',
   },
 ]
 
@@ -24,7 +24,9 @@ export function LayoutPicker() {
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Choisir un layout</h1>
-          <p className="mt-1 text-text-muted">Pages temporaires — on supprimera après le choix.</p>
+          <p className="mt-1 text-text-muted">
+            $ et prix BTC en haut à droite. Services collés à L1 ou L2 via un +.
+          </p>
         </div>
         <LayoutLink
           to="app"
