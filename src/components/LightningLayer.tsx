@@ -1,24 +1,39 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { LayerAssetCard } from './LayerAssetCard'
 
-export function LightningLayer() {
+type LightningLayerProps = {
+  onMessage: (message: string) => void
+}
+
+export function LightningLayer({ onMessage }: LightningLayerProps) {
   const { t } = useTranslation()
+  const [plusOpen, setPlusOpen] = useState(false)
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col bg-bg-primary">
-      <div className="border-b border-border px-4 py-3">
-        <h2 className="text-center text-xl font-semibold tracking-tight text-text-primary md:text-2xl">
-          {t('layers.lightning')}
-        </h2>
+    <section className="relative min-h-0 flex-1 overflow-hidden bg-bg-primary">
+      <h2 className="absolute inset-x-0 top-0 z-10 px-4 py-3 text-center text-xl font-semibold tracking-tight md:text-2xl">
+        {t('layers.lightning')}
+      </h2>
+
+      <div className="flex h-full items-center justify-center p-6">
+        <p className="text-sm text-text-muted">{t('layers.lightningPlaceholder')}</p>
       </div>
 
-      <div className="flex flex-1 items-center justify-center p-6">
-        <div className="max-w-lg rounded-xl border border-dashed border-border bg-bg-secondary/70 px-6 py-10 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-border bg-bg-panel text-2xl text-accent">
-            ⚡
-          </div>
-          <p className="text-sm leading-relaxed text-text-muted">{t('layers.lightningPlaceholder')}</p>
-        </div>
-      </div>
+      <LayerAssetCard
+        title={t('assets.nodes')}
+        plusLabel={t('services.title')}
+        plusOpen={plusOpen}
+        onPlusToggle={() => setPlusOpen((value) => !value)}
+        plusItems={[
+          {
+            label: t('assets.addNode'),
+            onClick: () => onMessage(t('assets.soon')),
+          },
+        ]}
+      >
+        <p className="px-2 py-2 text-sm text-text-muted">{t('assets.noNodes')}</p>
+      </LayerAssetCard>
     </section>
   )
 }

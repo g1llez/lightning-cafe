@@ -7,18 +7,21 @@
   "nav": {
     "guide": "Guide",
     "guideSoon": "Guide coming soon",
-    "language": "Language",
-    "layouts": "Layouts"
+    "language": "Language"
   },
   "account": {
     "title": "Account"
   },
   "assets": {
     "wallets": "Wallets",
-    "addWallet": "+ Wallet",
-    "addNode": "+ Node",
+    "nodes": "Nodes",
+    "addWallet": "Create a wallet",
+    "addNode": "Create a node",
     "walletName": "Wallet {{number}}",
-    "walletCreated": "{{name}} created"
+    "walletCreated": "{{name}} created",
+    "noWallets": "No wallets yet",
+    "noNodes": "No nodes yet",
+    "soon": "Coming soon"
   },
   "services": {
     "title": "Services",

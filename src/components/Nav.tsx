@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { setAppLanguage } from '../i18n'
-import { LayoutLink } from '../layouts/routing'
+import { totalSats } from '../simulation/player'
+import { useSimulation } from '../simulation/SimulationProvider'
 
 type NavProps = {
   onGuideClick: () => void
@@ -8,6 +9,7 @@ type NavProps = {
 
 export function Nav({ onGuideClick }: NavProps) {
   const { t, i18n } = useTranslation()
+  const { player, btcPriceCad } = useSimulation()
   const currentLanguage = i18n.language.startsWith('fr') ? 'fr' : 'en'
 
   return (
@@ -25,12 +27,14 @@ export function Nav({ onGuideClick }: NavProps) {
       </div>
 
       <div className="flex items-center gap-2">
-        <LayoutLink
-          to="layouts"
-          className="rounded-md border border-border bg-bg-panel px-3 py-2 text-sm transition hover:border-accent/60"
-        >
-          {t('nav.layouts')}
-        </LayoutLink>
+        <div className="hidden items-center gap-3 rounded-md border border-border bg-bg-panel px-3 py-2 font-mono text-sm sm:flex">
+          <span>{player.cad.toLocaleString()} $</span>
+          <span className="text-border">|</span>
+          <span className="text-accent">{totalSats(player).toLocaleString()} sats</span>
+          <span className="text-border">|</span>
+          <span className="text-text-muted">{t('services.price', { price: btcPriceCad.toLocaleString() })}</span>
+        </div>
+
         <button
           type="button"
           onClick={onGuideClick}

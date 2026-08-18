@@ -7,18 +7,21 @@
   "nav": {
     "guide": "Guide",
     "guideSoon": "Guide bientôt disponible",
-    "language": "Langue",
-    "layouts": "Layouts"
+    "language": "Langue"
   },
   "account": {
     "title": "Compte"
   },
   "assets": {
     "wallets": "Portefeuilles",
-    "addWallet": "+ Portefeuille",
-    "addNode": "+ Node",
+    "nodes": "Nodes",
+    "addWallet": "Créer un portefeuille",
+    "addNode": "Créer une node",
     "walletName": "Portefeuille {{number}}",
-    "walletCreated": "{{name}} créé"
+    "walletCreated": "{{name}} créé",
+    "noWallets": "Aucun portefeuille",
+    "noNodes": "Aucune node",
+    "soon": "Bientôt disponible"
   },
   "services": {
     "title": "Services",

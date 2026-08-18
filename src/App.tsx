@@ -1,26 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AssetsPanel } from './components/AssetsPanel'
 import { BitcoinLayer } from './components/BitcoinLayer'
 import { Footer } from './components/Footer'
 import { LightningLayer } from './components/LightningLayer'
 import { Nav } from './components/Nav'
 import { Toast } from './components/Toast'
-import { LayoutA } from './layouts/LayoutA'
-import { LayoutB } from './layouts/LayoutB'
-import { LayoutC } from './layouts/LayoutC'
-import { LayoutPicker } from './layouts/LayoutPicker'
-import { useLayoutRoute } from './layouts/routing'
 import { SimulationProvider } from './simulation/SimulationProvider'
 
 export default function App() {
-  const route = useLayoutRoute()
-
-  if (route === 'layouts') return <LayoutPicker />
-  if (route === 'layout-a') return <LayoutA />
-  if (route === 'layout-b') return <LayoutB />
-  if (route === 'layout-c') return <LayoutC />
-
   return (
     <SimulationProvider>
       <AppShell />
@@ -44,13 +31,9 @@ function AppShell() {
   return (
     <div className="flex h-full min-h-screen flex-col">
       <Nav onGuideClick={() => setToastMessage(t('nav.guideSoon'))} />
-
-      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-        <AssetsPanel onMessage={setToastMessage} />
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <LightningLayer />
-          <BitcoinLayer />
-        </div>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <LightningLayer onMessage={setToastMessage} />
+        <BitcoinLayer onMessage={setToastMessage} />
       </div>
       <Footer />
       <Toast message={toastMessage} />
