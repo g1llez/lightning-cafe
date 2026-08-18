@@ -9,26 +9,40 @@
     "guideSoon": "Guide bientôt disponible",
     "language": "Langue"
   },
+  "account": {
+    "title": "Compte"
+  },
   "assets": {
-    "title": "Assets",
-    "empty": "Ajoute des portefeuilles et des nodes pour construire ton sandbox.",
+    "wallets": "Portefeuilles",
     "addWallet": "+ Portefeuille",
     "addNode": "+ Node",
-    "soon": "Disponible dans un prochain sprint"
+    "walletName": "Portefeuille {{number}}",
+    "walletCreated": "{{name}} créé"
+  },
+  "services": {
+    "title": "Services",
+    "price": "BTC {{price}} $ CAD",
+    "npubPlaceholder": "npub1… (identifiant)",
+    "npubSaved": "npub enregistré",
+    "buy100": "Acheter 100 $ de BTC",
+    "buyOk": "Achat simulé envoyé au portefeuille",
+    "needNpub": "Entre un npub pour acheter",
+    "needWallet": "Crée un portefeuille d'abord",
+    "needCad": "Pas assez de CAD"
   },
   "layers": {
     "lightning": "Lightning (L2)",
     "bitcoin": "Bitcoin (L1)",
     "lightningPlaceholder": "Le graphe du réseau Lightning apparaîtra ici.",
-    "mempool": "Mempool — à venir",
-    "mempoolHint": "Transactions en attente, groupées par priorité de frais. La priorité haute sera dans le prochain bloc.",
+    "mempool": "Mempool",
     "now": "Maintenant",
-    "confirmed": "Blocs confirmés",
-    "confirmedHint": "Déjà minés et inscrits dans la chaîne.",
-    "feeHint": "sat/vB = taux de frais du bloc (pas un montant). Plus le chiffre est haut, plus ces transactions ont payé cher pour entrer.",
-    "blockIntervalHint": "Le délai est estimé. Ici un bloc ~ chaque minute pour le sandbox; sur Bitcoin réel c'est ~10 minutes en moyenne.",
+    "confirmed": "Confirmés",
     "nextBlockIn": "Prochain bloc estimé dans {{time}}",
-    "awaitingMiner": "En attente",
+    "nextBlockTip": "Délai estimé du sandbox (~1 min). Sur Bitcoin réel, un bloc prend ~10 minutes en moyenne — ce n'est pas un intervalle fixe.",
+    "feeTip": "sat/vB = taux de frais, pas un montant. Plus c'est haut, plus ces transactions ont payé cher pour entrer dans le bloc.",
+    "txCount": "{{txs}} txs",
+    "upcomingBlockTip": "{{priority}}. Transactions en attente, pas encore minées. {{txs}} txs projetées.",
+    "confirmedBlockTip": "Bloc #{{height}} miné par {{pool}}. {{txs}} transactions confirmées.",
     "priority": {
       "high": "Priorité haute",
       "medium": "Priorité moyenne",

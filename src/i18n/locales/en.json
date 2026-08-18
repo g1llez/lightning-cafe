@@ -9,26 +9,40 @@
     "guideSoon": "Guide coming soon",
     "language": "Language"
   },
+  "account": {
+    "title": "Account"
+  },
   "assets": {
-    "title": "Assets",
-    "empty": "Add wallets and nodes to build your sandbox.",
+    "wallets": "Wallets",
     "addWallet": "+ Wallet",
     "addNode": "+ Node",
-    "soon": "Coming in a future sprint"
+    "walletName": "Wallet {{number}}",
+    "walletCreated": "{{name}} created"
+  },
+  "services": {
+    "title": "Services",
+    "price": "BTC {{price}} CAD",
+    "npubPlaceholder": "npub1… (identity)",
+    "npubSaved": "npub saved",
+    "buy100": "Buy $100 of BTC",
+    "buyOk": "Simulated purchase sent to wallet",
+    "needNpub": "Enter an npub to buy",
+    "needWallet": "Create a wallet first",
+    "needCad": "Not enough CAD"
   },
   "layers": {
     "lightning": "Lightning (L2)",
     "bitcoin": "Bitcoin (L1)",
     "lightningPlaceholder": "Lightning network graph will appear here.",
-    "mempool": "Mempool — upcoming",
-    "mempoolHint": "Waiting transactions, grouped by fee priority. High priority goes into the next block.",
+    "mempool": "Mempool",
     "now": "Now",
-    "confirmed": "Confirmed blocks",
-    "confirmedHint": "Already mined and written to the chain.",
-    "feeHint": "sat/vB = the block fee rate (not an amount). Higher means those transactions paid more to get in.",
-    "blockIntervalHint": "The delay is an estimate. Here a block is about every minute for the sandbox; on real Bitcoin it averages ~10 minutes.",
+    "confirmed": "Confirmed",
     "nextBlockIn": "Next block estimated in {{time}}",
-    "awaitingMiner": "Awaiting miner",
+    "nextBlockTip": "Sandbox estimate (~1 min). On real Bitcoin a block takes ~10 minutes on average — it is not a fixed interval.",
+    "feeTip": "sat/vB is a fee rate, not an amount. Higher means those transactions paid more to get into the block.",
+    "txCount": "{{txs}} txs",
+    "upcomingBlockTip": "{{priority}}. Waiting transactions, not mined yet. {{txs}} projected txs.",
+    "confirmedBlockTip": "Block #{{height}} mined by {{pool}}. {{txs}} confirmed transactions.",
     "priority": {
       "high": "High priority",
       "medium": "Medium priority",

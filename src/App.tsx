@@ -6,8 +6,17 @@ import { Footer } from './components/Footer'
 import { LightningLayer } from './components/LightningLayer'
 import { Nav } from './components/Nav'
 import { Toast } from './components/Toast'
+import { SimulationProvider } from './simulation/SimulationProvider'
 
 export default function App() {
+  return (
+    <SimulationProvider>
+      <AppShell />
+    </SimulationProvider>
+  )
+}
+
+function AppShell() {
   const { t } = useTranslation()
   const [toastMessage, setToastMessage] = useState('')
 
@@ -25,7 +34,7 @@ export default function App() {
       <Nav onGuideClick={() => setToastMessage(t('nav.guideSoon'))} />
 
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-        <AssetsPanel onSoon={() => setToastMessage(t('assets.soon'))} />
+        <AssetsPanel onMessage={setToastMessage} />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <LightningLayer />
           <BitcoinLayer />

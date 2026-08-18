@@ -6,20 +6,31 @@ import {
   MINING_POOLS,
   nextLowFeeRate,
   pickPool,
+  randomTxCount,
   toneForFee,
 } from '../src/simulation/chain'
+import {
+  buyBitcoin,
+  cadToSats,
+  createInitialPlayer,
+  createWallet,
+  looksLikeNpub,
+  setNpub,
+} from '../src/simulation/player'
 
 describe('chain simulation', () => {
   it('mines the high-priority mempool block onto the chain', () => {
     const initial = createInitialChain()
-    const next = mineBlock(initial, 5, 'LesChatoshis')
+    const next = mineBlock(initial, 5, 'LesChatoshis', 2_200)
 
     expect(next.confirmed[0]).toEqual({
       id: 'u-high',
       height: 912_005,
       feeRate: 18,
       pool: 'LesChatoshis',
+      txCount: 2_905,
     })
+    expect(next.upcoming[0].txCount).toBe(2_200)
     expect(next.confirmed).toHaveLength(5)
     expect(next.nextHeight).toBe(912_006)
     expect(next.upcoming.map((block) => block.priority)).toEqual(['low', 'medium', 'high'])
@@ -38,11 +49,32 @@ describe('chain simulation', () => {
     expect(nextLowFeeRate(() => 0.99)).toBe(8)
     expect(toneForFee(4)).toBe('bg-block-low')
     expect(toneForFee(18)).toBe('bg-block-high')
+    expect(randomTxCount(() => 0)).toBe(1_600)
+    expect(randomTxCount(() => 0.999)).toBeLessThan(4_000)
+    expect(randomTxCount(() => 0.999)).toBeGreaterThan(3_500)
   })
 
   it('picks a fictional mining pool', () => {
     expect(MINING_POOLS).toHaveLength(10)
     expect(MINING_POOLS).toContain('LesChatoshis')
     expect(pickPool(() => 0)).toBe('Quiet ASIC')
+  })
+})
+
+describe('player wallets', () => {
+  it('starts with 1000 CAD and converts a buy into sats', () => {
+    let player = createInitialPlayer()
+    player = createWallet(player, 'Wallet 1')
+    player = setNpub(player, 'npub1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqt8d4x')
+    player = buyBitcoin(player, 'w-1', 100)
+
+    expect(player.cad).toBe(900)
+    expect(player.wallets[0].sats).toBe(cadToSats(100))
+    expect(looksLikeNpub('npub1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqt8d4x')).toBe(true)
+  })
+
+  it('refuses a buy without npub', () => {
+    const player = createWallet(createInitialPlayer(), 'Wallet 1')
+    expect(() => buyBitcoin(player, 'w-1', 100)).toThrow('npub-required')
   })
 })

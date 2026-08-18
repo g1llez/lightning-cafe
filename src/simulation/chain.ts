@@ -20,6 +20,7 @@ export type ProjectedBlock = {
   id: string
   priority: Priority
   feeRate: number
+  txCount: number
 }
 
 export type ConfirmedBlock = {
@@ -27,6 +28,7 @@ export type ConfirmedBlock = {
   height: number
   feeRate: number
   pool: string
+  txCount: number
 }
 
 export type ChainState = {
@@ -49,21 +51,25 @@ export function toneForFee(feeRate: number): string {
   return 'bg-block-low'
 }
 
+export function randomTxCount(random = Math.random): number {
+  return 1_600 + Math.floor(random() * 2_400)
+}
+
 export function createInitialChain(): ChainState {
   return {
     nextHeight: 912_005,
     nextId: 1,
     upcoming: [
-      { id: 'u-low', priority: 'low', feeRate: 4 },
-      { id: 'u-med', priority: 'medium', feeRate: 9 },
-      { id: 'u-high', priority: 'high', feeRate: 18 },
+      { id: 'u-low', priority: 'low', feeRate: 4, txCount: 1_742 },
+      { id: 'u-med', priority: 'medium', feeRate: 9, txCount: 2_318 },
+      { id: 'u-high', priority: 'high', feeRate: 18, txCount: 2_905 },
     ],
     confirmed: [
-      { id: 'c-912004', height: 912_004, feeRate: 22, pool: 'LesChatoshis' },
-      { id: 'c-912003', height: 912_003, feeRate: 14, pool: 'Satsmith' },
-      { id: 'c-912002', height: 912_002, feeRate: 35, pool: 'Stormnonce' },
-      { id: 'c-912001', height: 912_001, feeRate: 12, pool: 'Cedar Blocks' },
-      { id: 'c-912000', height: 912_000, feeRate: 8, pool: 'Aurora Hash' },
+      { id: 'c-912004', height: 912_004, feeRate: 22, pool: 'LesChatoshis', txCount: 3_184 },
+      { id: 'c-912003', height: 912_003, feeRate: 14, pool: 'Satsmith', txCount: 2_441 },
+      { id: 'c-912002', height: 912_002, feeRate: 35, pool: 'Stormnonce', txCount: 3_672 },
+      { id: 'c-912001', height: 912_001, feeRate: 12, pool: 'Cedar Blocks', txCount: 2_087 },
+      { id: 'c-912000', height: 912_000, feeRate: 8, pool: 'Aurora Hash', txCount: 1_956 },
     ],
   }
 }
@@ -76,7 +82,12 @@ export function pickPool(random = Math.random): string {
   return MINING_POOLS[Math.floor(random() * MINING_POOLS.length)]
 }
 
-export function mineBlock(state: ChainState, incomingFeeRate: number, pool: string): ChainState {
+export function mineBlock(
+  state: ChainState,
+  incomingFeeRate: number,
+  pool: string,
+  incomingTxCount: number,
+): ChainState {
   const high = state.upcoming.find((block) => block.priority === 'high')
   const medium = state.upcoming.find((block) => block.priority === 'medium')
   const low = state.upcoming.find((block) => block.priority === 'low')
@@ -89,11 +100,17 @@ export function mineBlock(state: ChainState, incomingFeeRate: number, pool: stri
     nextHeight: state.nextHeight + 1,
     nextId: state.nextId + 1,
     confirmed: [
-      { id: high.id, height: state.nextHeight, feeRate: high.feeRate, pool },
+      {
+        id: high.id,
+        height: state.nextHeight,
+        feeRate: high.feeRate,
+        pool,
+        txCount: high.txCount,
+      },
       ...state.confirmed,
     ].slice(0, MAX_CONFIRMED_BLOCKS),
     upcoming: [
-      { id: `u-${state.nextId}`, priority: 'low', feeRate: incomingFeeRate },
+      { id: `u-${state.nextId}`, priority: 'low', feeRate: incomingFeeRate, txCount: incomingTxCount },
       { ...low, priority: 'medium' },
       { ...medium, priority: 'high' },
     ],
