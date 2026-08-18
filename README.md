@@ -29,10 +29,7 @@ npm test         # run tests in /tests
 
 ## Sprint 1 — walking skeleton
 
-- Layout: Assets (left) · Lightning L2 (center) · Bitcoin L1 blocks (bottom)
-- Mempool-inspired dark theme
-- FR / EN language toggle persisted in localStorage
-- GitHub Pages deploy via GitHub Actions
+Done. See [ROADMAP.md](ROADMAP.md) for versions (now: **v0.2.1**).
 
 ## License
 
