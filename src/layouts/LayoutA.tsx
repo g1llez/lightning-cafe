@@ -3,6 +3,7 @@ import {
   AssetTable,
   L1_SERVICES,
   L2_SERVICES,
+  LayerCanvas,
   LayoutPreviewShell,
   NODE_ROWS,
   PlusMenu,
@@ -15,14 +16,17 @@ export function LayoutA() {
 
   return (
     <LayoutPreviewShell
-      title="A — Table dans la couche"
-      subtitle="Chaque layer a son tableau d assets et un + pour les services de cette couche."
-      pros={['Services collés à L1 ou L2', 'Inventaire visible sans sidebar', 'Statut $ / BTC en nav']}
+      title="A — Table coin bas-gauche"
+      subtitle="Le tableau est une carte posée dans le canvas L1 / L2, pas une bande autour."
+      pros={['Visuel plein écran', 'Inventaire dans la couche', 'N’entoure pas le graphe']}
     >
       <div className="flex min-h-0 flex-1 flex-col">
-        <section className="flex min-h-0 flex-1 flex-col border-b border-border">
-          <header className="flex items-center justify-between px-4 py-3">
-            <h2 className="text-xl font-semibold">Lightning (L2)</h2>
+        <LayerCanvas
+          tall
+          title="Lightning (L2)"
+          visual="Graphe Lightning"
+          tablePosition="bottom-left"
+          plus={
             <PlusMenu
               open={openL2}
               onToggle={() => {
@@ -31,18 +35,15 @@ export function LayoutA() {
               }}
               items={L2_SERVICES}
             />
-          </header>
-          <div className="px-4 pb-3">
-            <AssetTable headers={['Node', 'Canaux', 'Balance']} rows={NODE_ROWS} />
-          </div>
-          <div className="flex flex-1 items-center justify-center bg-bg-secondary/40 text-sm text-text-muted">
-            Graphe Lightning
-          </div>
-        </section>
-
-        <section className="flex h-72 shrink-0 flex-col bg-bg-secondary">
-          <header className="flex items-center justify-between px-4 py-3">
-            <h2 className="text-xl font-semibold">Bitcoin (L1)</h2>
+          }
+          table={<AssetTable headers={['Node', 'Canaux', 'Balance']} rows={NODE_ROWS} />}
+        />
+        <div className="border-t border-border" />
+        <LayerCanvas
+          title="Bitcoin (L1)"
+          visual="Mempool + blocs"
+          tablePosition="bottom-left"
+          plus={
             <PlusMenu
               open={openL1}
               onToggle={() => {
@@ -51,14 +52,9 @@ export function LayoutA() {
               }}
               items={L1_SERVICES}
             />
-          </header>
-          <div className="px-4 pb-3">
-            <AssetTable headers={['Portefeuille', 'Sats', 'Adresse']} rows={WALLET_ROWS} />
-          </div>
-          <div className="flex flex-1 items-center justify-center text-sm text-text-muted">
-            Mempool + blocs
-          </div>
-        </section>
+          }
+          table={<AssetTable headers={['Portefeuille', 'Sats', 'Adresse']} rows={WALLET_ROWS} />}
+        />
       </div>
     </LayoutPreviewShell>
   )

@@ -137,3 +137,46 @@ export const WALLET_ROWS = [
 export const NODE_ROWS = [
   ['LaFamilia', '0 canaux', '0 sats LN'],
 ]
+
+type LayerCanvasProps = {
+  title: string
+  visual: string
+  plus: ReactNode
+  table: ReactNode
+  tablePosition: 'bottom-left' | 'center' | 'bottom'
+  tall?: boolean
+}
+
+export function LayerCanvas({
+  title,
+  visual,
+  plus,
+  table,
+  tablePosition,
+  tall = false,
+}: LayerCanvasProps) {
+  const tableClass =
+    tablePosition === 'center'
+      ? 'absolute left-1/2 top-1/2 w-[min(28rem,90%)] -translate-x-1/2 -translate-y-1/2'
+      : tablePosition === 'bottom'
+        ? 'absolute inset-x-4 bottom-4'
+        : 'absolute bottom-4 left-4 w-[min(22rem,calc(100%-2rem))]'
+
+  return (
+    <section className={`relative min-h-0 overflow-hidden ${tall ? 'flex-1' : 'h-72 shrink-0'}`}>
+      <div className="absolute inset-0 flex items-center justify-center text-sm text-text-muted">
+        {visual}
+      </div>
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_40%,rgba(17,19,31,0.45)_100%)]" />
+
+      <header className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 py-3">
+        <h2 className="text-xl font-semibold drop-shadow">{title}</h2>
+        {plus}
+      </header>
+
+      <div className={`z-10 rounded-lg border border-border bg-bg-panel/95 p-3 shadow-lg backdrop-blur ${tableClass}`}>
+        {table}
+      </div>
+    </section>
+  )
+}

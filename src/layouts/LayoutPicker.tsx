@@ -3,18 +3,18 @@ import { LayoutLink } from './routing'
 const OPTIONS = [
   {
     id: 'layout-a' as const,
-    name: 'A — Table dans la couche',
-    desc: 'Tableau d assets sous le titre L1 / L2. Le + ouvre uniquement les services de cette couche (wallet/achat en L1, node/canal en L2).',
+    name: 'A — Table coin bas-gauche',
+    desc: 'Carte tableau posée dans le canvas L1 / L2 (bas-gauche). Le visuel reste derrière. Le + ouvre les services de la couche.',
   },
   {
     id: 'layout-b' as const,
-    name: 'B — Visuel + table côte à côte',
-    desc: 'Chaque layer est coupé : graphe ou chaine à gauche, tableau + menu à droite. Inventaire toujours visible.',
+    name: 'B — Table au centre',
+    desc: 'Même principe : table à l’intérieur de la couche, mais centrée par-dessus le graphe / la chaine.',
   },
   {
     id: 'layout-c' as const,
-    name: 'C — Sandbox propre',
-    desc: 'L1 et L2 restent visuels. Le + ouvre à la fois le menu de services et le tableau de cette couche.',
+    name: 'C — Table en bas du canvas',
+    desc: 'Bandeau tableau collé dans le bas de L1 / L2, comme une table d’explorer, sans sidebar autour.',
   },
 ]
 
@@ -25,7 +25,7 @@ export function LayoutPicker() {
         <div>
           <h1 className="text-2xl font-semibold">Choisir un layout</h1>
           <p className="mt-1 text-text-muted">
-            $ et prix BTC en haut à droite. Services collés à L1 ou L2 via un +.
+            $ et prix BTC en haut à droite. Tableau à l’intérieur de L1 / L2, pas autour.
           </p>
         </div>
         <LayoutLink
