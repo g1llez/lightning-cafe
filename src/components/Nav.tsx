@@ -2,12 +2,14 @@ import { useTranslation } from 'react-i18next'
 import { setAppLanguage } from '../i18n'
 import { totalSats } from '../simulation/player'
 import { useSimulation } from '../simulation/SimulationProvider'
+import { Tooltip } from './Tooltip'
 
 type NavProps = {
   onGuideClick: () => void
+  onBuyClick: () => void
 }
 
-export function Nav({ onGuideClick }: NavProps) {
+export function Nav({ onGuideClick, onBuyClick }: NavProps) {
   const { t, i18n } = useTranslation()
   const { player, btcPriceCad } = useSimulation()
   const currentLanguage = i18n.language.startsWith('fr') ? 'fr' : 'en'
@@ -27,13 +29,31 @@ export function Nav({ onGuideClick }: NavProps) {
       </div>
 
       <div className="flex items-center gap-2">
-        <div className="hidden items-center gap-3 rounded-md border border-border bg-bg-panel px-3 py-2 font-mono text-sm sm:flex">
-          <span>{player.cad.toLocaleString()} $</span>
-          <span className="text-border">|</span>
-          <span className="text-accent">{totalSats(player).toLocaleString()} sats</span>
-          <span className="text-border">|</span>
-          <span className="text-text-muted">{t('services.price', { price: btcPriceCad.toLocaleString() })}</span>
+        <div className="hidden rounded-md border border-border bg-bg-panel px-3 py-1.5 sm:block">
+          <p className="text-[10px] uppercase tracking-[0.14em] text-text-muted">{t('nav.myFunds')}</p>
+          <p className="flex items-center gap-2 font-mono text-sm leading-tight">
+            <span>{player.cad.toLocaleString()} $</span>
+            <span className="text-border">|</span>
+            <span className="text-accent">{totalSats(player).toLocaleString()} sats</span>
+          </p>
         </div>
+
+        <div className="hidden rounded-md border border-dashed border-border px-3 py-1.5 md:block">
+          <p className="text-[10px] uppercase tracking-[0.14em] text-text-muted">{t('nav.market')}</p>
+          <Tooltip text={t('nav.priceTip')}>
+            <p className="font-mono text-sm leading-tight text-text-muted">
+              {t('nav.btcPrice', { price: btcPriceCad.toLocaleString() })}
+            </p>
+          </Tooltip>
+        </div>
+
+        <button
+          type="button"
+          onClick={onBuyClick}
+          className="rounded-md bg-accent px-3 py-2 text-sm font-semibold text-bg-primary transition hover:brightness-110"
+        >
+          {t('services.buy')}
+        </button>
 
         <button
           type="button"

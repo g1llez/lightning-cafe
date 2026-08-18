@@ -12,13 +12,16 @@ import {
 import {
   buyBitcoin,
   cadToSats,
+  createAddress,
   createInitialPlayer,
   createWallet,
-  looksLikeNpub,
+  looksLikeAddress,
+  receiveAddress,
   renameWallet,
   seedPhrase,
-  setNpub,
   shortAddress,
+  totalSats,
+  walletSats,
   walletAddress,
   walletSeed,
 } from '../src/simulation/player'
@@ -68,33 +71,81 @@ describe('chain simulation', () => {
 
 describe('player wallets', () => {
   it('starts with 1000 CAD and converts a buy into sats', () => {
-    let player = createInitialPlayer()
-    player = createWallet(player, 'Wallet 1')
-    player = setNpub(player, 'npub1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqt8d4x')
+    let player = createWallet(createInitialPlayer(), 'Wallet 1')
     player = buyBitcoin(player, 'w-1', 100)
 
     expect(player.cad).toBe(900)
-    expect(player.wallets[0].sats).toBe(cadToSats(100))
-    expect(looksLikeNpub('npub1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqt8d4x')).toBe(true)
+    expect(walletSats(player.wallets[0])).toBe(cadToSats(100))
+    expect(totalSats(player)).toBe(cadToSats(100))
   })
 
-  it('refuses a buy without npub', () => {
+  it('credits the receive address, and a new address starts empty', () => {
+    let player = createWallet(createInitialPlayer(), 'Wallet 1')
+    player = buyBitcoin(player, 'w-1', 100)
+    player = createAddress(player, 'w-1')
+    player = buyBitcoin(player, 'w-1', 250)
+
+    expect(player.wallets[0].addresses[0].sats).toBe(cadToSats(100))
+    expect(player.wallets[0].addresses[1].sats).toBe(cadToSats(250))
+    expect(walletSats(player.wallets[0])).toBe(cadToSats(350))
+  })
+
+  it('refuses a buy the player cannot afford', () => {
     const player = createWallet(createInitialPlayer(), 'Wallet 1')
-    expect(() => buyBitcoin(player, 'w-1', 100)).toThrow('npub-required')
+
+    expect(() => buyBitcoin(player, 'w-1', 1_001)).toThrow('insufficient-cad')
+    expect(() => buyBitcoin(player, 'w-1', 0)).toThrow('insufficient-cad')
+    expect(() => buyBitcoin(player, 'w-9', 100)).toThrow('wallet-missing')
   })
 
   it('creates a sandbox address and seed, not a real Bitcoin one', () => {
-    let player = createWallet(createInitialPlayer(), 'Wallet 1')
-    expect(player.wallets[0].address.startsWith('lc1q')).toBe(true)
-    expect(player.wallets[0].address.startsWith('bc1')).toBe(false)
-    expect(player.wallets[0].address).toBe(walletAddress('w-1'))
-    expect(player.wallets[0].seed).toEqual(walletSeed('w-1'))
-    expect(player.wallets[0].seed).toHaveLength(12)
+    let player = createWallet(createInitialPlayer(), 'Wallet 1', () => 0)
+    const address = receiveAddress(player.wallets[0])
+
+    expect(address.startsWith('lc1q')).toBe(true)
+    expect(address.startsWith('bc1')).toBe(false)
+    expect(player.wallets[0].seed).toEqual(walletSeed(() => 0))
     expect(seedPhrase(player.wallets[0].seed).split(' ')).toHaveLength(12)
-    expect(shortAddress(player.wallets[0].address)).toContain('…')
+    expect(shortAddress(address)).toContain('…')
 
     player = renameWallet(player, 'w-1', 'Savings')
     expect(player.wallets[0].name).toBe('Savings')
     expect(() => renameWallet(player, 'w-1', '   ')).toThrow('name-empty')
+  })
+
+  it('recognises a sandbox address', () => {
+    const player = createWallet(createInitialPlayer(), 'Wallet 1')
+
+    expect(looksLikeAddress(receiveAddress(player.wallets[0]))).toBe(true)
+    expect(looksLikeAddress('bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4')).toBe(false)
+  })
+
+  it('draws 12 different words at random for each wallet', () => {
+    const seed = walletSeed()
+
+    expect(seed).toHaveLength(12)
+    expect(new Set(seed).size).toBe(12)
+    expect(walletSeed()).not.toEqual(walletSeed())
+    expect(walletSeed(() => 0.999)).toEqual(walletSeed(() => 0.999))
+  })
+
+  it('derives every address from the 12 words', () => {
+    const player = createWallet(createInitialPlayer(), 'Wallet 1')
+    const seed = player.wallets[0].seed
+
+    expect(player.wallets[0].addresses).toEqual([{ value: walletAddress(seed, 0), sats: 0 }])
+    expect(walletAddress(seed, 0)).toBe(walletAddress(seed, 0))
+    expect(walletAddress(seed, 1)).not.toBe(walletAddress(seed, 0))
+    expect(walletAddress(walletSeed(() => 0), 0)).not.toBe(walletAddress(seed, 0))
+  })
+
+  it('adds a fresh receive address on demand', () => {
+    let player = createWallet(createInitialPlayer(), 'Wallet 1')
+    player = createAddress(player, 'w-1')
+
+    expect(player.wallets[0].addresses).toHaveLength(2)
+    expect(receiveAddress(player.wallets[0])).toBe(walletAddress(player.wallets[0].seed, 1))
+    expect(new Set(player.wallets[0].addresses).size).toBe(2)
+    expect(() => createAddress(player, 'w-9')).toThrow('wallet-missing')
   })
 })

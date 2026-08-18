@@ -38,17 +38,24 @@ const SANDBOX_WORDS = [
   'pinecone',
 ] as const
 
+const ADDRESS_ALPHABET = 'acdefghjklmnpqrstuvwxyz023456789'
+const ADDRESS_BODY_LENGTH = 34
+
+/** Money sits on an address, not on the wallet: that is how a real wallet works. */
+export type WalletAddress = {
+  value: string
+  sats: number
+}
+
 export type Wallet = {
   id: string
   name: string
-  address: string
   seed: string[]
-  sats: number
+  addresses: WalletAddress[]
 }
 
 export type PlayerState = {
   cad: number
-  npub: string
   wallets: Wallet[]
   nextWalletId: number
 }
@@ -56,28 +63,35 @@ export type PlayerState = {
 export function createInitialPlayer(): PlayerState {
   return {
     cad: STARTING_CAD,
-    npub: '',
     wallets: [],
     nextWalletId: 1,
   }
 }
 
+export function walletSats(wallet: Wallet): number {
+  return wallet.addresses.reduce((sum, address) => sum + address.sats, 0)
+}
+
 export function totalSats(player: PlayerState): number {
-  return player.wallets.reduce((sum, wallet) => sum + wallet.sats, 0)
+  return player.wallets.reduce((sum, wallet) => sum + walletSats(wallet), 0)
 }
 
 export function cadToSats(cad: number, priceCad = BTC_PRICE_CAD): number {
   return Math.floor((cad / priceCad) * SATS_PER_BTC)
 }
 
-export function createWallet(player: PlayerState, name: string): PlayerState {
+export function createWallet(
+  player: PlayerState,
+  name: string,
+  random: () => number = Math.random,
+): PlayerState {
   const id = `w-${player.nextWalletId}`
+  const seed = walletSeed(random)
   const wallet: Wallet = {
     id,
     name,
-    address: walletAddress(id),
-    seed: walletSeed(id),
-    sats: 0,
+    seed,
+    addresses: [{ value: walletAddress(seed, 0), sats: 0 }],
   }
 
   return {
@@ -87,24 +101,60 @@ export function createWallet(player: PlayerState, name: string): PlayerState {
   }
 }
 
-export function walletAddress(id: string): string {
-  const payload = id.replace(/[^a-z0-9]/gi, '').toLowerCase().padEnd(32, 'cafe0123')
-  return `${PUBLIC_ADDRESS_PREFIX}${payload}`.slice(0, 42)
-}
+/** Every address comes from the seed, so the 12 words really are the wallet. */
+export function walletAddress(seed: string[], index: number): string {
+  let state = fingerprint(`${seed.join(' ')}/${index}`)
+  let body = ''
 
-export function walletSeed(id: string): string[] {
-  const seed: string[] = []
-  let cursor = 0
-  for (const char of id) {
-    cursor += char.charCodeAt(0)
+  while (body.length < ADDRESS_BODY_LENGTH) {
+    state = (Math.imul(state, 1_664_525) + 1_013_904_223) >>> 0
+    body += ADDRESS_ALPHABET[state % ADDRESS_ALPHABET.length]
   }
 
+  return `${PUBLIC_ADDRESS_PREFIX}${body}`
+}
+
+function fingerprint(input: string): number {
+  let value = 2_166_136_261
+  for (const char of input) {
+    value ^= char.charCodeAt(0)
+    value = Math.imul(value, 16_777_619)
+  }
+  return value >>> 0
+}
+
+export function receiveAddress(wallet: Wallet): string {
+  return wallet.addresses[wallet.addresses.length - 1].value
+}
+
+export function createAddress(player: PlayerState, walletId: string): PlayerState {
+  const wallet = player.wallets.find((item) => item.id === walletId)
+  if (!wallet) {
+    throw new Error('wallet-missing')
+  }
+
+  const next: WalletAddress = {
+    value: walletAddress(wallet.seed, wallet.addresses.length),
+    sats: 0,
+  }
+
+  return {
+    ...player,
+    wallets: player.wallets.map((item) =>
+      item.id === walletId ? { ...item, addresses: [...item.addresses, next] } : item,
+    ),
+  }
+}
+
+/** Drawn at random, like a real wallet: nobody can guess the combination. */
+export function walletSeed(random: () => number = Math.random): string[] {
+  const pool = [...SANDBOX_WORDS]
+  const seed: string[] = []
+
   while (seed.length < 12) {
-    const word = SANDBOX_WORDS[cursor % SANDBOX_WORDS.length]
-    if (!seed.includes(word)) {
-      seed.push(word)
-    }
-    cursor += 7
+    const index = Math.min(Math.floor(random() * pool.length), pool.length - 1)
+    const [word] = pool.splice(index, 1)
+    seed.push(word)
   }
 
   return seed
@@ -140,12 +190,14 @@ export function renameWallet(player: PlayerState, walletId: string, name: string
   }
 }
 
-export function setNpub(player: PlayerState, npub: string): PlayerState {
-  return { ...player, npub: npub.trim() }
+export function looksLikeAddress(value: string): boolean {
+  return value.trim().toLowerCase().startsWith(PUBLIC_ADDRESS_PREFIX)
 }
 
-export function looksLikeNpub(value: string): boolean {
-  return /^npub1[0-9a-z]{20,}$/i.test(value.trim())
+function creditAddress(wallet: Wallet, address: string, sats: number): WalletAddress[] {
+  return wallet.addresses.map((item) =>
+    item.value === address ? { ...item, sats: item.sats + sats } : item,
+  )
 }
 
 export function buyBitcoin(
@@ -154,9 +206,6 @@ export function buyBitcoin(
   cadAmount: number,
   priceCad = BTC_PRICE_CAD,
 ): PlayerState {
-  if (!looksLikeNpub(player.npub)) {
-    throw new Error('npub-required')
-  }
   if (cadAmount <= 0 || cadAmount > player.cad) {
     throw new Error('insufficient-cad')
   }
@@ -167,12 +216,13 @@ export function buyBitcoin(
   }
 
   const sats = cadToSats(cadAmount, priceCad)
+  const target = receiveAddress(wallet)
 
   return {
     ...player,
     cad: player.cad - cadAmount,
     wallets: player.wallets.map((item) =>
-      item.id === walletId ? { ...item, sats: item.sats + sats } : item,
+      item.id === walletId ? { ...item, addresses: creditAddress(item, target, sats) } : item,
     ),
   }
 }

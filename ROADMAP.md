@@ -2,7 +2,7 @@
 
 Source of truth for what to build next. Do not replan after each task: take the first open item in the current version.
 
-**Now:** v0.2.1 done → next is **v0.2.2**
+**Now:** v0.2.1b done → next is **v0.2.2**
 
 | Version | Goal | Status |
 |---|---|---|
@@ -21,7 +21,7 @@ Layout, i18n FR/EN, GitHub Pages.
 
 L1: animated blocks (~1 min, labelled as estimate), mempool priorities, sat/vB, tx counts, fictional pools, tooltips.
 
-Account: 1000 $ in the nav, BTC price, create wallet, buy 100 $ (instant, not yet a chain tx), npub required to buy.
+Account: 1000 $ in the nav, BTC price, create wallet, buy 100 $ (instant, not yet a chain tx).
 
 L2: empty table, create node = not yet.
 
@@ -37,6 +37,18 @@ A wallet can receive, send, and watch its money move on the fake chain. Buying a
 - Optional rename
 - Hidden 12-word sandbox seed (not BIP39) to teach public vs secret
 - Empty state already exists; keep it clean
+
+### v0.2.1b — Wallet UI made logical ✅
+- Wallets table is a list only (name + balance); `+` only creates a wallet
+- Wallet detail (master/detail in the same card): balance → receive → my addresses → backup
+- Several receive addresses per wallet, all derived from the 12 words, `New address` button
+- 12 words drawn at random, explained in a popup right after wallet creation (OK → the wallet)
+- 12 words revealed in two steps (warning first) from the Backup section
+- Buy moved out of the wallets `+` to a `Buy` button in the nav: amount + destination wallet only
+- No npub in the buy flow: an address is what receives money. KYC mentioned as a note instead
+- Sats sit on an address, not on the wallet: balance per address, wallet total is the sum
+- Nav separates `My funds` ($ + sats) from `Market` (BTC price), which used to read as one number
+- L2 starts collapsed as a single bar; L1 takes the whole canvas until the user opens L2
 
 ### v0.2.2 — Buy goes on-chain
 - Buy 100 $ creates a tx in mempool (high priority by default)
@@ -55,8 +67,8 @@ A wallet can receive, send, and watch its money move on the fake chain. Buying a
 - Click a wallet to see its tx history
 
 ### v0.2.5 — Sell BTC
-- Sell sats back to $ via Services (L1 +)
-- Also an on-chain tx (service sweep)
+- Sell sats back to $ from the same nav service as Buy
+- Also an on-chain tx (service sweep), spending from the wallet addresses
 - Inverse of buy
 
 ### v0.2.6 — Persist
@@ -110,6 +122,10 @@ Player node can open channels and pay, with the L1 contract visible.
 ## Later (not scheduled)
 
 Guide / tips, LSP, rebalancing, watchtower, mempool.space link, extra languages.
+
+xpub (watch-only): show it in the wallet, explain that it derives every address and reveals the whole
+history without being able to spend. Possibly let the exchange take an xpub and pay a fresh address
+each time. Nostr identity (npub, zaps, Lightning address) belongs with L2, not with buying on-chain.
 
 ---
 

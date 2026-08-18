@@ -1,33 +1,35 @@
 import type { ReactNode } from 'react'
-import { PlusMenu } from './PlusMenu'
 
 type LayerAssetCardProps = {
   title: string
-  plusLabel: string
-  plusOpen: boolean
-  onPlusToggle: () => void
-  plusItems: { label: string; onClick: () => void }[]
-  extra?: ReactNode
+  action?: ReactNode
+  onBack?: () => void
+  backLabel?: string
   children: ReactNode
 }
 
-export function LayerAssetCard({
-  title,
-  plusLabel,
-  plusOpen,
-  onPlusToggle,
-  plusItems,
-  extra,
-  children,
-}: LayerAssetCardProps) {
+export function LayerAssetCard({ title, action, onBack, backLabel, children }: LayerAssetCardProps) {
   return (
     <div className="absolute top-1/2 left-4 z-10 w-[min(22rem,calc(100%-2rem))] -translate-y-1/2 rounded-lg border border-border bg-bg-panel/95 p-3 shadow-lg backdrop-blur">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="text-xs leading-none uppercase tracking-[0.14em] text-text-muted">{title}</span>
-        <PlusMenu open={plusOpen} onToggle={onPlusToggle} items={plusItems} label={plusLabel} />
+        <div className="flex min-w-0 items-center gap-1.5">
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              aria-label={backLabel}
+              className="shrink-0 text-sm leading-none text-text-muted transition hover:text-accent"
+            >
+              ‹
+            </button>
+          )}
+          <span className="truncate text-xs leading-none uppercase tracking-[0.14em] text-text-muted">
+            {title}
+          </span>
+        </div>
+        {action}
       </div>
-      {children}
-      {extra}
+      <div className="max-h-60 overflow-y-auto">{children}</div>
     </div>
   )
 }
