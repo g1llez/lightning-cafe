@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { setAppLanguage } from '../i18n'
+import { LayoutLink } from '../layouts/routing'
 
 type NavProps = {
   onGuideClick: () => void
@@ -24,6 +25,12 @@ export function Nav({ onGuideClick }: NavProps) {
       </div>
 
       <div className="flex items-center gap-2">
+        <LayoutLink
+          to="layouts"
+          className="rounded-md border border-border bg-bg-panel px-3 py-2 text-sm transition hover:border-accent/60"
+        >
+          {t('nav.layouts')}
+        </LayoutLink>
         <button
           type="button"
           onClick={onGuideClick}

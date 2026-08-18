@@ -6,9 +6,21 @@ import { Footer } from './components/Footer'
 import { LightningLayer } from './components/LightningLayer'
 import { Nav } from './components/Nav'
 import { Toast } from './components/Toast'
+import { LayoutA } from './layouts/LayoutA'
+import { LayoutB } from './layouts/LayoutB'
+import { LayoutC } from './layouts/LayoutC'
+import { LayoutPicker } from './layouts/LayoutPicker'
+import { useLayoutRoute } from './layouts/routing'
 import { SimulationProvider } from './simulation/SimulationProvider'
 
 export default function App() {
+  const route = useLayoutRoute()
+
+  if (route === 'layouts') return <LayoutPicker />
+  if (route === 'layout-a') return <LayoutA />
+  if (route === 'layout-b') return <LayoutB />
+  if (route === 'layout-c') return <LayoutC />
+
   return (
     <SimulationProvider>
       <AppShell />

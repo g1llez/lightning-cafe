@@ -7,7 +7,8 @@
   "nav": {
     "guide": "Guide",
     "guideSoon": "Guide coming soon",
-    "language": "Language"
+    "language": "Language",
+    "layouts": "Layouts"
   },
   "account": {
     "title": "Account"
@@ -21,14 +22,14 @@
   },
   "services": {
     "title": "Services",
-    "price": "BTC {{price}} CAD",
+    "price": "BTC {{price}} $",
     "npubPlaceholder": "npub1… (identity)",
     "npubSaved": "npub saved",
     "buy100": "Buy $100 of BTC",
     "buyOk": "Simulated purchase sent to wallet",
     "needNpub": "Enter an npub to buy",
     "needWallet": "Create a wallet first",
-    "needCad": "Not enough CAD"
+    "needFunds": "Not enough funds"
   },
   "layers": {
     "lightning": "Lightning (L2)",

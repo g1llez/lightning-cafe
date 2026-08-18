@@ -38,7 +38,7 @@ export function AssetsPanel({ onMessage }: AssetsPanelProps) {
       return
     }
     if (player.cad < 100) {
-      onMessage(t('services.needCad'))
+      onMessage(t('services.needFunds'))
       return
     }
 
@@ -62,7 +62,7 @@ export function AssetsPanel({ onMessage }: AssetsPanelProps) {
       <div className="space-y-4 p-4">
         <div className="rounded-md border border-border bg-bg-panel px-3 py-3">
           <p className="font-mono text-lg text-text-primary">
-            {player.cad.toLocaleString()} $ CAD
+            {player.cad.toLocaleString()} $
           </p>
           <p className="mt-1 font-mono text-sm text-accent">
             {totalSats(player).toLocaleString()} sats
