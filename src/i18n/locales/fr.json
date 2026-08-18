@@ -20,8 +20,12 @@
     "lightning": "Lightning (L2)",
     "bitcoin": "Bitcoin (L1)",
     "lightningPlaceholder": "Le graphe du réseau Lightning apparaîtra ici.",
-    "mempool": "Mempool",
-    "blocks": "Blocs"
+    "mempool": "Mempool — à venir",
+    "mempoolHint": "Transactions en attente, regroupées en prochains blocs possibles.",
+    "now": "Maintenant",
+    "confirmed": "Blocs confirmés",
+    "confirmedHint": "Déjà minés et inscrits dans la chaîne.",
+    "feeHint": "sat/vB = taux de frais du bloc (pas un montant). Plus le chiffre est haut, plus ces transactions ont payé cher pour entrer."
   },
   "footer": {
     "inspired": "Interface inspirée de mempool.space"
