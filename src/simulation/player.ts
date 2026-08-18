@@ -1,11 +1,48 @@
 export const STARTING_CAD = 1_000
 export const BTC_PRICE_CAD = 100_000
 export const SATS_PER_BTC = 100_000_000
+export const PUBLIC_ADDRESS_PREFIX = 'lc1q'
+
+const SANDBOX_WORDS = [
+  'cafe',
+  'lightning',
+  'sandbox',
+  'chatoshi',
+  'espresso',
+  'mempool',
+  'foghash',
+  'riverbit',
+  'satsmith',
+  'stormnonce',
+  'cedar',
+  'aurora',
+  'beacon',
+  'copper',
+  'lantern',
+  'maple',
+  'umbrel',
+  'invoice',
+  'channel',
+  'inbound',
+  'outbound',
+  'routing',
+  'watchtower',
+  'hashrate',
+  'nonce',
+  'halving',
+  'orange',
+  'quietasic',
+  'satflow',
+  'blockbarn',
+  'northhash',
+  'pinecone',
+] as const
 
 export type Wallet = {
   id: string
   name: string
   address: string
+  seed: string[]
   sats: number
 }
 
@@ -39,6 +76,7 @@ export function createWallet(player: PlayerState, name: string): PlayerState {
     id,
     name,
     address: walletAddress(id),
+    seed: walletSeed(id),
     sats: 0,
   }
 
@@ -50,8 +88,30 @@ export function createWallet(player: PlayerState, name: string): PlayerState {
 }
 
 export function walletAddress(id: string): string {
-  const seed = id.replace(/[^a-z0-9]/gi, '').toLowerCase().padEnd(32, 'cafe0123')
-  return `bc1q${seed}`.slice(0, 42)
+  const payload = id.replace(/[^a-z0-9]/gi, '').toLowerCase().padEnd(32, 'cafe0123')
+  return `${PUBLIC_ADDRESS_PREFIX}${payload}`.slice(0, 42)
+}
+
+export function walletSeed(id: string): string[] {
+  const seed: string[] = []
+  let cursor = 0
+  for (const char of id) {
+    cursor += char.charCodeAt(0)
+  }
+
+  while (seed.length < 12) {
+    const word = SANDBOX_WORDS[cursor % SANDBOX_WORDS.length]
+    if (!seed.includes(word)) {
+      seed.push(word)
+    }
+    cursor += 7
+  }
+
+  return seed
+}
+
+export function seedPhrase(seed: string[]): string {
+  return seed.join(' ')
 }
 
 export function shortAddress(address: string): string {

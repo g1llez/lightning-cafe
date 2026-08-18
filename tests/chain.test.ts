@@ -16,9 +16,11 @@ import {
   createWallet,
   looksLikeNpub,
   renameWallet,
+  seedPhrase,
   setNpub,
   shortAddress,
   walletAddress,
+  walletSeed,
 } from '../src/simulation/player'
 
 describe('chain simulation', () => {
@@ -81,14 +83,18 @@ describe('player wallets', () => {
     expect(() => buyBitcoin(player, 'w-1', 100)).toThrow('npub-required')
   })
 
-  it('creates a bech32-like address and can rename a wallet', () => {
+  it('creates a sandbox address and seed, not a real Bitcoin one', () => {
     let player = createWallet(createInitialPlayer(), 'Wallet 1')
-    expect(player.wallets[0].address.startsWith('bc1q')).toBe(true)
+    expect(player.wallets[0].address.startsWith('lc1q')).toBe(true)
+    expect(player.wallets[0].address.startsWith('bc1')).toBe(false)
     expect(player.wallets[0].address).toBe(walletAddress('w-1'))
+    expect(player.wallets[0].seed).toEqual(walletSeed('w-1'))
+    expect(player.wallets[0].seed).toHaveLength(12)
+    expect(seedPhrase(player.wallets[0].seed).split(' ')).toHaveLength(12)
     expect(shortAddress(player.wallets[0].address)).toContain('…')
 
-    player = renameWallet(player, 'w-1', 'Épargne')
-    expect(player.wallets[0].name).toBe('Épargne')
+    player = renameWallet(player, 'w-1', 'Savings')
+    expect(player.wallets[0].name).toBe('Savings')
     expect(() => renameWallet(player, 'w-1', '   ')).toThrow('name-empty')
   })
 })

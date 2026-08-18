@@ -26,7 +26,11 @@
     "selected": "target",
     "addressCopied": "Address copied",
     "walletRenamed": "Wallet renamed",
-    "walletRenameFailed": "Invalid name"
+    "walletRenameFailed": "Invalid name",
+    "showSecret": "Show secret",
+    "hideSecret": "Hide secret",
+    "publicTip": "Sandbox public address (lc1q). Safe to share. This is not a real Bitcoin address.",
+    "secretTip": "12 sandbox words. Never share them. This is not a real BIP39 seed."
   },
   "services": {
     "title": "Services",

@@ -32,9 +32,10 @@ L2: empty table, create node = not yet.
 A wallet can receive, send, and watch its money move on the fake chain. Buying and sending are real L1 txs in the sim (mempool → next block → balance updates).
 
 ### v0.2.1 — Wallet usable ✅
-- Show address in the L1 table
+- Show address in the L1 table (`lc1q…` sandbox prefix, not `bc1`)
 - Select wallet (target for buy / send)
 - Optional rename
+- Hidden 12-word sandbox seed (not BIP39) to teach public vs secret
 - Empty state already exists; keep it clean
 
 ### v0.2.2 — Buy goes on-chain

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatCountdown, toneForFee, type ConfirmedBlock, type Priority, type ProjectedBlock } from '../simulation/chain'
-import { looksLikeNpub, shortAddress } from '../simulation/player'
+import { looksLikeNpub, seedPhrase, shortAddress } from '../simulation/player'
 import { useSimulation } from '../simulation/SimulationProvider'
 import { LayerAssetCard } from './LayerAssetCard'
 import { Tooltip } from './Tooltip'
@@ -48,6 +48,7 @@ export function BitcoinLayer({ onMessage }: BitcoinLayerProps) {
   const [npubDraft, setNpubDraft] = useState(player.npub)
   const [editingWalletId, setEditingWalletId] = useState('')
   const [editingName, setEditingName] = useState('')
+  const [revealedSeedId, setRevealedSeedId] = useState('')
 
   const selectedId = player.wallets.some((wallet) => wallet.id === selectedWalletId)
     ? selectedWalletId
@@ -257,15 +258,31 @@ export function BitcoinLayer({ onMessage }: BitcoinLayerProps) {
                       </div>
                       <button
                         type="button"
-                        title={wallet.address}
+                        title={t('assets.publicTip')}
                         onClick={(event) => {
                           event.stopPropagation()
                           void copyAddress(wallet.address)
                         }}
-                        className="font-mono text-[11px] text-text-muted hover:text-text-primary"
+                        className="block font-mono text-[11px] text-text-muted hover:text-text-primary"
                       >
                         {shortAddress(wallet.address)}
                       </button>
+                      <button
+                        type="button"
+                        title={t('assets.secretTip')}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          setRevealedSeedId((current) => (current === wallet.id ? '' : wallet.id))
+                        }}
+                        className="mt-1 block text-[10px] uppercase tracking-wide text-text-muted hover:text-accent"
+                      >
+                        {revealedSeedId === wallet.id ? t('assets.hideSecret') : t('assets.showSecret')}
+                      </button>
+                      {revealedSeedId === wallet.id && (
+                        <p className="mt-1 font-mono text-[10px] leading-relaxed text-accent">
+                          {seedPhrase(wallet.seed)}
+                        </p>
+                      )}
                       {selected && (
                         <span className="ml-2 text-[10px] uppercase tracking-wide text-accent">
                           {t('assets.selected')}
