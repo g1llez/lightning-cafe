@@ -21,11 +21,18 @@
     "bitcoin": "Bitcoin (L1)",
     "lightningPlaceholder": "Le graphe du réseau Lightning apparaîtra ici.",
     "mempool": "Mempool — à venir",
-    "mempoolHint": "Transactions en attente, regroupées en prochains blocs possibles.",
+    "mempoolHint": "Transactions en attente, groupées par priorité de frais. La priorité haute sera dans le prochain bloc.",
     "now": "Maintenant",
     "confirmed": "Blocs confirmés",
     "confirmedHint": "Déjà minés et inscrits dans la chaîne.",
-    "feeHint": "sat/vB = taux de frais du bloc (pas un montant). Plus le chiffre est haut, plus ces transactions ont payé cher pour entrer."
+    "feeHint": "sat/vB = taux de frais du bloc (pas un montant). Plus le chiffre est haut, plus ces transactions ont payé cher pour entrer.",
+    "blockIntervalHint": "Dans ce sandbox, un bloc est miné chaque minute — assez vite pour voir ouvrir et fermer des canaux.",
+    "nextBlockIn": "Prochain bloc dans {{time}}",
+    "priority": {
+      "high": "Priorité haute",
+      "medium": "Priorité moyenne",
+      "low": "Priorité basse"
+    }
   },
   "footer": {
     "inspired": "Interface inspirée de mempool.space"

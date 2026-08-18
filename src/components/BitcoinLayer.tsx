@@ -1,47 +1,64 @@
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
-type ChainBlock = {
-  label: string
-  feeRate: number
-  tone: string
-}
-
-const UPCOMING_BLOCKS: ChainBlock[] = [
-  { label: '~3', feeRate: 4, tone: 'bg-block-low' },
-  { label: '~2', feeRate: 9, tone: 'bg-block-mid' },
-  { label: '~1', feeRate: 18, tone: 'bg-block-high' },
-]
-
-const CONFIRMED_BLOCKS: ChainBlock[] = [
-  { label: '#912004', feeRate: 22, tone: 'bg-block-high' },
-  { label: '#912003', feeRate: 14, tone: 'bg-block-mid' },
-  { label: '#912002', feeRate: 35, tone: 'bg-block-hot' },
-  { label: '#912001', feeRate: 12, tone: 'bg-block-mid' },
-  { label: '#912000', feeRate: 8, tone: 'bg-block-low' },
-]
+import {
+  BLOCK_INTERVAL_SECONDS,
+  createInitialChain,
+  formatCountdown,
+  mineBlock,
+  nextLowFeeRate,
+  toneForFee,
+  type ConfirmedBlock,
+  type Priority,
+  type ProjectedBlock,
+} from '../simulation/chain'
 
 type BlockTileProps = {
-  block: ChainBlock
+  label: string
+  feeRate: number
   upcoming?: boolean
+  highlight?: boolean
 }
 
-function BlockTile({ block, upcoming = false }: BlockTileProps) {
+function BlockTile({ label, feeRate, upcoming = false, highlight = false }: BlockTileProps) {
   return (
-    <div className="flex w-20 shrink-0 flex-col items-center gap-1">
+    <div className="flex w-24 shrink-0 flex-col items-center gap-1">
       <div
-        className={`h-16 w-16 rounded-md ${block.tone} ${
-          upcoming ? 'border border-dashed border-text-muted/50 opacity-80' : ''
-        }`}
-        title={`${block.label} · ${block.feeRate} sat/vB`}
+        className={`h-16 w-16 rounded-md ${toneForFee(feeRate)} ${
+          upcoming ? 'border border-dashed border-text-muted/50' : ''
+        } ${highlight ? 'ring-2 ring-accent ring-offset-2 ring-offset-bg-secondary' : ''}`}
+        title={`${label} · ${feeRate} sat/vB`}
       />
-      <span className="font-mono text-xs text-text-muted">{block.label}</span>
-      <span className="font-mono text-xs text-accent">{block.feeRate} sat/vB</span>
+      <span className="text-center text-xs font-medium text-text-primary">{label}</span>
+      <span className="font-mono text-xs text-accent">{feeRate} sat/vB</span>
     </div>
   )
 }
 
 export function BitcoinLayer() {
   const { t } = useTranslation()
+  const [chain, setChain] = useState(createInitialChain)
+  const [secondsLeft, setSecondsLeft] = useState(BLOCK_INTERVAL_SECONDS)
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setSecondsLeft((current) => current - 1)
+    }, 1000)
+
+    return () => window.clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    if (secondsLeft > 0) {
+      return
+    }
+
+    setChain((current) => mineBlock(current, nextLowFeeRate()))
+    setSecondsLeft(BLOCK_INTERVAL_SECONDS)
+  }, [secondsLeft])
+
+  function priorityLabel(priority: Priority) {
+    return t(`layers.priority.${priority}`)
+  }
 
   return (
     <section className="shrink-0 border-t border-border bg-bg-secondary">
@@ -49,6 +66,9 @@ export function BitcoinLayer() {
         <h2 className="text-center text-xl font-semibold tracking-tight text-text-primary md:text-2xl">
           {t('layers.bitcoin')}
         </h2>
+        <p className="mt-1 text-center font-mono text-sm text-accent">
+          {t('layers.nextBlockIn', { time: formatCountdown(secondsLeft) })}
+        </p>
       </div>
 
       <div className="flex flex-col items-center px-4 py-4">
@@ -59,16 +79,19 @@ export function BitcoinLayer() {
             </p>
             <p className="mb-3 text-center text-sm text-text-muted">{t('layers.mempoolHint')}</p>
             <div className="flex items-center justify-center gap-3">
-              {UPCOMING_BLOCKS.map((block) => (
-                <BlockTile key={block.label} block={block} upcoming />
+              {chain.upcoming.map((block: ProjectedBlock) => (
+                <BlockTile
+                  key={block.id}
+                  label={priorityLabel(block.priority)}
+                  feeRate={block.feeRate}
+                  upcoming
+                  highlight={block.priority === 'high'}
+                />
               ))}
             </div>
           </div>
 
-          <div
-            className="flex items-center justify-center md:min-h-[132px] md:flex-col md:px-4"
-            aria-hidden="true"
-          >
+          <div className="flex items-center justify-center md:min-h-[132px] md:flex-col md:px-4">
             <div className="h-px w-24 bg-border md:h-24 md:w-px" />
             <span className="px-2 font-mono text-xs uppercase tracking-widest text-accent md:py-2">
               {t('layers.now')}
@@ -82,14 +105,15 @@ export function BitcoinLayer() {
             </p>
             <p className="mb-3 text-center text-sm text-text-muted">{t('layers.confirmedHint')}</p>
             <div className="flex items-center justify-center gap-3 overflow-x-auto pb-1">
-              {CONFIRMED_BLOCKS.map((block) => (
-                <BlockTile key={block.label} block={block} />
+              {chain.confirmed.map((block: ConfirmedBlock) => (
+                <BlockTile key={block.id} label={`#${block.height}`} feeRate={block.feeRate} />
               ))}
             </div>
           </div>
         </div>
 
         <p className="mt-4 text-center text-sm text-text-muted">{t('layers.feeHint')}</p>
+        <p className="mt-1 text-center text-sm text-text-muted">{t('layers.blockIntervalHint')}</p>
       </div>
     </section>
   )
