@@ -1,0 +1,29 @@
+{
+  "app": {
+    "title": "Lightning Café",
+    "subtitle": "Sandbox Lightning",
+    "disclaimer": "Simulated sats only — not real Bitcoin."
+  },
+  "nav": {
+    "guide": "Guide",
+    "guideSoon": "Guide coming soon",
+    "language": "Language"
+  },
+  "assets": {
+    "title": "Assets",
+    "empty": "Add wallets and nodes to build your sandbox.",
+    "addWallet": "+ Wallet",
+    "addNode": "+ Node",
+    "soon": "Coming in a future sprint"
+  },
+  "layers": {
+    "lightning": "Lightning (L2)",
+    "bitcoin": "Bitcoin (L1)",
+    "lightningPlaceholder": "Lightning network graph will appear here.",
+    "mempool": "Mempool",
+    "blocks": "Blocks"
+  },
+  "footer": {
+    "inspired": "Interface inspired by mempool.space"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "name": "lightning-cafe",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Sandbox Lightning — educational Lightning Network simulator",
+  "author": "Gilles Auclair <gauclair@sarius.ca>",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "i18next": "^25.3.2",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-i18next": "^15.6.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.11",
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "@vitejs/plugin-react": "^5.0.0",
+    "tailwindcss": "^4.1.11",
+    "typescript": "~5.9.2",
+    "vite": "^7.1.2",
+    "vitest": "^3.2.4"
+  }
+}
