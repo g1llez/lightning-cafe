@@ -1,12 +1,12 @@
 import { useTranslation } from 'react-i18next'
 
 const BLOCKS = [
-  { height: 912_004, feeRate: 8, weight: 0.42, tone: 'bg-block-low' },
-  { height: 912_003, feeRate: 14, weight: 0.68, tone: 'bg-block-mid' },
-  { height: 912_002, feeRate: 22, weight: 0.81, tone: 'bg-block-high' },
-  { height: 912_001, feeRate: 35, weight: 0.95, tone: 'bg-block-hot' },
-  { height: 912_000, feeRate: 12, weight: 0.55, tone: 'bg-block-mid' },
-  { height: 911_999, feeRate: 6, weight: 0.33, tone: 'bg-block-low' },
+  { height: 912_004, feeRate: 8, tone: 'bg-block-low' },
+  { height: 912_003, feeRate: 14, tone: 'bg-block-mid' },
+  { height: 912_002, feeRate: 22, tone: 'bg-block-high' },
+  { height: 912_001, feeRate: 35, tone: 'bg-block-hot' },
+  { height: 912_000, feeRate: 12, tone: 'bg-block-mid' },
+  { height: 911_999, feeRate: 6, tone: 'bg-block-low' },
 ] as const
 
 const MEMPOOL_TXS = [
@@ -20,18 +20,18 @@ export function BitcoinLayer() {
 
   return (
     <section className="shrink-0 border-t border-border bg-bg-secondary">
-      <div className="border-b border-border px-4 py-2">
-        <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
+      <div className="border-b border-border px-4 py-3">
+        <h2 className="text-center text-xl font-semibold tracking-tight text-text-primary md:text-2xl">
           {t('layers.bitcoin')}
         </h2>
       </div>
 
-      <div className="space-y-3 px-4 py-4">
-        <div>
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">
+      <div className="flex flex-col items-center space-y-4 px-4 py-4">
+        <div className="w-full max-w-3xl">
+          <p className="mb-2 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">
             {t('layers.mempool')}
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap justify-center gap-2">
             {MEMPOOL_TXS.map((tx) => (
               <div
                 key={tx.id}
@@ -45,16 +45,15 @@ export function BitcoinLayer() {
           </div>
         </div>
 
-        <div>
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">
+        <div className="w-full max-w-3xl">
+          <p className="mb-2 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">
             {t('layers.blocks')}
           </p>
-          <div className="flex items-end gap-2 overflow-x-auto pb-1">
+          <div className="flex items-center justify-center gap-3 overflow-x-auto pb-1">
             {BLOCKS.map((block) => (
-              <div key={block.height} className="flex min-w-[72px] flex-col items-center gap-1">
+              <div key={block.height} className="flex w-16 shrink-0 flex-col items-center gap-1">
                 <div
-                  className={`w-16 rounded-md ${block.tone} transition`}
-                  style={{ height: `${Math.max(block.weight * 96, 28)}px` }}
+                  className={`h-16 w-16 rounded-md ${block.tone}`}
                   title={`#${block.height}`}
                 />
                 <span className="font-mono text-[10px] text-text-muted">#{block.height}</span>
