@@ -26,10 +26,11 @@ export default function App() {
 
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         <AssetsPanel onSoon={() => setToastMessage(t('assets.soon'))} />
-        <LightningLayer />
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <LightningLayer />
+          <BitcoinLayer />
+        </div>
       </div>
-
-      <BitcoinLayer />
       <Footer />
       <Toast message={toastMessage} />
     </div>

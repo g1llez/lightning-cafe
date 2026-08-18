@@ -27,15 +27,15 @@ type BlockTileProps = {
 
 function BlockTile({ block, upcoming = false }: BlockTileProps) {
   return (
-    <div className="flex w-16 shrink-0 flex-col items-center gap-1">
+    <div className="flex w-20 shrink-0 flex-col items-center gap-1">
       <div
         className={`h-16 w-16 rounded-md ${block.tone} ${
           upcoming ? 'border border-dashed border-text-muted/50 opacity-80' : ''
         }`}
         title={`${block.label} · ${block.feeRate} sat/vB`}
       />
-      <span className="font-mono text-[10px] text-text-muted">{block.label}</span>
-      <span className="font-mono text-[10px] text-accent">{block.feeRate} sat/vB</span>
+      <span className="font-mono text-xs text-text-muted">{block.label}</span>
+      <span className="font-mono text-xs text-accent">{block.feeRate} sat/vB</span>
     </div>
   )
 }
@@ -54,10 +54,10 @@ export function BitcoinLayer() {
       <div className="flex flex-col items-center px-4 py-4">
         <div className="flex w-full max-w-5xl flex-col items-stretch gap-4 md:flex-row md:items-start md:justify-center">
           <div className="flex-1">
-            <p className="mb-2 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">
+            <p className="mb-2 text-center text-sm font-semibold uppercase tracking-[0.16em] text-text-muted">
               {t('layers.mempool')}
             </p>
-            <p className="mb-3 text-center text-xs text-text-muted">{t('layers.mempoolHint')}</p>
+            <p className="mb-3 text-center text-sm text-text-muted">{t('layers.mempoolHint')}</p>
             <div className="flex items-center justify-center gap-3">
               {UPCOMING_BLOCKS.map((block) => (
                 <BlockTile key={block.label} block={block} upcoming />
@@ -70,17 +70,17 @@ export function BitcoinLayer() {
             aria-hidden="true"
           >
             <div className="h-px w-24 bg-border md:h-24 md:w-px" />
-            <span className="px-2 font-mono text-[10px] uppercase tracking-widest text-accent md:py-2">
+            <span className="px-2 font-mono text-xs uppercase tracking-widest text-accent md:py-2">
               {t('layers.now')}
             </span>
             <div className="h-px w-24 bg-border md:h-24 md:w-px" />
           </div>
 
           <div className="flex-1">
-            <p className="mb-2 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">
+            <p className="mb-2 text-center text-sm font-semibold uppercase tracking-[0.16em] text-text-muted">
               {t('layers.confirmed')}
             </p>
-            <p className="mb-3 text-center text-xs text-text-muted">{t('layers.confirmedHint')}</p>
+            <p className="mb-3 text-center text-sm text-text-muted">{t('layers.confirmedHint')}</p>
             <div className="flex items-center justify-center gap-3 overflow-x-auto pb-1">
               {CONFIRMED_BLOCKS.map((block) => (
                 <BlockTile key={block.label} block={block} />
@@ -89,7 +89,7 @@ export function BitcoinLayer() {
           </div>
         </div>
 
-        <p className="mt-4 text-center text-[11px] text-text-muted">{t('layers.feeHint')}</p>
+        <p className="mt-4 text-center text-sm text-text-muted">{t('layers.feeHint')}</p>
       </div>
     </section>
   )
