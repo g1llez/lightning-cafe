@@ -1,6 +1,19 @@
 export const BLOCK_INTERVAL_SECONDS = 60
 export const MAX_CONFIRMED_BLOCKS = 5
 
+export const MINING_POOLS = [
+  'Quiet ASIC',
+  'Satsmith',
+  'Riverbit',
+  'Cedar Blocks',
+  'Halving House',
+  'Stormnonce',
+  'Beacon Batch',
+  'Copper Relay',
+  'Aurora Hash',
+  'LesChatoshis',
+] as const
+
 export type Priority = 'low' | 'medium' | 'high'
 
 export type ProjectedBlock = {
@@ -13,6 +26,7 @@ export type ConfirmedBlock = {
   id: string
   height: number
   feeRate: number
+  pool: string
 }
 
 export type ChainState = {
@@ -45,11 +59,11 @@ export function createInitialChain(): ChainState {
       { id: 'u-high', priority: 'high', feeRate: 18 },
     ],
     confirmed: [
-      { id: 'c-912004', height: 912_004, feeRate: 22 },
-      { id: 'c-912003', height: 912_003, feeRate: 14 },
-      { id: 'c-912002', height: 912_002, feeRate: 35 },
-      { id: 'c-912001', height: 912_001, feeRate: 12 },
-      { id: 'c-912000', height: 912_000, feeRate: 8 },
+      { id: 'c-912004', height: 912_004, feeRate: 22, pool: 'LesChatoshis' },
+      { id: 'c-912003', height: 912_003, feeRate: 14, pool: 'Satsmith' },
+      { id: 'c-912002', height: 912_002, feeRate: 35, pool: 'Stormnonce' },
+      { id: 'c-912001', height: 912_001, feeRate: 12, pool: 'Cedar Blocks' },
+      { id: 'c-912000', height: 912_000, feeRate: 8, pool: 'Aurora Hash' },
     ],
   }
 }
@@ -58,7 +72,11 @@ export function nextLowFeeRate(random = Math.random): number {
   return 3 + Math.floor(random() * 6)
 }
 
-export function mineBlock(state: ChainState, incomingFeeRate: number): ChainState {
+export function pickPool(random = Math.random): string {
+  return MINING_POOLS[Math.floor(random() * MINING_POOLS.length)]
+}
+
+export function mineBlock(state: ChainState, incomingFeeRate: number, pool: string): ChainState {
   const high = state.upcoming.find((block) => block.priority === 'high')
   const medium = state.upcoming.find((block) => block.priority === 'medium')
   const low = state.upcoming.find((block) => block.priority === 'low')
@@ -71,7 +89,7 @@ export function mineBlock(state: ChainState, incomingFeeRate: number): ChainStat
     nextHeight: state.nextHeight + 1,
     nextId: state.nextId + 1,
     confirmed: [
-      { id: high.id, height: state.nextHeight, feeRate: high.feeRate },
+      { id: high.id, height: state.nextHeight, feeRate: high.feeRate, pool },
       ...state.confirmed,
     ].slice(0, MAX_CONFIRMED_BLOCKS),
     upcoming: [

@@ -6,6 +6,7 @@ import {
   formatCountdown,
   mineBlock,
   nextLowFeeRate,
+  pickPool,
   toneForFee,
   type ConfirmedBlock,
   type Priority,
@@ -14,22 +15,23 @@ import {
 
 type BlockTileProps = {
   label: string
+  subtitle: string
   feeRate: number
   upcoming?: boolean
   highlight?: boolean
 }
 
-function BlockTile({ label, feeRate, upcoming = false, highlight = false }: BlockTileProps) {
+function BlockTile({ label, subtitle, feeRate, upcoming = false, highlight = false }: BlockTileProps) {
   return (
     <div className="flex w-24 shrink-0 flex-col items-center gap-1">
       <div
         className={`h-16 w-16 rounded-md ${toneForFee(feeRate)} ${
           upcoming ? 'border border-dashed border-text-muted/50' : ''
         } ${highlight ? 'ring-2 ring-accent ring-offset-2 ring-offset-bg-secondary' : ''}`}
-        title={`${label} · ${feeRate} sat/vB`}
+        title={`${label} · ${subtitle} · ${feeRate} sat/vB`}
       />
       <span className="text-center text-xs font-medium text-text-primary">{label}</span>
-      <span className="font-mono text-xs text-accent">{feeRate} sat/vB</span>
+      <span className="text-center text-xs text-accent">{subtitle}</span>
     </div>
   )
 }
@@ -52,7 +54,7 @@ export function BitcoinLayer() {
       return
     }
 
-    setChain((current) => mineBlock(current, nextLowFeeRate()))
+    setChain((current) => mineBlock(current, nextLowFeeRate(), pickPool()))
     setSecondsLeft(BLOCK_INTERVAL_SECONDS)
   }, [secondsLeft])
 
@@ -83,6 +85,7 @@ export function BitcoinLayer() {
                 <BlockTile
                   key={block.id}
                   label={priorityLabel(block.priority)}
+                  subtitle={t('layers.awaitingMiner')}
                   feeRate={block.feeRate}
                   upcoming
                   highlight={block.priority === 'high'}
@@ -106,7 +109,12 @@ export function BitcoinLayer() {
             <p className="mb-3 text-center text-sm text-text-muted">{t('layers.confirmedHint')}</p>
             <div className="flex items-center justify-center gap-3 overflow-x-auto pb-1">
               {chain.confirmed.map((block: ConfirmedBlock) => (
-                <BlockTile key={block.id} label={`#${block.height}`} feeRate={block.feeRate} />
+                <BlockTile
+                  key={block.id}
+                  label={`#${block.height}`}
+                  subtitle={block.pool}
+                  feeRate={block.feeRate}
+                />
               ))}
             </div>
           </div>

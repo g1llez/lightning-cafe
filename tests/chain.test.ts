@@ -3,19 +3,22 @@ import {
   createInitialChain,
   formatCountdown,
   mineBlock,
+  MINING_POOLS,
   nextLowFeeRate,
+  pickPool,
   toneForFee,
 } from '../src/simulation/chain'
 
 describe('chain simulation', () => {
   it('mines the high-priority mempool block onto the chain', () => {
     const initial = createInitialChain()
-    const next = mineBlock(initial, 5)
+    const next = mineBlock(initial, 5, 'LesChatoshis')
 
     expect(next.confirmed[0]).toEqual({
       id: 'u-high',
       height: 912_005,
       feeRate: 18,
+      pool: 'LesChatoshis',
     })
     expect(next.confirmed).toHaveLength(5)
     expect(next.nextHeight).toBe(912_006)
@@ -35,5 +38,11 @@ describe('chain simulation', () => {
     expect(nextLowFeeRate(() => 0.99)).toBe(8)
     expect(toneForFee(4)).toBe('bg-block-low')
     expect(toneForFee(18)).toBe('bg-block-high')
+  })
+
+  it('picks a fictional mining pool', () => {
+    expect(MINING_POOLS).toHaveLength(10)
+    expect(MINING_POOLS).toContain('LesChatoshis')
+    expect(pickPool(() => 0)).toBe('Quiet ASIC')
   })
 })

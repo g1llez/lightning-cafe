@@ -26,8 +26,9 @@
     "confirmed": "Blocs confirmés",
     "confirmedHint": "Déjà minés et inscrits dans la chaîne.",
     "feeHint": "sat/vB = taux de frais du bloc (pas un montant). Plus le chiffre est haut, plus ces transactions ont payé cher pour entrer.",
-    "blockIntervalHint": "Dans ce sandbox, un bloc est miné chaque minute — assez vite pour voir ouvrir et fermer des canaux.",
-    "nextBlockIn": "Prochain bloc dans {{time}}",
+    "blockIntervalHint": "Le délai est estimé. Ici un bloc ~ chaque minute pour le sandbox; sur Bitcoin réel c'est ~10 minutes en moyenne.",
+    "nextBlockIn": "Prochain bloc estimé dans {{time}}",
+    "awaitingMiner": "En attente",
     "priority": {
       "high": "Priorité haute",
       "medium": "Priorité moyenne",
