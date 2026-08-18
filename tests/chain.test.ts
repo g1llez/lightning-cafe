@@ -15,7 +15,10 @@ import {
   createInitialPlayer,
   createWallet,
   looksLikeNpub,
+  renameWallet,
   setNpub,
+  shortAddress,
+  walletAddress,
 } from '../src/simulation/player'
 
 describe('chain simulation', () => {
@@ -76,5 +79,16 @@ describe('player wallets', () => {
   it('refuses a buy without npub', () => {
     const player = createWallet(createInitialPlayer(), 'Wallet 1')
     expect(() => buyBitcoin(player, 'w-1', 100)).toThrow('npub-required')
+  })
+
+  it('creates a bech32-like address and can rename a wallet', () => {
+    let player = createWallet(createInitialPlayer(), 'Wallet 1')
+    expect(player.wallets[0].address.startsWith('bc1q')).toBe(true)
+    expect(player.wallets[0].address).toBe(walletAddress('w-1'))
+    expect(shortAddress(player.wallets[0].address)).toContain('…')
+
+    player = renameWallet(player, 'w-1', 'Épargne')
+    expect(player.wallets[0].name).toBe('Épargne')
+    expect(() => renameWallet(player, 'w-1', '   ')).toThrow('name-empty')
   })
 })

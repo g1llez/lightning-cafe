@@ -21,7 +21,12 @@
     "walletCreated": "{{name}} created",
     "noWallets": "No wallets yet",
     "noNodes": "No nodes yet",
-    "soon": "Coming soon"
+    "soon": "Coming soon",
+    "rename": "Rename",
+    "selected": "target",
+    "addressCopied": "Address copied",
+    "walletRenamed": "Wallet renamed",
+    "walletRenameFailed": "Invalid name"
   },
   "services": {
     "title": "Services",

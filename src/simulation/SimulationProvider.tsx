@@ -13,6 +13,7 @@ import {
   buyBitcoin,
   createInitialPlayer,
   createWallet,
+  renameWallet,
   setNpub,
   type PlayerState,
 } from './player'
@@ -23,6 +24,7 @@ type SimulationContextValue = {
   player: PlayerState
   btcPriceCad: number
   addWallet: (name: string) => void
+  renameWallet: (walletId: string, name: string) => void
   saveNpub: (npub: string) => void
   buyBtc: (walletId: string, cadAmount: number, npub?: string) => void
 }
@@ -62,6 +64,7 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
       player,
       btcPriceCad: BTC_PRICE_CAD,
       addWallet: (name) => setPlayer((current) => createWallet(current, name)),
+      renameWallet: (walletId, name) => setPlayer((current) => renameWallet(current, walletId, name)),
       saveNpub: (npub) => setPlayer((current) => setNpub(current, npub)),
       buyBtc: (walletId, cadAmount, npub) =>
         setPlayer((current) => buyBitcoin(npub ? setNpub(current, npub) : current, walletId, cadAmount)),

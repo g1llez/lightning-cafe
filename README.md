@@ -29,7 +29,7 @@ npm test         # run tests in /tests
 
 ## Sprint 1 — walking skeleton
 
-Done. See [ROADMAP.md](ROADMAP.md) for versions (now: **v0.2.1**).
+Done. See [ROADMAP.md](ROADMAP.md) for versions (now: **v0.2.2**).
 
 ## License
 

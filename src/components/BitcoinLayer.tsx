@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatCountdown, toneForFee, type ConfirmedBlock, type Priority, type ProjectedBlock } from '../simulation/chain'
-import { looksLikeNpub } from '../simulation/player'
+import { looksLikeNpub, shortAddress } from '../simulation/player'
 import { useSimulation } from '../simulation/SimulationProvider'
 import { LayerAssetCard } from './LayerAssetCard'
 import { Tooltip } from './Tooltip'
@@ -42,10 +42,12 @@ type BitcoinLayerProps = {
 
 export function BitcoinLayer({ onMessage }: BitcoinLayerProps) {
   const { t } = useTranslation()
-  const { chain, secondsLeft, player, addWallet, buyBtc, saveNpub } = useSimulation()
+  const { chain, secondsLeft, player, addWallet, renameWallet, buyBtc, saveNpub } = useSimulation()
   const [plusOpen, setPlusOpen] = useState(false)
   const [selectedWalletId, setSelectedWalletId] = useState(player.wallets[0]?.id ?? '')
   const [npubDraft, setNpubDraft] = useState(player.npub)
+  const [editingWalletId, setEditingWalletId] = useState('')
+  const [editingName, setEditingName] = useState('')
 
   const selectedId = player.wallets.some((wallet) => wallet.id === selectedWalletId)
     ? selectedWalletId
@@ -56,9 +58,41 @@ export function BitcoinLayer({ onMessage }: BitcoinLayerProps) {
   }
 
   function handleAddWallet() {
+    const newId = `w-${player.nextWalletId}`
     const name = t('assets.walletName', { number: player.nextWalletId })
     addWallet(name)
+    setSelectedWalletId(newId)
     onMessage(t('assets.walletCreated', { name }))
+  }
+
+  function startRename(walletId: string, currentName: string) {
+    setSelectedWalletId(walletId)
+    setEditingWalletId(walletId)
+    setEditingName(currentName)
+  }
+
+  function commitRename() {
+    if (!editingWalletId) {
+      return
+    }
+
+    try {
+      renameWallet(editingWalletId, editingName)
+      onMessage(t('assets.walletRenamed'))
+    } catch {
+      onMessage(t('assets.walletRenameFailed'))
+    }
+
+    setEditingWalletId('')
+  }
+
+  async function copyAddress(address: string) {
+    try {
+      await navigator.clipboard.writeText(address)
+      onMessage(t('assets.addressCopied'))
+    } catch {
+      onMessage(address)
+    }
   }
 
   function handleBuy() {
@@ -173,20 +207,77 @@ export function BitcoinLayer({ onMessage }: BitcoinLayerProps) {
         ) : (
           <table className="w-full text-left text-sm">
             <tbody>
-              {player.wallets.map((wallet) => (
-                <tr
-                  key={wallet.id}
-                  onClick={() => setSelectedWalletId(wallet.id)}
-                  className={`cursor-pointer border-t border-border first:border-t-0 ${
-                    wallet.id === selectedId ? 'text-accent' : ''
-                  }`}
-                >
-                  <td className="px-2 py-1.5">{wallet.name}</td>
-                  <td className="px-2 py-1.5 font-mono text-xs">
-                    {wallet.sats.toLocaleString()} sats
-                  </td>
-                </tr>
-              ))}
+              {player.wallets.map((wallet) => {
+                const selected = wallet.id === selectedId
+                return (
+                  <tr
+                    key={wallet.id}
+                    onClick={() => setSelectedWalletId(wallet.id)}
+                    className={`cursor-pointer border-t border-border first:border-t-0 ${
+                      selected ? 'bg-accent/10' : 'hover:bg-bg-primary/40'
+                    }`}
+                  >
+                    <td className={`px-2 py-1.5 ${selected ? 'border-l-2 border-accent' : 'border-l-2 border-transparent'}`}>
+                      <div className="flex items-center gap-1">
+                        {editingWalletId === wallet.id ? (
+                          <input
+                            autoFocus
+                            value={editingName}
+                            onChange={(event) => setEditingName(event.target.value)}
+                            onBlur={commitRename}
+                            onClick={(event) => event.stopPropagation()}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter') {
+                                event.currentTarget.blur()
+                              }
+                              if (event.key === 'Escape') {
+                                setEditingWalletId('')
+                              }
+                            }}
+                            className="w-full rounded border border-accent bg-bg-primary px-1 py-0.5 text-sm outline-none"
+                          />
+                        ) : (
+                          <>
+                            <span className={`truncate font-medium ${selected ? 'text-accent' : ''}`}>
+                              {wallet.name}
+                            </span>
+                            <button
+                              type="button"
+                              title={t('assets.rename')}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                startRename(wallet.id, wallet.name)
+                              }}
+                              className="shrink-0 px-1 text-xs text-text-muted hover:text-accent"
+                            >
+                              ✎
+                            </button>
+                          </>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        title={wallet.address}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          void copyAddress(wallet.address)
+                        }}
+                        className="font-mono text-[11px] text-text-muted hover:text-text-primary"
+                      >
+                        {shortAddress(wallet.address)}
+                      </button>
+                      {selected && (
+                        <span className="ml-2 text-[10px] uppercase tracking-wide text-accent">
+                          {t('assets.selected')}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-2 py-1.5 text-right font-mono text-xs whitespace-nowrap">
+                      {wallet.sats.toLocaleString()} sats
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         )}

@@ -38,7 +38,7 @@ export function createWallet(player: PlayerState, name: string): PlayerState {
   const wallet: Wallet = {
     id,
     name,
-    address: `bc1q${id.replace('-', '')}cafe00000000000000`.slice(0, 26),
+    address: walletAddress(id),
     sats: 0,
   }
 
@@ -46,6 +46,37 @@ export function createWallet(player: PlayerState, name: string): PlayerState {
     ...player,
     nextWalletId: player.nextWalletId + 1,
     wallets: [...player.wallets, wallet],
+  }
+}
+
+export function walletAddress(id: string): string {
+  const seed = id.replace(/[^a-z0-9]/gi, '').toLowerCase().padEnd(32, 'cafe0123')
+  return `bc1q${seed}`.slice(0, 42)
+}
+
+export function shortAddress(address: string): string {
+  if (address.length <= 14) {
+    return address
+  }
+  return `${address.slice(0, 6)}…${address.slice(-6)}`
+}
+
+export function renameWallet(player: PlayerState, walletId: string, name: string): PlayerState {
+  const trimmed = name.trim()
+  if (!trimmed) {
+    throw new Error('name-empty')
+  }
+
+  const wallet = player.wallets.find((item) => item.id === walletId)
+  if (!wallet) {
+    throw new Error('wallet-missing')
+  }
+
+  return {
+    ...player,
+    wallets: player.wallets.map((item) =>
+      item.id === walletId ? { ...item, name: trimmed } : item,
+    ),
   }
 }
 

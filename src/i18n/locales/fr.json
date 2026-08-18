@@ -21,7 +21,12 @@
     "walletCreated": "{{name}} créé",
     "noWallets": "Aucun portefeuille",
     "noNodes": "Aucune node",
-    "soon": "Bientôt disponible"
+    "soon": "Bientôt disponible",
+    "rename": "Renommer",
+    "selected": "cible",
+    "addressCopied": "Adresse copiée",
+    "walletRenamed": "Portefeuille renommé",
+    "walletRenameFailed": "Nom invalide"
   },
   "services": {
     "title": "Services",

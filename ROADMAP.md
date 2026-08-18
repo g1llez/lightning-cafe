@@ -2,12 +2,12 @@
 
 Source of truth for what to build next. Do not replan after each task: take the first open item in the current version.
 
-**Now:** v0.1 done → next is **v0.2.1**
+**Now:** v0.2.1 done → next is **v0.2.2**
 
 | Version | Goal | Status |
 |---|---|---|
 | v0.1 | Walking skeleton + L1 living chain + layout | Done |
-| v0.2 | L1 fully usable | Next |
+| v0.2 | L1 fully usable | In progress |
 | v0.3 | L2 node sim animated | Later |
 | v0.4 | L2 usable (channels + payments) | Later |
 
@@ -31,7 +31,7 @@ L2: empty table, create node = not yet.
 
 A wallet can receive, send, and watch its money move on the fake chain. Buying and sending are real L1 txs in the sim (mempool → next block → balance updates).
 
-### v0.2.1 — Wallet usable
+### v0.2.1 — Wallet usable ✅
 - Show address in the L1 table
 - Select wallet (target for buy / send)
 - Optional rename
