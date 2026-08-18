@@ -16,16 +16,17 @@ export function LayoutA() {
 
   return (
     <LayoutPreviewShell
-      title="A — Table coin bas-gauche"
-      subtitle="Le tableau est une carte posée dans le canvas L1 / L2, pas une bande autour."
-      pros={['Visuel plein écran', 'Inventaire dans la couche', 'N’entoure pas le graphe']}
+      title="A — Table gauche centrée, + sur le tableau"
+      subtitle="Carte à gauche, centrée verticalement. Le + part du tableau, pas du titre à droite."
+      pros={['Table dans la couche', 'Gauche + centrée', '+ collé aux assets']}
     >
       <div className="flex min-h-0 flex-1 flex-col">
         <LayerCanvas
           tall
+          plusOnTable
           title="Lightning (L2)"
           visual="Graphe Lightning"
-          tablePosition="bottom-left"
+          tablePosition="left-center"
           plus={
             <PlusMenu
               open={openL2}
@@ -40,9 +41,10 @@ export function LayoutA() {
         />
         <div className="border-t border-border" />
         <LayerCanvas
+          plusOnTable
           title="Bitcoin (L1)"
           visual="Mempool + blocs"
-          tablePosition="bottom-left"
+          tablePosition="left-center"
           plus={
             <PlusMenu
               open={openL1}

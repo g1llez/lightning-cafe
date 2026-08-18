@@ -3,8 +3,8 @@ import { LayoutLink } from './routing'
 const OPTIONS = [
   {
     id: 'layout-a' as const,
-    name: 'A — Table coin bas-gauche',
-    desc: 'Carte tableau posée dans le canvas L1 / L2 (bas-gauche). Le visuel reste derrière. Le + ouvre les services de la couche.',
+    name: 'A — Table gauche centrée',
+    desc: 'Carte tableau à gauche, centrée verticalement dans L1 / L2. Le + est sur le tableau, pas à droite du titre.',
   },
   {
     id: 'layout-b' as const,

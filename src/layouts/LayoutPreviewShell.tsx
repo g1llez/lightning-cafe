@@ -143,7 +143,8 @@ type LayerCanvasProps = {
   visual: string
   plus: ReactNode
   table: ReactNode
-  tablePosition: 'bottom-left' | 'center' | 'bottom'
+  tablePosition: 'bottom-left' | 'center' | 'bottom' | 'left-center'
+  plusOnTable?: boolean
   tall?: boolean
 }
 
@@ -153,6 +154,7 @@ export function LayerCanvas({
   plus,
   table,
   tablePosition,
+  plusOnTable = false,
   tall = false,
 }: LayerCanvasProps) {
   const tableClass =
@@ -160,7 +162,9 @@ export function LayerCanvas({
       ? 'absolute left-1/2 top-1/2 w-[min(28rem,90%)] -translate-x-1/2 -translate-y-1/2'
       : tablePosition === 'bottom'
         ? 'absolute inset-x-4 bottom-4'
-        : 'absolute bottom-4 left-4 w-[min(22rem,calc(100%-2rem))]'
+        : tablePosition === 'left-center'
+          ? 'absolute left-4 top-1/2 w-[min(22rem,calc(100%-2rem))] -translate-y-1/2'
+          : 'absolute bottom-4 left-4 w-[min(22rem,calc(100%-2rem))]'
 
   return (
     <section className={`relative min-h-0 overflow-hidden ${tall ? 'flex-1' : 'h-72 shrink-0'}`}>
@@ -171,10 +175,16 @@ export function LayerCanvas({
 
       <header className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 py-3">
         <h2 className="text-xl font-semibold drop-shadow">{title}</h2>
-        {plus}
+        {!plusOnTable && plus}
       </header>
 
       <div className={`z-10 rounded-lg border border-border bg-bg-panel/95 p-3 shadow-lg backdrop-blur ${tableClass}`}>
+        {plusOnTable && (
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <span className="text-xs uppercase tracking-[0.14em] text-text-muted">Assets</span>
+            {plus}
+          </div>
+        )}
         {table}
       </div>
     </section>
