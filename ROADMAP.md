@@ -144,6 +144,8 @@ Player node can open channels and pay, with the L1 contract visible.
 
 ## Later (not scheduled)
 
+Shared cafe session (first slice): **Café** in the nav creates or joins a room on `cafe-session.sarius.ca`. Solo stays on the local clock. In a room, ticks come from the server and buy/send are published as `tx`. CORS is GitHub Pages only — test on the deployed site, not `npm run dev`.
+
 Guide / tips, LSP, rebalancing, watchtower, mempool.space link, extra languages.
 
 xpub (watch-only): show it in the wallet, explain that it derives every address and reveals the whole

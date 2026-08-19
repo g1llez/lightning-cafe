@@ -29,7 +29,7 @@ npm test         # run tests in /tests
 
 ## Sprint 1 — walking skeleton
 
-Done. See [ROADMAP.md](ROADMAP.md) for versions (now: **v0.2.3**).
+Done. See [ROADMAP.md](ROADMAP.md) for versions (now: **v0.2.3**). Shared sessions: button **Café** on the live site (GitHub Pages); the API is not callable from localhost.
 
 ## License
 

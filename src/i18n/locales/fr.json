@@ -13,6 +13,17 @@
     "btcPrice": "1 BTC = {{price}} $",
     "priceTip": "Prix fixe du sandbox : 100 000 $ pour 1 BTC, donc 100 $ = 100 000 sats. Le vrai prix bouge sans arrêt."
   },
+  "session": {
+    "button": "Café",
+    "create": "Nouvelle session",
+    "join": "Rejoindre",
+    "leave": "Quitter",
+    "copyLink": "Copier le lien",
+    "idPlaceholder": "id de session",
+    "connecting": "Connexion…",
+    "live": "Même chaine, deux navigateurs.",
+    "failed": "Session injoignable."
+  },
   "account": {
     "title": "Compte"
   },

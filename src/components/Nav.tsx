@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { setAppLanguage } from '../i18n'
 import { pendingSats, totalSats } from '../simulation/player'
 import { useSimulation } from '../simulation/SimulationProvider'
+import { SessionMenu } from './SessionMenu'
 import { Tooltip } from './Tooltip'
 
 type NavProps = {
@@ -60,6 +61,8 @@ export function Nav({ onGuideClick, onBuyClick }: NavProps) {
         >
           {t('services.buy')}
         </button>
+
+        <SessionMenu />
 
         <button
           type="button"

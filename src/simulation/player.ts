@@ -312,6 +312,44 @@ export function normalizeAddress(value: string): string {
   return value.trim().toLowerCase()
 }
 
+export type RemoteTxPayload = {
+  kind: 'buy' | 'send'
+  address: string
+  sats: number
+  fee_rate: number
+  id?: string
+}
+
+/** Another peer's tx. Credits us on confirm only if the address is one of ours. */
+export function ingestRemoteTx(player: PlayerState, payload: RemoteTxPayload): PlayerState {
+  const destination = normalizeAddress(payload.address)
+  if (!destination || !Number.isFinite(payload.sats) || payload.sats <= 0 || payload.fee_rate < 1) {
+    return player
+  }
+
+  const id = payload.id?.trim() || `tx-remote-${player.nextTxId}`
+  if (player.pending.some((tx) => tx.id === id) || player.settled.some((tx) => tx.id === id)) {
+    return player
+  }
+
+  const wallet = findWalletByAddress(player, destination)
+  return {
+    ...player,
+    pending: [
+      ...player.pending,
+      {
+        id,
+        walletId: wallet?.id ?? null,
+        fromWalletId: null,
+        address: destination,
+        sats: Math.floor(payload.sats),
+        feeRate: Math.floor(payload.fee_rate),
+      },
+    ],
+    nextTxId: player.nextTxId + 1,
+  }
+}
+
 export function findWalletByAddress(player: PlayerState, address: string): Wallet | undefined {
   const wanted = normalizeAddress(address)
   return player.wallets.find((wallet) =>

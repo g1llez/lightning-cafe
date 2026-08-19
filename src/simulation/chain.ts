@@ -194,6 +194,39 @@ export function pickPool(random = Math.random): string {
  * The high lane is this block's template. After it is mined the three lanes
  * stay in place and only the quotes move — the market, not a conveyor.
  */
+export type ServerTick = {
+  height: number
+  market_rate: number
+  fee_rate: number
+  pool: string
+}
+
+/** Apply a room tick: the server already walked the market and named the pool. */
+export function applyServerTick(
+  state: ChainState,
+  tick: ServerTick,
+  random: () => number = Math.random,
+): ChainState {
+  const high = state.upcoming.find((block) => block.priority === 'high')
+
+  return {
+    marketRate: tick.market_rate,
+    nextHeight: tick.height + 1,
+    nextId: state.nextId + 3,
+    confirmed: [
+      {
+        id: high?.id ?? `c-${tick.height}`,
+        height: tick.height,
+        feeRate: tick.fee_rate,
+        pool: tick.pool,
+        txCount: high?.txCount ?? 2_000,
+      },
+      ...state.confirmed,
+    ].slice(0, MAX_CONFIRMED_BLOCKS),
+    upcoming: mempoolLanes(tick.market_rate, state.nextId, random),
+  }
+}
+
 export function mineBlock(
   state: ChainState,
   pool: string,

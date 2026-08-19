@@ -13,6 +13,17 @@
     "btcPrice": "1 BTC = {{price}} $",
     "priceTip": "Fixed sandbox price: $100,000 per BTC, so $100 = 100,000 sats. The real price moves all the time."
   },
+  "session": {
+    "button": "Cafe",
+    "create": "New session",
+    "join": "Join",
+    "leave": "Leave",
+    "copyLink": "Copy link",
+    "idPlaceholder": "session id",
+    "connecting": "Connecting…",
+    "live": "Same chain, two browsers.",
+    "failed": "Could not reach the session."
+  },
   "account": {
     "title": "Account"
   },
