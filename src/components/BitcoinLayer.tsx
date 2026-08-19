@@ -9,8 +9,8 @@ import {
   type ProjectedBlock,
 } from '../simulation/chain'
 import {
-  pendingForZone,
-  settledInBlock,
+  ownPendingForZone,
+  ownSettledInBlock,
   shortAddress,
   type PendingTx,
 } from '../simulation/player'
@@ -236,7 +236,7 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
   }
 
   function confirmedTip(block: ConfirmedBlock) {
-    const mine = settledInBlock(player, block.height)
+    const mine = ownSettledInBlock(player, block.height)
     return (
       <div className="flex flex-col gap-1.5">
         <p>
@@ -280,7 +280,7 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
             </p>
             <div className="flex items-center justify-center gap-3">
               {chain.upcoming.map((block: ProjectedBlock) => {
-                const myPending = pendingForZone(player, chain.marketRate, block.priority)
+                const myPending = ownPendingForZone(player, chain.marketRate, block.priority)
                 return (
                   <BlockTile
                     key={block.id}
@@ -313,7 +313,7 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
             </p>
             <div className="flex items-center justify-center gap-3">
               {chain.confirmed.map((block: ConfirmedBlock, index) => {
-                const mine = settledInBlock(player, block.height)
+                const mine = ownSettledInBlock(player, block.height)
                 return (
                   <BlockTile
                     key={block.id}
@@ -339,8 +339,8 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
         <MineFlight
           key={mining.id}
           colorClass={toneForFee(mining.feeRate)}
-          highlight={settledInBlock(player, mining.height).length > 0}
-          badge={settledInBlock(player, mining.height).length}
+          highlight={ownSettledInBlock(player, mining.height).length > 0}
+          badge={ownSettledInBlock(player, mining.height).length}
           onDone={() => setMining(null)}
         />
       )}

@@ -139,6 +139,21 @@ export function pendingForZone(
   return player.pending.filter((tx) => feeZone(tx.feeRate, marketRate) === zone)
 }
 
+export function isOwnTx(
+  player: PlayerState,
+  tx: { walletId: string | null; fromWalletId: string | null },
+): boolean {
+  return player.wallets.some((wallet) => wallet.id === tx.walletId || wallet.id === tx.fromWalletId)
+}
+
+export function ownPendingForZone(
+  player: PlayerState,
+  marketRate: number,
+  zone: Priority,
+): PendingTx[] {
+  return pendingForZone(player, marketRate, zone).filter((tx) => isOwnTx(player, tx))
+}
+
 export function pendingCountByZone(
   player: PlayerState,
   marketRate: number,
@@ -149,6 +164,10 @@ export function pendingCountByZone(
 
 export function settledInBlock(player: PlayerState, height: number): SettledTx[] {
   return player.settled.filter((tx) => tx.height === height)
+}
+
+export function ownSettledInBlock(player: PlayerState, height: number): SettledTx[] {
+  return settledInBlock(player, height).filter((tx) => isOwnTx(player, tx))
 }
 
 export function cadToSats(cad: number, priceCad = BTC_PRICE_CAD): number {

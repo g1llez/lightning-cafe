@@ -15,7 +15,6 @@ export function SessionMenu() {
     setFailed(false)
     try {
       await createCafe()
-      setOpen(false)
     } catch {
       setFailed(true)
     } finally {
@@ -43,7 +42,12 @@ export function SessionMenu() {
     }
     const url = new URL(window.location.href)
     url.searchParams.set('room', roomId)
-    await navigator.clipboard.writeText(url.toString())
+    try {
+      await navigator.clipboard.writeText(url.toString())
+      setOpen(false)
+    } catch {
+      // stay open so they can still copy the id
+    }
   }
 
   return (
