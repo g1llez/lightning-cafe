@@ -178,13 +178,20 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
   }
 
   function txLine(tx: PendingTx) {
-    return t('layers.myTxLine', {
+    const payment = t('layers.myTxLine', {
       sats: tx.sats.toLocaleString(),
       feeSats: estimateFeeSats(tx.feeRate).toLocaleString(),
       fee: tx.feeRate,
       address: shortAddress(tx.address),
       wallet: walletName(tx.walletId),
     })
+    if (!tx.changeSats || !tx.changeAddress) {
+      return payment
+    }
+    return `${payment} · ${t('layers.myTxChange', {
+      sats: tx.changeSats.toLocaleString(),
+      address: shortAddress(tx.changeAddress),
+    })}`
   }
 
   function myTxsTip(txs: PendingTx[]) {

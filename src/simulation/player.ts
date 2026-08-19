@@ -75,6 +75,9 @@ export type PendingTx = {
   address: string
   sats: number
   feeRate: number
+  /** Leftover from spent UTXOs; lands when the tx confirms. */
+  changeAddress: string | null
+  changeSats: number
 }
 
 export type SettledTx = PendingTx & {
@@ -110,16 +113,20 @@ export function totalSats(player: PlayerState): number {
 }
 
 export function pendingSats(player: PlayerState, walletId?: string): number {
-  return player.pending
-    .filter((tx) => !walletId || tx.walletId === walletId)
-    .reduce((sum, tx) => sum + tx.sats, 0)
+  return player.pending.reduce((sum, tx) => {
+    const payment = !walletId || tx.walletId === walletId ? tx.sats : 0
+    const change = !walletId || tx.fromWalletId === walletId ? tx.changeSats : 0
+    return sum + payment + change
+  }, 0)
 }
 
 export function pendingSatsForAddress(player: PlayerState, address: string): number {
   const wanted = normalizeAddress(address)
-  return player.pending
-    .filter((tx) => tx.address === wanted)
-    .reduce((sum, tx) => sum + tx.sats, 0)
+  return player.pending.reduce((sum, tx) => {
+    const payment = tx.address === wanted ? tx.sats : 0
+    const change = tx.changeAddress === wanted ? tx.changeSats : 0
+    return sum + payment + change
+  }, 0)
 }
 
 /** The badge follows the current zone, so a cheap bid can jump lanes if the market drops. */
@@ -241,6 +248,56 @@ export function receiveAddress(wallet: Wallet): string {
   return wallet.addresses[wallet.addresses.length - 1].value
 }
 
+export type SendPlan = {
+  payment: number
+  fee: number
+  change: number
+  changeAddress: string | null
+}
+
+/** Coin-selects whole address piles. Change goes to the next unused address. */
+export function planSend(wallet: Wallet, sats: number, feeRate: number): SendPlan {
+  const fee = estimateFeeSats(feeRate)
+  const payment = Math.max(0, sats)
+  const need = payment + fee
+  if (payment <= 0 || need > walletSats(wallet)) {
+    return { payment, fee, change: 0, changeAddress: null }
+  }
+
+  const { inputTotal, spent } = pickInputs(wallet, need)
+  return {
+    payment,
+    fee,
+    change: inputTotal - need,
+    changeAddress: inputTotal > need ? nextChangeAddress(wallet, spent) : null,
+  }
+}
+
+function pickInputs(wallet: Wallet, need: number): { inputTotal: number; spent: string[] } {
+  let left = need
+  const spent: string[] = []
+  let inputTotal = 0
+
+  for (const item of wallet.addresses) {
+    if (left <= 0) {
+      break
+    }
+    if (item.sats <= 0) {
+      continue
+    }
+    spent.push(item.value)
+    inputTotal += item.sats
+    left -= item.sats
+  }
+
+  return { inputTotal, spent }
+}
+
+function nextChangeAddress(wallet: Wallet, spent: string[]): string {
+  const spare = wallet.addresses.find((item) => item.sats === 0 && !spent.includes(item.value))
+  return spare?.value ?? walletAddress(wallet.seed, wallet.addresses.length)
+}
+
 export function createAddress(player: PlayerState, walletId: string): PlayerState {
   const wallet = player.wallets.find((item) => item.id === walletId)
   if (!wallet) {
@@ -344,6 +401,8 @@ export function ingestRemoteTx(player: PlayerState, payload: RemoteTxPayload): P
         address: destination,
         sats: Math.floor(payload.sats),
         feeRate: Math.floor(payload.fee_rate),
+        changeAddress: null,
+        changeSats: 0,
       },
     ],
     nextTxId: player.nextTxId + 1,
@@ -361,24 +420,6 @@ function creditAddress(wallet: Wallet, address: string, sats: number): WalletAdd
   return wallet.addresses.map((item) =>
     item.value === address ? { ...item, sats: item.sats + sats } : item,
   )
-}
-
-function debitSats(wallet: Wallet, sats: number): WalletAddress[] {
-  let left = sats
-  const addresses = wallet.addresses.map((item) => {
-    if (left <= 0 || item.sats <= 0) {
-      return item
-    }
-    const take = Math.min(item.sats, left)
-    left -= take
-    return { ...item, sats: item.sats - take }
-  })
-
-  if (left > 0) {
-    throw new Error('insufficient-sats')
-  }
-
-  return addresses
 }
 
 /**
@@ -412,6 +453,8 @@ export function buyBitcoin(
     address: destination,
     sats: cadToSats(cadAmount, priceCad),
     feeRate,
+    changeAddress: null,
+    changeSats: 0,
   }
 
   return {
@@ -441,15 +484,16 @@ export function advanceBlock(
     pending: player.pending.filter((tx) => !confirmed.includes(tx)),
     settled: [...settled, ...player.settled].slice(0, 40),
     wallets: player.wallets.map((wallet) => {
-      const forWallet = confirmed.filter((tx) => tx.walletId === wallet.id)
-      if (forWallet.length === 0) {
-        return wallet
+      let next = wallet
+      for (const tx of confirmed) {
+        if (tx.walletId === wallet.id) {
+          next = { ...next, addresses: creditAddress(next, tx.address, tx.sats) }
+        }
+        if (tx.fromWalletId === wallet.id && tx.changeSats > 0 && tx.changeAddress) {
+          next = { ...next, addresses: creditAddress(next, tx.changeAddress, tx.changeSats) }
+        }
       }
-
-      return forWallet.reduce(
-        (item, tx) => ({ ...item, addresses: creditAddress(item, tx.address, tx.sats) }),
-        wallet,
-      )
+      return next
     }),
   }
 }
@@ -479,9 +523,19 @@ export function sendBitcoin(
     throw new Error('wallet-missing')
   }
 
-  const fee = estimateFeeSats(feeRate)
-  if (sats + fee > walletSats(sender)) {
+  const plan = planSend(sender, sats, feeRate)
+  if (plan.payment + plan.fee > walletSats(sender)) {
     throw new Error('insufficient-sats')
+  }
+
+  const { spent } = pickInputs(sender, sats + plan.fee)
+  let addresses = sender.addresses.map((item) =>
+    spent.includes(item.value) ? { ...item, sats: 0 } : item,
+  )
+  if (plan.change > 0 && plan.changeAddress) {
+    if (!addresses.some((item) => item.value === plan.changeAddress)) {
+      addresses = [...addresses, { value: plan.changeAddress, sats: 0 }]
+    }
   }
 
   const receiver = findWalletByAddress(player, destination)
@@ -492,6 +546,8 @@ export function sendBitcoin(
     address: destination,
     sats,
     feeRate,
+    changeAddress: plan.changeAddress,
+    changeSats: plan.change,
   }
 
   return {
@@ -499,9 +555,7 @@ export function sendBitcoin(
     pending: [...player.pending, tx],
     nextTxId: player.nextTxId + 1,
     wallets: player.wallets.map((wallet) =>
-      wallet.id === fromWalletId
-        ? { ...wallet, addresses: debitSats(wallet, sats + fee) }
-        : wallet,
+      wallet.id === fromWalletId ? { ...wallet, addresses } : wallet,
     ),
   }
 }

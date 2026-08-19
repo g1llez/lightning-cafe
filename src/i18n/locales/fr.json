@@ -85,7 +85,9 @@
     "sendDestination": "Destination",
     "sendConfirm": "Envoyer {{sats}} sats ({{cad}} $)",
     "sendSent": "Transaction envoyée au mempool",
-    "sendTotal": "Débit total : {{sats}} sats ({{cad}} $)"
+    "sendOutputPay": "Envoi · {{sats}} sats",
+    "sendOutputFee": "Frais mineur · {{sats}} sats",
+    "sendOutputChange": "Change · {{sats}} sats → {{address}}"
   },
   "services": {
     "title": "Services",
@@ -142,6 +144,7 @@
     "myTxsHeading_one": "Ta transaction",
     "myTxsHeading_other": "Tes transactions",
     "myTxLine": "{{sats}} sats · {{feeSats}} frais ({{fee}} sat/vB) → {{address}} ({{wallet}})",
+    "myTxChange": "change {{sats}} sats → {{address}}",
     "unknownAddress": "adresse inconnue",
     "priority": {
       "high": "Haute",

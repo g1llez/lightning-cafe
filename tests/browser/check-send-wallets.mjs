@@ -65,8 +65,8 @@ const pendingOnW1 = await page.getByTestId('wallet-pending-w-1').count()
 const w1AfterSend = await walletSats('w-1')
 console.log(`after send w1→w2: pending on w1=${pendingOnW1} w1=${w1AfterSend}`)
 
-if (pendingOnW1 !== 0) {
-  console.log('FAIL: outgoing send showed as pending on wallet 1')
+if (pendingOnW1 === 0) {
+  console.log('FAIL: change did not show as pending on wallet 1')
 }
 
 await page.waitForFunction(
@@ -84,7 +84,12 @@ console.log(`after confirm w1→w2: w1=${w1AfterConfirm} w2=${w2AfterConfirm}`)
 await page.screenshot({ path: `${SHOTS}/5-w2-received.png` })
 
 const firstHopOk =
-  pendingOnW1 === 0 && w2AfterConfirm > 0 && w1AfterConfirm < 100000 && w1AfterConfirm + w2AfterConfirm < 100000
+  pendingOnW1 > 0 &&
+  w1AfterSend === 0 &&
+  w2AfterConfirm > 0 &&
+  w1AfterConfirm > 0 &&
+  w1AfterConfirm < 100000 &&
+  w1AfterConfirm + w2AfterConfirm < 100000
 
 await page.getByTestId('send-w-2').click()
 await page.getByTestId('send-to-w-1').click()

@@ -75,8 +75,10 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
     try {
       await navigator.clipboard.writeText(address)
       onMessage(t('assets.addressCopied'))
+      return true
     } catch {
       onMessage(address)
+      return false
     }
   }
 
@@ -169,10 +171,15 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
           <ReceiveModal
             wallet={receiveWallet}
             onClose={() => setReceiveWalletId('')}
-            onCopy={(address) => void copyAddress(address)}
+            onCopy={(address) => {
+              void copyAddress(address).then((copied) => {
+                if (copied) {
+                  newAddress(receiveWallet.id)
+                }
+              })
+            }}
             onNewAddress={() => {
               newAddress(receiveWallet.id)
-              onMessage(t('assets.newAddressDone'))
             }}
           />
         )}
@@ -273,7 +280,9 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
   }
 
   const waitingSats = pendingSats(player, openWallet.id)
-  const utxos = openWallet.addresses.filter((item) => item.sats > 0)
+  const utxos = openWallet.addresses.filter(
+    (item) => item.sats > 0 || pendingSatsForAddress(player, item.value) > 0,
+  )
 
   return (
     <>

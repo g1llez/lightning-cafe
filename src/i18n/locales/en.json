@@ -85,7 +85,9 @@
     "sendDestination": "Destination",
     "sendConfirm": "Send {{sats}} sats ({{cad}} $)",
     "sendSent": "Transaction sent to the mempool",
-    "sendTotal": "Total from this wallet: {{sats}} sats ({{cad}} $)"
+    "sendOutputPay": "Payment · {{sats}} sats",
+    "sendOutputFee": "Miner fee · {{sats}} sats",
+    "sendOutputChange": "Change · {{sats}} sats → {{address}}"
   },
   "services": {
     "title": "Services",
@@ -142,6 +144,7 @@
     "myTxsHeading_one": "Your transaction",
     "myTxsHeading_other": "Your transactions",
     "myTxLine": "{{sats}} sats · {{feeSats}} fee ({{fee}} sat/vB) → {{address}} ({{wallet}})",
+    "myTxChange": "change {{sats}} sats → {{address}}",
     "unknownAddress": "unknown address",
     "priority": {
       "high": "High",

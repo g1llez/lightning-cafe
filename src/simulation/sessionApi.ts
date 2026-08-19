@@ -1,7 +1,16 @@
 import type { ServerTick } from './chain'
 import type { RemoteTxPayload } from './player'
 
-export const SESSION_BASE = 'https://cafe-session.sarius.ca'
+const SESSION_HTTP = 'https://cafe-session.sarius.ca'
+const SESSION_WS = 'wss://cafe-session.sarius.ca'
+
+export function sessionHttpBase(): string {
+  return SESSION_HTTP
+}
+
+export function sessionWsUrl(roomId: string): string {
+  return `${SESSION_WS}/rooms/${encodeURIComponent(roomId)}/ws`
+}
 
 export type SessionEvent = {
   seq: number
@@ -49,7 +58,7 @@ export function writeRoomToLocation(roomId: string | null) {
 }
 
 export async function createRoom(): Promise<string> {
-  const response = await fetch(`${SESSION_BASE}/rooms`, { method: 'POST' })
+  const response = await fetch(`${sessionHttpBase()}/rooms`, { method: 'POST' })
   if (!response.ok) {
     throw new Error(`room-create-${response.status}`)
   }
@@ -61,7 +70,7 @@ export async function createRoom(): Promise<string> {
 }
 
 export async function fetchRoom(roomId: string): Promise<RoomInfo> {
-  const response = await fetch(`${SESSION_BASE}/rooms/${encodeURIComponent(roomId)}`)
+  const response = await fetch(`${sessionHttpBase()}/rooms/${encodeURIComponent(roomId)}`)
   if (response.status === 404) {
     throw new Error('room-missing')
   }
@@ -73,7 +82,7 @@ export async function fetchRoom(roomId: string): Promise<RoomInfo> {
 
 export async function fetchEvents(roomId: string, after: number): Promise<SessionEvent[]> {
   const response = await fetch(
-    `${SESSION_BASE}/rooms/${encodeURIComponent(roomId)}/events?after=${after}`,
+    `${sessionHttpBase()}/rooms/${encodeURIComponent(roomId)}/events?after=${after}`,
   )
   if (!response.ok) {
     throw new Error(`events-${response.status}`)
@@ -128,7 +137,7 @@ export function openRoomSocket(
   onEvent: (event: SessionEvent) => void,
   onClose: () => void,
 ): WebSocket {
-  const socket = new WebSocket(`wss://cafe-session.sarius.ca/rooms/${encodeURIComponent(roomId)}/ws`)
+  const socket = new WebSocket(sessionWsUrl(roomId))
   socket.addEventListener('message', (message) => {
     try {
       const event = JSON.parse(String(message.data)) as SessionEvent

@@ -4,8 +4,10 @@ import { estimateFeeSats, type Priority } from '../simulation/chain'
 import {
   findWalletByAddress,
   formatCad,
+  planSend,
   receiveAddress,
   satsToCad,
+  shortAddress,
   walletSats,
 } from '../simulation/player'
 import { useSimulation } from '../simulation/SimulationProvider'
@@ -38,8 +40,10 @@ export function SendModal({ walletId, onClose, onMessage, onSatsSent }: SendModa
   const others = player.wallets.filter((item) => item.id !== walletId)
   const amountOk = amount > 0 && amount <= maxSend
   const addressOk = addressDraft.trim().length > 0
-  const totalDebit = Math.max(0, amount) + fee
   const safeAmount = Math.min(amount, maxSend)
+  const plan = wallet
+    ? planSend(wallet, safeAmount, feeRateFor(chain.marketRate, priority))
+    : { payment: 0, fee, change: 0, changeAddress: null as string | null }
 
   async function handlePaste() {
     try {
@@ -141,12 +145,18 @@ export function SendModal({ walletId, onClose, onMessage, onSatsSent }: SendModa
             payer="you"
           />
 
-          <p className="rounded-md border border-border bg-bg-secondary px-2.5 py-2 font-mono text-[11px] leading-relaxed text-text-muted">
-            {t('assets.sendTotal', {
-              sats: totalDebit.toLocaleString(),
-              cad: formatCad(satsToCad(totalDebit, btcPriceCad)),
-            })}
-          </p>
+          {wallet && (
+            <ul className="flex flex-col gap-1 rounded-md border border-border bg-bg-secondary px-2.5 py-2 font-mono text-[11px] leading-relaxed text-text-muted">
+              <li>{t('assets.sendOutputPay', { sats: plan.payment.toLocaleString() })}</li>
+              <li>{t('assets.sendOutputFee', { sats: plan.fee.toLocaleString() })}</li>
+              <li>
+                {t('assets.sendOutputChange', {
+                  sats: plan.change.toLocaleString(),
+                  address: plan.changeAddress ? shortAddress(plan.changeAddress) : '—',
+                })}
+              </li>
+            </ul>
+          )}
 
           <button
             type="button"
