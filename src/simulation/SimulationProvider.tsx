@@ -19,6 +19,7 @@ import {
   restoreWallet as applyRestore,
   sendBitcoin,
   createWallet,
+  type PlayerState,
 } from './player'
 import {
   createRoom,
