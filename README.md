@@ -24,7 +24,7 @@ npm run dev
 ```bash
 npm run build    # production build
 npm run preview  # preview production build locally
-npm test         # run tests in /tests
+npm test         # Vitest in /tests (GitHub runs this before Pages)
 ```
 
 ## Sprint 1 — walking skeleton
