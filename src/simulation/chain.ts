@@ -87,6 +87,20 @@ export function randomTxCount(random = Math.random): number {
   return 1_600 + Math.floor(random() * 2_400)
 }
 
+/** Same seed => same sequence, so two browsers in a room draw the same mempool counts. */
+export function seededRandom(seed: string): () => number {
+  let state = 2_166_136_261
+  for (const char of seed) {
+    state ^= char.charCodeAt(0)
+    state = Math.imul(state, 16_777_619)
+  }
+  state >>>= 0
+  return () => {
+    state = (Math.imul(state, 1_664_525) + 1_013_904_223) >>> 0
+    return state / 4_294_967_296
+  }
+}
+
 /**
  * High / medium / low are quotes around the same market price, not three
  * independent lotteries. The buttons copy these numbers as the player's bid.
@@ -205,8 +219,11 @@ export type ServerTick = {
 export function applyServerTick(
   state: ChainState,
   tick: ServerTick,
-  random: () => number = Math.random,
+  random?: () => number,
 ): ChainState {
+  const rng =
+    random ??
+    seededRandom(`${tick.height}|${tick.pool}|${tick.market_rate}|${tick.fee_rate}|${state.nextId}`)
   const high = state.upcoming.find((block) => block.priority === 'high')
 
   return {
@@ -223,7 +240,7 @@ export function applyServerTick(
       },
       ...state.confirmed,
     ].slice(0, MAX_CONFIRMED_BLOCKS),
-    upcoming: mempoolLanes(tick.market_rate, state.nextId, random),
+    upcoming: mempoolLanes(tick.market_rate, state.nextId, rng),
   }
 }
 

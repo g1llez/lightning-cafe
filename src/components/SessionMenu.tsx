@@ -52,9 +52,11 @@ export function SessionMenu() {
         type="button"
         onClick={() => setOpen((current) => !current)}
         className={`rounded-md border px-3 py-2 text-sm transition ${
-          roomId
-            ? 'border-accent/70 bg-accent/10 text-accent'
-            : 'border-border bg-bg-panel hover:border-accent/60'
+          sessionStatus === 'error'
+            ? 'border-danger/70 bg-danger/10 text-danger'
+            : roomId
+              ? 'border-accent/70 bg-accent/10 text-accent'
+              : 'border-border bg-bg-panel hover:border-accent/60'
         }`}
       >
         {t('session.button')}

@@ -14,7 +14,7 @@ import {
   receiveAddress,
   totalSats,
 } from '../src/simulation/player'
-import { parseRemoteTx, parseTick } from '../src/simulation/sessionApi'
+import { parseRemoteTx, parseRoomInput, parseTick } from '../src/simulation/sessionApi'
 
 describe('shared cafe session', () => {
   it('applies a server tick without inventing a local pool walk', () => {
@@ -39,6 +39,20 @@ describe('shared cafe session', () => {
       marketQuotes(8).high,
     ])
     expect(start.marketRate).toBe(INITIAL_MARKET_RATE)
+  })
+
+  it('draws the same mempool tx counts on two clients for the same tick', () => {
+    const start = createInitialChain()
+    const tick = {
+      height: 912_005,
+      market_rate: 8,
+      fee_rate: 4,
+      pool: 'LesChatoshis',
+    }
+    const a = applyServerTick(start, tick)
+    const b = applyServerTick(start, tick)
+    expect(a.upcoming.map((block) => block.txCount)).toEqual(b.upcoming.map((block) => block.txCount))
+    expect(a.confirmed[0]?.txCount).toBe(b.confirmed[0]?.txCount)
   })
 
   it('credits a remote buy only when the address is ours, and skips duplicates', () => {
@@ -88,6 +102,23 @@ describe('shared cafe session', () => {
     expect(player.pending).toHaveLength(1)
   })
 
+  it('still ingests a peer tx when this browser already created its own first tx', () => {
+    let player = createWallet(createInitialPlayer(), 'Wallet 1')
+    const address = receiveAddress(player.wallets[0])
+    player = buyBitcoin(player, address, 100)
+
+    player = ingestRemoteTx(player, {
+      kind: 'send',
+      address,
+      sats: 10_000,
+      fee_rate: 4,
+      id: 'tx-1',
+    })
+
+    expect(player.pending).toHaveLength(2)
+    expect(player.pending.some((tx) => tx.sats === 10_000)).toBe(true)
+  })
+
   it('rejects a tick or tx payload that is not the contract', () => {
     expect(parseTick({})).toBeNull()
     expect(parseTick({ height: 1, market_rate: 3, fee_rate: 4, pool: 'Satsmith' })).toEqual({
@@ -98,5 +129,12 @@ describe('shared cafe session', () => {
     })
     expect(parseRemoteTx({ kind: 'buy', address: 'lc1qaa', sats: 1 })).toBeNull()
     expect(parseRemoteTx({ kind: 'zap', address: 'lc1qaa', sats: 1, fee_rate: 2 })).toBeNull()
+  })
+
+  it('reads a room id out of a pasted cafe link', () => {
+    expect(parseRoomInput('  abcdefghijklmnop  ')).toBe('abcdefghijklmnop')
+    expect(
+      parseRoomInput('https://g1llez.github.io/lightning-cafe/?room=abcdefghijklmnop&block=1'),
+    ).toBe('abcdefghijklmnop')
   })
 })

@@ -30,7 +30,7 @@ type RoomInfo = {
 const PEER_KEY = 'lc-peer-id'
 
 export function sessionPeerId(): string {
-  const existing = window.localStorage.getItem(PEER_KEY)
+  const existing = window.sessionStorage.getItem(PEER_KEY)
   if (existing && /^[a-zA-Z0-9_-]{1,64}$/.test(existing)) {
     return existing
   }
@@ -38,12 +38,26 @@ export function sessionPeerId(): string {
   const bytes = new Uint8Array(8)
   crypto.getRandomValues(bytes)
   const id = `p${Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')}`
-  window.localStorage.setItem(PEER_KEY, id)
+  window.sessionStorage.setItem(PEER_KEY, id)
   return id
 }
 
+export function parseRoomInput(value: string): string {
+  const trimmed = value.trim()
+  try {
+    const url = new URL(trimmed)
+    const fromQuery = url.searchParams.get('room')?.trim()
+    if (fromQuery) {
+      return fromQuery
+    }
+  } catch {
+    // pasted an id, not a url
+  }
+  return trimmed
+}
+
 export function roomIdFromLocation(): string | null {
-  const id = new URLSearchParams(window.location.search).get('room')?.trim() ?? ''
+  const id = parseRoomInput(new URLSearchParams(window.location.search).get('room') ?? '')
   return /^[a-zA-Z0-9_-]{16,}$/.test(id) ? id : null
 }
 

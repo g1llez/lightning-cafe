@@ -27,6 +27,7 @@ import {
   fetchRoom,
   openRoomSocket,
   parseRemoteTx,
+  parseRoomInput,
   parseTick,
   roomIdFromLocation,
   sendSessionEvent,
@@ -72,6 +73,9 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
   const socketRef = useRef<WebSocket | null>(null)
   const seqRef = useRef(0)
   const peerIdRef = useRef('')
+  const outboxRef = useRef<
+    { kind: 'buy' | 'send'; address: string; sats: number; fee_rate: number; id: string }[]
+  >([])
   chainRef.current = chain
 
   useEffect(() => {
@@ -133,7 +137,7 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
           return
         }
         const marketRate = chainRef.current.marketRate
-        setPlayer((current) => advanceBlock(current, marketRate, Math.random, tick.height))
+        setPlayer((current) => advanceBlock(current, marketRate, null, tick.height))
         setChain((current) => {
           const next = applyServerTick(current, tick)
           chainRef.current = next
@@ -143,7 +147,7 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
         return
       }
 
-      if (event.type === 'tx' && event.peer_id !== peerId) {
+      if (event.type === 'tx') {
         const tx = parseRemoteTx(event.payload)
         if (tx) {
           setPlayer((current) => ingestRemoteTx(current, tx))
@@ -173,9 +177,9 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
                 if (!tick) {
                   continue
                 }
-                nextPlayer = advanceBlock(nextPlayer, nextChain.marketRate, Math.random, tick.height)
+        nextPlayer = advanceBlock(nextPlayer, nextChain.marketRate, null, tick.height)
                 nextChain = applyServerTick(nextChain, tick)
-              } else if (event.type === 'tx' && event.peer_id !== peerId) {
+              } else if (event.type === 'tx') {
                 const tx = parseRemoteTx(event.payload)
                 if (tx) {
                   nextPlayer = ingestRemoteTx(nextPlayer, tx)
@@ -217,6 +221,10 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
           }
           setSessionStatus('live')
           sendSessionEvent(socket, peerId, 'hello', {})
+          for (const payload of outboxRef.current) {
+            sendSessionEvent(socket, peerId, 'tx', payload)
+          }
+          outboxRef.current = []
         })
       } catch {
         if (!cancelled) {
@@ -236,17 +244,21 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
   }, [roomId])
 
   function publishTx(kind: 'buy' | 'send', address: string, sats: number, feeRate: number, id: string) {
-    const socket = socketRef.current
-    if (!socket || !roomId) {
-      return
-    }
-    sendSessionEvent(socket, peerIdRef.current, 'tx', {
+    const payload = {
       kind,
       address,
       sats,
       fee_rate: feeRate,
       id,
-    })
+    }
+    const socket = socketRef.current
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      sendSessionEvent(socket, peerIdRef.current, 'tx', payload)
+      return
+    }
+    if (roomId) {
+      outboxRef.current = [...outboxRef.current, payload]
+    }
   }
 
   const value = useMemo<SimulationContextValue>(
@@ -289,13 +301,14 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
         setRoomId(id)
       },
       joinCafe: async (id) => {
-        const trimmed = id.trim()
+        const trimmed = parseRoomInput(id)
         await fetchRoom(trimmed)
         writeRoomToLocation(trimmed)
         setRoomId(trimmed)
       },
       leaveCafe: () => {
         writeRoomToLocation(null)
+        outboxRef.current = []
         setRoomId(null)
         setSessionStatus('off')
       },

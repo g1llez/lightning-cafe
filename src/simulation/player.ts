@@ -4,6 +4,7 @@ import {
   estimateFeeSats,
   feeZone,
   marketQuotes,
+  seededRandom,
   type Priority,
 } from './chain'
 
@@ -425,6 +426,18 @@ function creditAddress(wallet: Wallet, address: string, sats: number): WalletAdd
   )
 }
 
+function createTxId(): string {
+  const bytes = new Uint8Array(6)
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    crypto.getRandomValues(bytes)
+  } else {
+    for (let index = 0; index < bytes.length; index += 1) {
+      bytes[index] = Math.floor(Math.random() * 256)
+    }
+  }
+  return `tx-${Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')}`
+}
+
 /**
  * Takes an address, not a wallet: the exchange only knows where to send.
  * The $ leave right away (spot + their cut). They pick the sat/vB; you do not.
@@ -450,7 +463,7 @@ export function buyBitcoin(
 
   const wallet = findWalletByAddress(player, destination)
   const tx: PendingTx = {
-    id: `tx-${player.nextTxId}`,
+    id: createTxId(),
     walletId: wallet?.id ?? null,
     fromWalletId: null,
     address: destination,
@@ -472,14 +485,20 @@ export function buyBitcoin(
 export function advanceBlock(
   player: PlayerState,
   marketRate: number,
-  random: () => number = Math.random,
+  random: (() => number) | null = Math.random,
   height = 0,
 ): PlayerState {
   if (player.pending.length === 0) {
     return player
   }
 
-  const confirmed = player.pending.filter((tx) => clearsThisBlock(tx.feeRate, marketRate, random))
+  const confirmed = player.pending.filter((tx) =>
+    clearsThisBlock(
+      tx.feeRate,
+      marketRate,
+      random ?? seededRandom(`${tx.id}:${height}:${marketRate}`),
+    ),
+  )
   const settled: SettledTx[] = confirmed.map((tx) => ({ ...tx, height }))
 
   return {
@@ -543,7 +562,7 @@ export function sendBitcoin(
 
   const receiver = findWalletByAddress(player, destination)
   const tx: PendingTx = {
-    id: `tx-${player.nextTxId}`,
+    id: createTxId(),
     walletId: receiver?.id ?? null,
     fromWalletId,
     address: destination,
