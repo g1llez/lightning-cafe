@@ -1,3 +1,11 @@
+import {
+  INITIAL_MARKET_RATE,
+  clearsThisBlock,
+  feeZone,
+  marketQuotes,
+  type Priority,
+} from './chain'
+
 export const STARTING_CAD = 1_000
 export const BTC_PRICE_CAD = 100_000
 export const SATS_PER_BTC = 100_000_000
@@ -54,17 +62,30 @@ export type Wallet = {
   addresses: WalletAddress[]
 }
 
+/** A tx sits in the mempool at a fixed sat/vB until the market lets it in. */
+export type PendingTx = {
+  id: string
+  walletId: string
+  address: string
+  sats: number
+  feeRate: number
+}
+
 export type PlayerState = {
   cad: number
   wallets: Wallet[]
+  pending: PendingTx[]
   nextWalletId: number
+  nextTxId: number
 }
 
 export function createInitialPlayer(): PlayerState {
   return {
     cad: STARTING_CAD,
     wallets: [],
+    pending: [],
     nextWalletId: 1,
+    nextTxId: 1,
   }
 }
 
@@ -74,6 +95,35 @@ export function walletSats(wallet: Wallet): number {
 
 export function totalSats(player: PlayerState): number {
   return player.wallets.reduce((sum, wallet) => sum + walletSats(wallet), 0)
+}
+
+export function pendingSats(player: PlayerState, walletId?: string): number {
+  return player.pending
+    .filter((tx) => !walletId || tx.walletId === walletId)
+    .reduce((sum, tx) => sum + tx.sats, 0)
+}
+
+export function pendingSatsForAddress(player: PlayerState, address: string): number {
+  return player.pending
+    .filter((tx) => tx.address === address)
+    .reduce((sum, tx) => sum + tx.sats, 0)
+}
+
+/** The badge follows the current zone, so a cheap bid can jump lanes if the market drops. */
+export function pendingForZone(
+  player: PlayerState,
+  marketRate: number,
+  zone: Priority,
+): PendingTx[] {
+  return player.pending.filter((tx) => feeZone(tx.feeRate, marketRate) === zone)
+}
+
+export function pendingCountByZone(
+  player: PlayerState,
+  marketRate: number,
+  zone: Priority,
+): number {
+  return pendingForZone(player, marketRate, zone).length
 }
 
 export function cadToSats(cad: number, priceCad = BTC_PRICE_CAD): number {
@@ -194,35 +244,79 @@ export function looksLikeAddress(value: string): boolean {
   return value.trim().toLowerCase().startsWith(PUBLIC_ADDRESS_PREFIX)
 }
 
+export function findWalletByAddress(player: PlayerState, address: string): Wallet | undefined {
+  const wanted = address.trim()
+  return player.wallets.find((wallet) => wallet.addresses.some((item) => item.value === wanted))
+}
+
 function creditAddress(wallet: Wallet, address: string, sats: number): WalletAddress[] {
   return wallet.addresses.map((item) =>
     item.value === address ? { ...item, sats: item.sats + sats } : item,
   )
 }
 
+/**
+ * Takes an address, not a wallet: the exchange only knows where to send.
+ * The $ leave right away, the sats only land when a block carries the tx.
+ * `feeRate` is the bid; it does not change while the tx waits.
+ */
 export function buyBitcoin(
   player: PlayerState,
-  walletId: string,
+  address: string,
   cadAmount: number,
   priceCad = BTC_PRICE_CAD,
+  feeRate: number = marketQuotes(INITIAL_MARKET_RATE).high,
 ): PlayerState {
   if (cadAmount <= 0 || cadAmount > player.cad) {
     throw new Error('insufficient-cad')
   }
 
-  const wallet = player.wallets.find((item) => item.id === walletId)
+  const wallet = findWalletByAddress(player, address)
   if (!wallet) {
-    throw new Error('wallet-missing')
+    throw new Error('address-unknown')
   }
 
-  const sats = cadToSats(cadAmount, priceCad)
-  const target = receiveAddress(wallet)
+  const tx: PendingTx = {
+    id: `tx-${player.nextTxId}`,
+    walletId: wallet.id,
+    address: address.trim(),
+    sats: cadToSats(cadAmount, priceCad),
+    feeRate,
+  }
 
   return {
     ...player,
     cad: player.cad - cadAmount,
-    wallets: player.wallets.map((item) =>
-      item.id === walletId ? { ...item, addresses: creditAddress(item, target, sats) } : item,
-    ),
+    pending: [...player.pending, tx],
+    nextTxId: player.nextTxId + 1,
+  }
+}
+
+/** Called once per mined block, against the market that was on screen. */
+export function advanceBlock(
+  player: PlayerState,
+  marketRate: number,
+  random: () => number = Math.random,
+): PlayerState {
+  if (player.pending.length === 0) {
+    return player
+  }
+
+  const confirmed = player.pending.filter((tx) => clearsThisBlock(tx.feeRate, marketRate, random))
+
+  return {
+    ...player,
+    pending: player.pending.filter((tx) => !confirmed.includes(tx)),
+    wallets: player.wallets.map((wallet) => {
+      const forWallet = confirmed.filter((tx) => tx.walletId === wallet.id)
+      if (forWallet.length === 0) {
+        return wallet
+      }
+
+      return forWallet.reduce(
+        (item, tx) => ({ ...item, addresses: creditAddress(item, tx.address, tx.sats) }),
+        wallet,
+      )
+    }),
   }
 }

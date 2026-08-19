@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { setAppLanguage } from '../i18n'
-import { totalSats } from '../simulation/player'
+import { pendingSats, totalSats } from '../simulation/player'
 import { useSimulation } from '../simulation/SimulationProvider'
 import { Tooltip } from './Tooltip'
 
@@ -13,6 +13,7 @@ export function Nav({ onGuideClick, onBuyClick }: NavProps) {
   const { t, i18n } = useTranslation()
   const { player, btcPriceCad } = useSimulation()
   const currentLanguage = i18n.language.startsWith('fr') ? 'fr' : 'en'
+  const waiting = pendingSats(player)
 
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-bg-secondary px-4 md:px-6">
@@ -29,12 +30,17 @@ export function Nav({ onGuideClick, onBuyClick }: NavProps) {
       </div>
 
       <div className="flex items-center gap-2">
-        <div className="hidden rounded-md border border-border bg-bg-panel px-3 py-1.5 sm:block">
+        <div data-fly="funds" className="hidden rounded-md border border-border bg-bg-panel px-3 py-1.5 sm:block">
           <p className="text-[10px] uppercase tracking-[0.14em] text-text-muted">{t('nav.myFunds')}</p>
           <p className="flex items-center gap-2 font-mono text-sm leading-tight">
             <span>{player.cad.toLocaleString()} $</span>
             <span className="text-border">|</span>
             <span className="text-accent">{totalSats(player).toLocaleString()} sats</span>
+            {waiting > 0 && (
+              <span className="text-xs text-text-muted">
+                {t('assets.pending', { sats: waiting.toLocaleString() })}
+              </span>
+            )}
           </p>
         </div>
 

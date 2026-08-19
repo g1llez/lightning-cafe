@@ -3,12 +3,11 @@ import {
   BLOCK_INTERVAL_SECONDS,
   createInitialChain,
   mineBlock,
-  nextLowFeeRate,
   pickPool,
-  randomTxCount,
   type ChainState,
 } from './chain'
 import {
+  advanceBlock,
   BTC_PRICE_CAD,
   buyBitcoin,
   createAddress,
@@ -26,7 +25,7 @@ type SimulationContextValue = {
   addWallet: (name: string) => void
   renameWallet: (walletId: string, name: string) => void
   newAddress: (walletId: string) => void
-  buyBtc: (walletId: string, cadAmount: number) => void
+  buyBtc: (address: string, cadAmount: number, feeRate: number) => void
 }
 
 const SimulationContext = createContext<SimulationContextValue | null>(null)
@@ -53,7 +52,9 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
       return
     }
 
-    setChain((current) => mineBlock(current, nextLowFeeRate(), pickPool(), randomTxCount()))
+    const marketRate = chain.marketRate
+    setPlayer((current) => advanceBlock(current, marketRate))
+    setChain((current) => mineBlock(current, pickPool()))
     setSecondsLeft(BLOCK_INTERVAL_SECONDS)
   }, [secondsLeft])
 
@@ -66,8 +67,8 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
       addWallet: (name) => setPlayer((current) => createWallet(current, name)),
       renameWallet: (walletId, name) => setPlayer((current) => renameWallet(current, walletId, name)),
       newAddress: (walletId) => setPlayer((current) => createAddress(current, walletId)),
-      buyBtc: (walletId, cadAmount) =>
-        setPlayer((current) => buyBitcoin(current, walletId, cadAmount)),
+      buyBtc: (address, cadAmount, feeRate) =>
+        setPlayer((current) => buyBitcoin(current, address, cadAmount, BTC_PRICE_CAD, feeRate)),
     }),
     [chain, player, secondsLeft],
   )

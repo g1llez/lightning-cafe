@@ -1,6 +1,9 @@
 import { useTranslation } from 'react-i18next'
+import type { ReactNode } from 'react'
 import { formatCountdown, toneForFee, type ConfirmedBlock, type Priority, type ProjectedBlock } from '../simulation/chain'
+import { pendingForZone, shortAddress, type PendingTx } from '../simulation/player'
 import { useSimulation } from '../simulation/SimulationProvider'
+import { mempoolFlyId } from './SatsFlight'
 import { Tooltip } from './Tooltip'
 import { WalletCard } from './WalletCard'
 
@@ -8,22 +11,40 @@ type BlockTileProps = {
   label: string
   feeRate: number
   txCount: number
-  blockTip: string
+  blockTip: ReactNode
   upcoming?: boolean
   highlight?: boolean
+  myTxs?: number
+  flyId?: string
 }
 
-function BlockTile({ label, feeRate, txCount, blockTip, upcoming = false, highlight = false }: BlockTileProps) {
+function BlockTile({
+  label,
+  feeRate,
+  txCount,
+  blockTip,
+  upcoming = false,
+  highlight = false,
+  myTxs = 0,
+  flyId,
+}: BlockTileProps) {
   const { t } = useTranslation()
 
   return (
     <div className="flex w-24 shrink-0 flex-col items-center gap-1">
       <Tooltip text={blockTip}>
-        <div
-          className={`h-16 w-16 rounded-md ${toneForFee(feeRate)} ${
-            upcoming ? 'border border-dashed border-text-muted/50' : ''
-          } ${highlight ? 'ring-2 ring-accent ring-offset-2 ring-offset-bg-secondary' : ''}`}
-        />
+        <div className="relative" data-fly={flyId}>
+          <div
+            className={`h-16 w-16 rounded-md ${toneForFee(feeRate)} ${
+              upcoming ? 'border border-dashed border-text-muted/50' : ''
+            } ${highlight ? 'ring-2 ring-accent ring-offset-2 ring-offset-bg-secondary' : ''}`}
+          />
+          {myTxs > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 font-mono text-[10px] font-semibold text-bg-primary">
+              {myTxs}
+            </span>
+          )}
+        </div>
       </Tooltip>
       <span className="text-center text-xs font-medium text-text-primary">{label}</span>
       <span className="text-center text-[11px] text-text-muted">{t('layers.txCount', { txs: txCount.toLocaleString() })}</span>
@@ -41,10 +62,49 @@ type BitcoinLayerProps = {
 
 export function BitcoinLayer({ fill, onMessage }: BitcoinLayerProps) {
   const { t } = useTranslation()
-  const { chain, secondsLeft } = useSimulation()
+  const { chain, secondsLeft, player } = useSimulation()
 
   function priorityLabel(priority: Priority) {
     return t(`layers.priority.${priority}`)
+  }
+
+  function walletName(walletId: string) {
+    return player.wallets.find((wallet) => wallet.id === walletId)?.name ?? walletId
+  }
+
+  function mempoolTip(block: ProjectedBlock, myPending: PendingTx[]) {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <p>
+          {t('layers.upcomingBlockTip', {
+            priority: priorityLabel(block.priority),
+            txs: block.txCount.toLocaleString(),
+          })}
+        </p>
+        {block.priority === 'high' && (
+          <p className="text-[11px] text-text-muted">{t('layers.nextUp')}</p>
+        )}
+        {myPending.length > 0 && (
+          <div className="border-t border-border pt-1.5">
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-accent">
+              {t('layers.myTxsHeading', { count: myPending.length })}
+            </p>
+            <ul className="flex flex-col gap-1">
+              {myPending.map((tx) => (
+                <li key={tx.id} className="font-mono text-[11px] leading-snug">
+                  {t('layers.myTxLine', {
+                    sats: tx.sats.toLocaleString(),
+                    fee: tx.feeRate,
+                    address: shortAddress(tx.address),
+                    wallet: walletName(tx.walletId),
+                  })}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    )
   }
 
   return (
@@ -62,8 +122,9 @@ export function BitcoinLayer({ fill, onMessage }: BitcoinLayerProps) {
         </p>
       </div>
 
+      {/* Left padding keeps the floating wallet card from covering the mempool blocks. */}
       <div
-        className={`flex h-full justify-center px-4 pb-4 pt-20 ${
+        className={`flex h-full justify-center px-4 pb-4 pt-20 md:pl-[23rem] ${
           fill ? 'items-center' : 'items-end'
         }`}
       >
@@ -73,20 +134,22 @@ export function BitcoinLayer({ fill, onMessage }: BitcoinLayerProps) {
               {t('layers.mempool')}
             </p>
             <div className="flex items-center justify-center gap-3">
-              {chain.upcoming.map((block: ProjectedBlock) => (
-                <BlockTile
-                  key={block.id}
-                  label={priorityLabel(block.priority)}
-                  feeRate={block.feeRate}
-                  txCount={block.txCount}
-                  upcoming
-                  highlight={block.priority === 'high'}
-                  blockTip={t('layers.upcomingBlockTip', {
-                    priority: priorityLabel(block.priority),
-                    txs: block.txCount.toLocaleString(),
-                  })}
-                />
-              ))}
+              {chain.upcoming.map((block: ProjectedBlock) => {
+                const myPending = pendingForZone(player, chain.marketRate, block.priority)
+                return (
+                  <BlockTile
+                    key={block.id}
+                    label={priorityLabel(block.priority)}
+                    feeRate={block.feeRate}
+                    txCount={block.txCount}
+                    upcoming
+                    highlight={myPending.length > 0}
+                    flyId={mempoolFlyId(block.priority)}
+                    myTxs={myPending.length}
+                    blockTip={mempoolTip(block, myPending)}
+                  />
+                )
+              })}
             </div>
           </div>
 

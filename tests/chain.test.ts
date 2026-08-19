@@ -2,20 +2,27 @@ import { describe, expect, it } from 'vitest'
 import {
   createInitialChain,
   formatCountdown,
+  INITIAL_MARKET_RATE,
+  marketQuotes,
   mineBlock,
   MINING_POOLS,
-  nextLowFeeRate,
+  nextMarketRate,
   pickPool,
   randomTxCount,
   toneForFee,
 } from '../src/simulation/chain'
 import {
+  advanceBlock,
   buyBitcoin,
   cadToSats,
   createAddress,
   createInitialPlayer,
   createWallet,
+  findWalletByAddress,
   looksLikeAddress,
+  pendingCountByZone,
+  pendingSats,
+  pendingSatsForAddress,
   receiveAddress,
   renameWallet,
   seedPhrase,
@@ -26,25 +33,29 @@ import {
   walletSeed,
 } from '../src/simulation/player'
 
+const quotes = marketQuotes(INITIAL_MARKET_RATE)
+
 describe('chain simulation', () => {
-  it('mines the high-priority mempool block onto the chain', () => {
+  it('mines the high lane and refreshes quotes, without renaming piles', () => {
     const initial = createInitialChain()
-    const next = mineBlock(initial, 5, 'LesChatoshis', 2_200)
+    const next = mineBlock(initial, 'LesChatoshis', () => 0, 10)
 
     expect(next.confirmed[0]).toEqual({
-      id: 'u-high',
+      id: 'u-2',
       height: 912_005,
-      feeRate: 18,
+      feeRate: quotes.high,
       pool: 'LesChatoshis',
       txCount: 2_905,
     })
-    expect(next.upcoming[0].txCount).toBe(2_200)
+    expect(next.marketRate).toBe(10)
+    expect(next.upcoming.map((block) => block.priority)).toEqual(['low', 'medium', 'high'])
+    expect(next.upcoming.map((block) => block.feeRate)).toEqual([
+      marketQuotes(10).low,
+      marketQuotes(10).medium,
+      marketQuotes(10).high,
+    ])
     expect(next.confirmed).toHaveLength(5)
     expect(next.nextHeight).toBe(912_006)
-    expect(next.upcoming.map((block) => block.priority)).toEqual(['low', 'medium', 'high'])
-    expect(next.upcoming[2].feeRate).toBe(9)
-    expect(next.upcoming[1].feeRate).toBe(4)
-    expect(next.upcoming[0].feeRate).toBe(5)
   })
 
   it('formats the one-minute countdown', () => {
@@ -52,9 +63,9 @@ describe('chain simulation', () => {
     expect(formatCountdown(9)).toBe('0:09')
   })
 
-  it('keeps new mempool blocks in the low fee range', () => {
-    expect(nextLowFeeRate(() => 0)).toBe(3)
-    expect(nextLowFeeRate(() => 0.99)).toBe(8)
+  it('walks the market in a tight range', () => {
+    expect(nextMarketRate(15, () => 0)).toBe(10)
+    expect(nextMarketRate(15, () => 0.99)).toBe(20)
     expect(toneForFee(4)).toBe('bg-block-low')
     expect(toneForFee(18)).toBe('bg-block-high')
     expect(randomTxCount(() => 0)).toBe(1_600)
@@ -70,32 +81,69 @@ describe('chain simulation', () => {
 })
 
 describe('player wallets', () => {
-  it('starts with 1000 CAD and converts a buy into sats', () => {
+  it('takes the $ right away but leaves the sats in the mempool', () => {
     let player = createWallet(createInitialPlayer(), 'Wallet 1')
-    player = buyBitcoin(player, 'w-1', 100)
+    player = buyBitcoin(player, receiveAddress(player.wallets[0]), 100)
 
     expect(player.cad).toBe(900)
+    expect(totalSats(player)).toBe(0)
+    expect(pendingSats(player)).toBe(cadToSats(100))
+    expect(pendingSats(player, 'w-2')).toBe(0)
+    expect(pendingCountByZone(player, INITIAL_MARKET_RATE, 'high')).toBe(1)
+  })
+
+  it('credits the receive address once a block accepts the bid', () => {
+    let player = createWallet(createInitialPlayer(), 'Wallet 1')
+    player = buyBitcoin(player, receiveAddress(player.wallets[0]), 100)
+    player = advanceBlock(player, INITIAL_MARKET_RATE)
+
+    expect(player.pending).toHaveLength(0)
     expect(walletSats(player.wallets[0])).toBe(cadToSats(100))
     expect(totalSats(player)).toBe(cadToSats(100))
   })
 
-  it('credits the receive address, and a new address starts empty', () => {
+  it('keeps a cheap bid in the mempool until the market drops', () => {
     let player = createWallet(createInitialPlayer(), 'Wallet 1')
-    player = buyBitcoin(player, 'w-1', 100)
-    player = createAddress(player, 'w-1')
-    player = buyBitcoin(player, 'w-1', 250)
+    player = buyBitcoin(player, receiveAddress(player.wallets[0]), 100, undefined, quotes.low)
 
-    expect(player.wallets[0].addresses[0].sats).toBe(cadToSats(100))
+    expect(pendingCountByZone(player, INITIAL_MARKET_RATE, 'low')).toBe(1)
+
+    player = advanceBlock(player, INITIAL_MARKET_RATE, () => 1)
+    expect(totalSats(player)).toBe(0)
+    expect(player.pending).toHaveLength(1)
+
+    player = advanceBlock(player, 8, () => 1)
+    expect(totalSats(player)).toBe(cadToSats(100))
+    expect(player.pending).toHaveLength(0)
+  })
+
+  it('keeps each address balance apart, pending included', () => {
+    let player = createWallet(createInitialPlayer(), 'Wallet 1')
+    player = buyBitcoin(player, receiveAddress(player.wallets[0]), 100)
+    player = advanceBlock(player, INITIAL_MARKET_RATE)
+    player = createAddress(player, 'w-1')
+    player = buyBitcoin(player, receiveAddress(player.wallets[0]), 250)
+
+    const [first, second] = player.wallets[0].addresses
+    expect(first.sats).toBe(cadToSats(100))
+    expect(second.sats).toBe(0)
+    expect(pendingSatsForAddress(player, second.value)).toBe(cadToSats(250))
+    expect(pendingSatsForAddress(player, first.value)).toBe(0)
+
+    player = advanceBlock(player, INITIAL_MARKET_RATE)
     expect(player.wallets[0].addresses[1].sats).toBe(cadToSats(250))
     expect(walletSats(player.wallets[0])).toBe(cadToSats(350))
   })
 
-  it('refuses a buy the player cannot afford', () => {
+  it('refuses a buy the player cannot afford or cannot deliver', () => {
     const player = createWallet(createInitialPlayer(), 'Wallet 1')
+    const address = receiveAddress(player.wallets[0])
 
-    expect(() => buyBitcoin(player, 'w-1', 1_001)).toThrow('insufficient-cad')
-    expect(() => buyBitcoin(player, 'w-1', 0)).toThrow('insufficient-cad')
-    expect(() => buyBitcoin(player, 'w-9', 100)).toThrow('wallet-missing')
+    expect(() => buyBitcoin(player, address, 1_001)).toThrow('insufficient-cad')
+    expect(() => buyBitcoin(player, address, 0)).toThrow('insufficient-cad')
+    expect(() => buyBitcoin(player, 'lc1qsomebodyelse', 100)).toThrow('address-unknown')
+    expect(findWalletByAddress(player, address)?.id).toBe('w-1')
+    expect(findWalletByAddress(player, 'lc1qsomebodyelse')).toBeUndefined()
   })
 
   it('creates a sandbox address and seed, not a real Bitcoin one', () => {

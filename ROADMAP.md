@@ -2,7 +2,7 @@
 
 Source of truth for what to build next. Do not replan after each task: take the first open item in the current version.
 
-**Now:** v0.2.1b done → next is **v0.2.2**
+**Now:** v0.2.2c done → next is **v0.2.3**
 
 | Version | Goal | Status |
 |---|---|---|
@@ -50,16 +50,35 @@ A wallet can receive, send, and watch its money move on the fake chain. Buying a
 - Nav separates `My funds` ($ + sats) from `Market` (BTC price), which used to read as one number
 - L2 starts collapsed as a single bar; L1 takes the whole canvas until the user opens L2
 
-### v0.2.2 — Buy goes on-chain
-- Buy 100 $ creates a tx in mempool (high priority by default)
+### v0.2.2 — Buy goes on-chain ✅
+- Buy creates a tx in the mempool (high priority by default)
 - $ drops immediately (paid to the service)
-- Sats appear on the wallet only when the tx is mined
-- Pending sats visible on the wallet row
+- Sats appear on the destination address only when a block carries the tx
+- Pending sats visible on the wallet row, in the detail, per address, and in the nav
+- Badge on the mempool block that holds your tx, and it moves up as blocks are mined
+- Fee tiers already wired: high 1 block, medium 2, low 3 — v0.2.3 only has to expose the choice
+- The player pastes the receive address into the exchange; an unknown address is refused
+- Animated chip flies from `My funds` to the mempool block when the buy is sent
+
+### v0.2.2b — Fee choice on the buy ✅
+- `Paste` button next to the destination, so the copy → paste habit stays but costs one click
+- Fee choice high / medium / low, each showing its sat/vB and how many blocks it waits
+- The chip flies to the block matching the choice, not always to the next block
+- Orange ring follows the player's pending tx, not the next block to be mined
+- Hovering a mempool block lists the player's waiting txs (sats, address, wallet)
+- Browser check in `/tests/browser` (paste + landing block), run with `npm run test:browser`
+
+### v0.2.2c — Fee market (bid vs market) ✅
+- A tx bids a fixed sat/vB; the market `P` moves each mined block
+- Above `P + 20%` → this block; below `P - 20%` → wait; in the band → coin flip
+- Mempool lanes stay High / Medium / Low and only their quotes move (no conveyor)
+- Buy buttons copy the current quotes as the bid
+- Sim in `/tests/fees.test.ts`: min / med / max bids vs a falling market (6 / 4 / 1 blocks when unlucky)
 
 ### v0.2.3 — Send on-chain
 - Send sats from wallet A to wallet B (or a pasteable fake address)
-- Same mempool → confirm flow
-- Choose fee: high / medium / low (which projected block it joins)
+- Same mempool → confirm flow (bid vs the current market)
+- Fee choice already built in the buy modal: reuse it here
 
 ### v0.2.4 — Inspect txs
 - Click a mempool or confirmed block to see txs inside

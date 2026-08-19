@@ -1,6 +1,13 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { receiveAddress, shortAddress, walletSats, type Wallet } from '../simulation/player'
+import {
+  pendingSats,
+  pendingSatsForAddress,
+  receiveAddress,
+  shortAddress,
+  walletSats,
+  type Wallet,
+} from '../simulation/player'
 import { useSimulation } from '../simulation/SimulationProvider'
 import { LayerAssetCard } from './LayerAssetCard'
 import { Modal } from './Modal'
@@ -100,19 +107,27 @@ export function WalletCard({ onMessage }: WalletCardProps) {
         ) : (
           <table className="w-full text-left text-sm">
             <tbody>
-              {player.wallets.map((wallet) => (
-                <tr
-                  key={wallet.id}
-                  onClick={() => openDetail(wallet.id)}
-                  className="cursor-pointer border-t border-border first:border-t-0 hover:bg-bg-primary/40"
-                >
-                  <td className="truncate px-2 py-2 font-medium">{wallet.name}</td>
-                  <td className="whitespace-nowrap px-2 py-2 text-right font-mono text-xs">
-                    {walletSats(wallet).toLocaleString()} sats
-                  </td>
-                  <td className="w-4 pr-1 text-right text-text-muted">›</td>
-                </tr>
-              ))}
+              {player.wallets.map((wallet) => {
+                const waiting = pendingSats(player, wallet.id)
+                return (
+                  <tr
+                    key={wallet.id}
+                    onClick={() => openDetail(wallet.id)}
+                    className="cursor-pointer border-t border-border first:border-t-0 hover:bg-bg-primary/40"
+                  >
+                    <td className="truncate px-2 py-2 font-medium">{wallet.name}</td>
+                    <td className="whitespace-nowrap px-2 py-2 text-right font-mono text-xs">
+                      {walletSats(wallet).toLocaleString()} sats
+                      {waiting > 0 && (
+                        <span className="block text-[10px] text-text-muted">
+                          {t('assets.pending', { sats: waiting.toLocaleString() })}
+                        </span>
+                      )}
+                    </td>
+                    <td className="w-4 pr-1 text-right text-text-muted">›</td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         )}
@@ -121,6 +136,7 @@ export function WalletCard({ onMessage }: WalletCardProps) {
   }
 
   const address = receiveAddress(openWallet)
+  const waitingSats = pendingSats(player, openWallet.id)
 
   return (
     <>
@@ -186,9 +202,16 @@ export function WalletCard({ onMessage }: WalletCardProps) {
             />
           )}
 
-          <p className="font-mono text-sm text-accent">
-            {walletSats(openWallet).toLocaleString()} sats
-          </p>
+          <div>
+            <p className="font-mono text-sm text-accent">
+              {walletSats(openWallet).toLocaleString()} sats
+            </p>
+            {waitingSats > 0 && (
+              <p className="mt-0.5 font-mono text-[11px] text-text-muted">
+                {t('assets.pendingDetail', { sats: waitingSats.toLocaleString() })}
+              </p>
+            )}
+          </div>
 
           <section>
             <div className="mb-1 flex items-center gap-1.5">
@@ -234,26 +257,32 @@ export function WalletCard({ onMessage }: WalletCardProps) {
             </button>
             {addressesOpen && (
               <ul className="mt-1.5 flex flex-col gap-1">
-                {openWallet.addresses.map((item, index) => (
-                  <li key={item.value} className="flex items-baseline gap-2 font-mono text-[11px]">
-                    <span className="text-text-muted">{index}.</span>
-                    <span className={item.value === address ? 'text-text-primary' : 'text-text-muted'}>
-                      {shortAddress(item.value)}
-                    </span>
-                    {item.value === address && (
-                      <span className="text-[10px] uppercase tracking-wide text-accent">
-                        {t('assets.currentAddress')}
+                {openWallet.addresses.map((item, index) => {
+                  const waiting = pendingSatsForAddress(player, item.value)
+                  return (
+                    <li key={item.value} className="flex items-baseline gap-2 font-mono text-[11px]">
+                      <span className="text-text-muted">{index}.</span>
+                      <span className={item.value === address ? 'text-text-primary' : 'text-text-muted'}>
+                        {shortAddress(item.value)}
                       </span>
-                    )}
-                    <span
-                      className={`ml-auto whitespace-nowrap ${
-                        item.sats > 0 ? 'text-accent' : 'text-text-muted/60'
-                      }`}
-                    >
-                      {item.sats.toLocaleString()} sats
-                    </span>
-                  </li>
-                ))}
+                      {item.value === address && (
+                        <span className="text-[10px] uppercase tracking-wide text-accent">
+                          {t('assets.currentAddress')}
+                        </span>
+                      )}
+                      <span className="ml-auto whitespace-nowrap text-right">
+                        <span className={item.sats > 0 ? 'text-accent' : 'text-text-muted/60'}>
+                          {item.sats.toLocaleString()} sats
+                        </span>
+                        {waiting > 0 && (
+                          <span className="block text-[10px] text-text-muted">
+                            {t('assets.pending', { sats: waiting.toLocaleString() })}
+                          </span>
+                        )}
+                      </span>
+                    </li>
+                  )
+                })}
               </ul>
             )}
             {addressesOpen && (

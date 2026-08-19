@@ -43,6 +43,8 @@
     "newAddressDone": "New address generated",
     "addressCopied": "Address copied",
     "receiveHint": "Reusing an address works, but a fresh address per payment keeps people from linking all your transactions together.",
+    "pending": "+{{sats}} pending",
+    "pendingDetail": "+{{sats}} sats waiting in the mempool",
     "myAddresses": "My addresses ({{count}})",
     "currentAddress": "current",
     "addressesHint": "The wallet balance is the sum of its addresses. Each address keeps whatever it received.",
@@ -64,10 +66,29 @@
     "buySubtitle": "Sandbox exchange service: it turns your $ into sats and sends them to your address.",
     "amount": "Amount",
     "destination": "Destination",
-    "walletAddress": "Receive address (filled in for you)",
-    "destinationHint": "The exchange sends the sats to this address. That is all it needs to pay you.",
+    "addressPlaceholder": "Paste your lc1q… address here",
+    "paste": "Paste",
+    "pasteFailed": "The clipboard is empty or blocked by the browser",
+    "destinationHint": "Open your wallet, click Copy under the receive address, then Paste here. That is all the exchange needs to know to pay you.",
+    "addressOwned": "Address recognised: {{wallet}}",
+    "addressInvalid": "A sandbox address starts with lc1q.",
+    "addressUnknown": "None of your wallets owns this address. Check your copy — in real life sats sent to the wrong address are gone.",
+    "flyingSats": "{{sats}} sats",
+    "speed": "Speed",
+    "speedName": {
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "speedWait": {
+      "high": "This block",
+      "medium": "A coin flip",
+      "low": "Wait for a quieter market"
+    },
+    "speedHint": "You bid a sat/vB. Above the market you get in, below you wait, around it (±20%) is a coin flip. Your rate does not change; the market does.",
     "confirmBuy": "Buy ${{amount}}",
-    "buyOk": "Simulated purchase sent to wallet",
+    "buySent": "Transaction sent to the mempool",
+    "mempoolNote": "Your buy becomes a transaction: the $ leave right away. The sats only land when a block accepts your bid. Low is not a refusal — it is “not this block”.",
     "kycNote": "In real life an exchange would also ask for an ID document (KYC) to open an account. It never asks for your 12 words: an address is enough to receive.",
     "needWallet": "Create a wallet first",
     "needFunds": "Not enough funds"
@@ -85,12 +106,16 @@
     "nextBlockTip": "Sandbox estimate (~1 min). On real Bitcoin a block takes ~10 minutes on average — it is not a fixed interval.",
     "feeTip": "sat/vB is a fee rate, not an amount. Higher means those transactions paid more to get into the block.",
     "txCount": "{{txs}} txs",
-    "upcomingBlockTip": "{{priority}}. Waiting transactions, not mined yet. {{txs}} projected txs.",
+    "upcomingBlockTip": "{{priority}}. A reading of the market now, not a wagon that moves up. {{txs}} projected txs.",
     "confirmedBlockTip": "Block #{{height}} mined by {{pool}}. {{txs}} confirmed transactions.",
+    "nextUp": "Pays enough for this block",
+    "myTxsHeading_one": "Your transaction",
+    "myTxsHeading_other": "Your transactions",
+    "myTxLine": "{{sats}} sats · {{fee}} sat/vB → {{address}} ({{wallet}})",
     "priority": {
-      "high": "High priority",
-      "medium": "Medium priority",
-      "low": "Low priority"
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
     }
   },
   "footer": {

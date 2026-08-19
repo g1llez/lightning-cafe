@@ -32,3 +32,4 @@ dist-ssr
 # Tooling
 coverage
 *.tsbuildinfo
+tests/browser/shots

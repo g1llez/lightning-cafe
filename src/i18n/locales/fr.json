@@ -43,6 +43,8 @@
     "newAddressDone": "Nouvelle adresse générée",
     "addressCopied": "Adresse copiée",
     "receiveHint": "Réutiliser une adresse fonctionne, mais une nouvelle adresse par paiement évite que tout le monde puisse relier tes transactions.",
+    "pending": "+{{sats}} en attente",
+    "pendingDetail": "+{{sats}} sats en attente dans le mempool",
     "myAddresses": "Mes adresses ({{count}})",
     "currentAddress": "actuelle",
     "addressesHint": "Le solde du portefeuille est la somme de ses adresses. Chaque adresse garde ce qu'elle a reçu.",
@@ -64,10 +66,29 @@
     "buySubtitle": "Service d'échange du sandbox : il convertit tes $ en sats et les envoie à ton adresse.",
     "amount": "Montant",
     "destination": "Destination",
-    "walletAddress": "Adresse de réception (remplie automatiquement)",
-    "destinationHint": "L'échange envoie les sats à cette adresse. C'est tout ce dont il a besoin pour te payer.",
+    "addressPlaceholder": "Colle ici ton adresse lc1q…",
+    "paste": "Coller",
+    "pasteFailed": "Le presse-papiers est vide ou bloqué par le navigateur",
+    "destinationHint": "Ouvre ton portefeuille, clique Copier sous l'adresse de réception, puis Coller ici. C'est tout ce que l'échange a besoin de savoir pour te payer.",
+    "addressOwned": "Adresse reconnue : {{wallet}}",
+    "addressInvalid": "Une adresse du sandbox commence par lc1q.",
+    "addressUnknown": "Aucun de tes portefeuilles ne possède cette adresse. Vérifie ta copie — dans la vraie vie, des sats envoyés à la mauvaise adresse sont perdus.",
+    "flyingSats": "{{sats}} sats",
+    "speed": "Vitesse",
+    "speedName": {
+      "high": "Haute",
+      "medium": "Moyenne",
+      "low": "Basse"
+    },
+    "speedWait": {
+      "high": "Ce bloc",
+      "medium": "Une chance sur deux",
+      "low": "Attendre un marché plus calme"
+    },
+    "speedHint": "Tu enchéris un sat/vB. Au-dessus du marché tu passes, en dessous tu attends, autour (±20 %) c'est un pile ou face. Ton taux ne change pas ; le marché, oui.",
     "confirmBuy": "Acheter pour {{amount}} $",
-    "buyOk": "Achat simulé envoyé au portefeuille",
+    "buySent": "Transaction envoyée au mempool",
+    "mempoolNote": "Ton achat devient une transaction : les $ partent tout de suite. Les sats n'arrivent que lorsqu'un bloc accepte ton enchère. Low n'est pas un refus, c'est « pas ce bloc-ci ».",
     "kycNote": "Dans la vraie vie, un échange te demanderait aussi une pièce d'identité (le KYC) pour ouvrir un compte. Il ne demande jamais tes 12 mots : une adresse suffit pour recevoir.",
     "needWallet": "Crée un portefeuille d'abord",
     "needFunds": "Pas assez de fonds"
@@ -85,12 +106,16 @@
     "nextBlockTip": "Délai estimé du sandbox (~1 min). Sur Bitcoin réel, un bloc prend ~10 minutes en moyenne — ce n'est pas un intervalle fixe.",
     "feeTip": "sat/vB = taux de frais, pas un montant. Plus c'est haut, plus ces transactions ont payé cher pour entrer dans le bloc.",
     "txCount": "{{txs}} txs",
-    "upcomingBlockTip": "{{priority}}. Transactions en attente, pas encore minées. {{txs}} txs projetées.",
+    "upcomingBlockTip": "{{priority}}. Lecture du marché maintenant, pas un wagon qui avance. {{txs}} txs projetées.",
     "confirmedBlockTip": "Bloc #{{height}} miné par {{pool}}. {{txs}} transactions confirmées.",
+    "nextUp": "Assez cher pour ce bloc",
+    "myTxsHeading_one": "Ta transaction",
+    "myTxsHeading_other": "Tes transactions",
+    "myTxLine": "{{sats}} sats · {{fee}} sat/vB → {{address}} ({{wallet}})",
     "priority": {
-      "high": "Priorité haute",
-      "medium": "Priorité moyenne",
-      "low": "Priorité basse"
+      "high": "Haute",
+      "medium": "Moyenne",
+      "low": "Basse"
     }
   },
   "footer": {
