@@ -1,9 +1,10 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
-  BLOCK_INTERVAL_SECONDS,
   createInitialChain,
+  marketQuotes,
   mineBlock,
   pickPool,
+  sandboxBlockInterval,
   type ChainState,
 } from './chain'
 import {
@@ -14,6 +15,8 @@ import {
   createInitialPlayer,
   createWallet,
   renameWallet,
+  restoreWallet as applyRestore,
+  sendBitcoin,
   type PlayerState,
 } from './player'
 
@@ -25,7 +28,9 @@ type SimulationContextValue = {
   addWallet: (name: string) => void
   renameWallet: (walletId: string, name: string) => void
   newAddress: (walletId: string) => void
-  buyBtc: (address: string, cadAmount: number, feeRate: number) => void
+  restoreWallet: (name: string, words: string) => void
+  buyBtc: (address: string, cadAmount: number) => void
+  sendBtc: (fromWalletId: string, toAddress: string, sats: number, feeRate: number) => void
 }
 
 const SimulationContext = createContext<SimulationContextValue | null>(null)
@@ -35,8 +40,9 @@ type SimulationProviderProps = {
 }
 
 export function SimulationProvider({ children }: SimulationProviderProps) {
+  const [blockInterval] = useState(sandboxBlockInterval)
   const [chain, setChain] = useState(createInitialChain)
-  const [secondsLeft, setSecondsLeft] = useState(BLOCK_INTERVAL_SECONDS)
+  const [secondsLeft, setSecondsLeft] = useState(blockInterval)
   const [player, setPlayer] = useState(createInitialPlayer)
 
   useEffect(() => {
@@ -53,10 +59,11 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
     }
 
     const marketRate = chain.marketRate
-    setPlayer((current) => advanceBlock(current, marketRate))
+    const height = chain.nextHeight
+    setPlayer((current) => advanceBlock(current, marketRate, Math.random, height))
     setChain((current) => mineBlock(current, pickPool()))
-    setSecondsLeft(BLOCK_INTERVAL_SECONDS)
-  }, [secondsLeft])
+    setSecondsLeft(blockInterval)
+  }, [secondsLeft, blockInterval])
 
   const value = useMemo<SimulationContextValue>(
     () => ({
@@ -67,8 +74,19 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
       addWallet: (name) => setPlayer((current) => createWallet(current, name)),
       renameWallet: (walletId, name) => setPlayer((current) => renameWallet(current, walletId, name)),
       newAddress: (walletId) => setPlayer((current) => createAddress(current, walletId)),
-      buyBtc: (address, cadAmount, feeRate) =>
-        setPlayer((current) => buyBitcoin(current, address, cadAmount, BTC_PRICE_CAD, feeRate)),
+      restoreWallet: (name, words) => setPlayer((current) => applyRestore(current, name, words)),
+      buyBtc: (address, cadAmount) =>
+        setPlayer((current) =>
+          buyBitcoin(
+            current,
+            address,
+            cadAmount,
+            BTC_PRICE_CAD,
+            marketQuotes(chain.marketRate).high,
+          ),
+        ),
+      sendBtc: (fromWalletId, toAddress, sats, feeRate) =>
+        setPlayer((current) => sendBitcoin(current, fromWalletId, toAddress, sats, feeRate)),
     }),
     [chain, player, secondsLeft],
   )

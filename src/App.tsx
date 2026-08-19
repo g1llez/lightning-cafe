@@ -22,7 +22,12 @@ function AppShell() {
   const [toastMessage, setToastMessage] = useState('')
   const [buyOpen, setBuyOpen] = useState(false)
   const [lightningOpen, setLightningOpen] = useState(false)
-  const [flight, setFlight] = useState<{ id: number; label: string; target: string } | null>(null)
+  const [flight, setFlight] = useState<{
+    id: number
+    label: string
+    target: string
+    from?: string
+  } | null>(null)
 
   useEffect(() => {
     if (!toastMessage) {
@@ -45,14 +50,18 @@ function AppShell() {
           onToggle={() => setLightningOpen((open) => !open)}
           onMessage={setToastMessage}
         />
-        <BitcoinLayer fill={!lightningOpen} onMessage={setToastMessage} />
+        <BitcoinLayer
+          fill={!lightningOpen}
+          onMessage={setToastMessage}
+          onSatsSent={(label, target, from) => setFlight({ id: Date.now(), label, target, from })}
+        />
       </div>
       <Footer />
       {buyOpen && (
         <BuyModal
           onClose={() => setBuyOpen(false)}
           onMessage={setToastMessage}
-          onSatsSent={(label, target) => setFlight({ id: Date.now(), label, target })}
+          onSatsSent={(label, target) => setFlight({ id: Date.now(), label, target, from: 'funds' })}
         />
       )}
       {flight && (
@@ -60,6 +69,7 @@ function AppShell() {
           key={flight.id}
           label={flight.label}
           target={flight.target}
+          from={flight.from}
           onDone={() => setFlight(null)}
         />
       )}

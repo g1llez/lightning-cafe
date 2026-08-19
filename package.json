@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:browser": "node tests/browser/check-buy-flight.mjs"
+    "test:browser": "node tests/browser/check-buy-flight.mjs",
+    "test:browser:send": "node tests/browser/check-send-wallets.mjs"
   },
   "dependencies": {
     "i18next": "^25.3.2",

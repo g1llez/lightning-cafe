@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   blocksUntilConfirm,
   clearsThisBlock,
+  estimateFeeSats,
   feeZone,
   INITIAL_MARKET_RATE,
   marketQuotes,
@@ -13,6 +14,7 @@ import {
   createInitialPlayer,
   createWallet,
   receiveAddress,
+  satsToCad,
   totalSats,
 } from '../src/simulation/player'
 
@@ -26,10 +28,20 @@ const lucky = () => 0
 
 describe('fee market', () => {
   it('quotes three distinct bids around the same market price', () => {
-    expect(quotes).toEqual({ high: 18, medium: 15, low: 11 })
+    expect(quotes).toEqual({ high: 4, medium: 3, low: 2 })
     expect(feeZone(quotes.high, START)).toBe('high')
     expect(feeZone(quotes.medium, START)).toBe('medium')
     expect(feeZone(quotes.low, START)).toBe('low')
+  })
+
+  it('can sit at 1 sat/vB without inventing a lower floor', () => {
+    expect(marketQuotes(1)).toEqual({ high: 2, medium: 1, low: 1 })
+  })
+
+  it('prices a typical tx in sats and $', () => {
+    expect(estimateFeeSats(quotes.high)).toBe(560)
+    expect(satsToCad(100_000)).toBe(100)
+    expect(satsToCad(560)).toBeCloseTo(0.56)
   })
 
   it('lets a bid above the band in, and keeps a bid below out', () => {
@@ -48,7 +60,7 @@ describe('min / med / max bid simulation', () => {
    * A falling market. Unlucky coin flips, so medium only clears once it
    * becomes high, and low only once the market has dropped far enough.
    */
-  const path = [15, 14, 13, 12, 10, 8]
+  const path = [3, 3, 2, 2, 1, 1]
 
   it('records how many blocks each bid needs', () => {
     const result = {
@@ -57,7 +69,7 @@ describe('min / med / max bid simulation', () => {
       min: blocksUntilConfirm(quotes.low, path, unlucky),
     }
 
-    expect(result).toEqual({ max: 1, med: 4, min: 6 })
+    expect(result).toEqual({ max: 1, med: 3, min: 5 })
   })
 
   it('lets a medium bid through on the first block when the coin flip hits', () => {
@@ -65,7 +77,7 @@ describe('min / med / max bid simulation', () => {
   })
 
   it('leaves a cheap bid pending if the market never drops', () => {
-    const stuck = [15, 16, 18, 20]
+    const stuck = [3, 4, 5, 6]
     expect(blocksUntilConfirm(quotes.low, stuck, lucky)).toBeNull()
     expect(blocksUntilConfirm(quotes.high, stuck, unlucky)).toBe(1)
   })
@@ -90,8 +102,8 @@ describe('min / med / max bid simulation', () => {
     })
 
     expect(confirmedAt[quotes.high]).toBe(1)
-    expect(confirmedAt[quotes.medium]).toBe(4)
-    expect(confirmedAt[quotes.low]).toBe(6)
+    expect(confirmedAt[quotes.medium]).toBe(3)
+    expect(confirmedAt[quotes.low]).toBe(5)
     expect(player.pending).toHaveLength(0)
     expect(totalSats(player)).toBe(cadToSats(300))
   })

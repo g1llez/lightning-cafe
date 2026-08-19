@@ -4,6 +4,7 @@ import type { Priority } from '../simulation/chain'
 type SatsFlightProps = {
   label: string
   target: string
+  from?: string
   onDone: () => void
 }
 
@@ -21,14 +22,14 @@ function centerOf(element: Element): { x: number; y: number } {
 }
 
 /** Shows the money leaving the player's funds and landing in the mempool block. */
-export function SatsFlight({ label, target: targetId, onDone }: SatsFlightProps) {
+export function SatsFlight({ label, target: targetId, from = 'funds', onDone }: SatsFlightProps) {
   const chipRef = useRef<HTMLDivElement>(null)
   const doneRef = useRef(onDone)
   doneRef.current = onDone
 
   useEffect(() => {
     const chip = chipRef.current
-    const source = document.querySelector('[data-fly="funds"]')
+    const source = document.querySelector(`[data-fly="${from}"]`)
     const target = document.querySelector(`[data-fly="${targetId}"]`)
 
     if (!chip || !source || !target) {
@@ -36,13 +37,13 @@ export function SatsFlight({ label, target: targetId, onDone }: SatsFlightProps)
       return
     }
 
-    const from = centerOf(source)
-    const to = centerOf(target)
-    chip.style.left = `${from.x}px`
-    chip.style.top = `${from.y}px`
+    const origin = centerOf(source)
+    const dest = centerOf(target)
+    chip.style.left = `${origin.x}px`
+    chip.style.top = `${origin.y}px`
 
-    const dx = to.x - from.x
-    const dy = to.y - from.y
+    const dx = dest.x - origin.x
+    const dy = dest.y - origin.y
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
     const animation = chip.animate(
@@ -78,7 +79,7 @@ export function SatsFlight({ label, target: targetId, onDone }: SatsFlightProps)
       cancelled = true
       animation.cancel()
     }
-  }, [targetId])
+  }, [from, targetId])
 
   return (
     <div

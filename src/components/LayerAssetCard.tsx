@@ -10,7 +10,10 @@ type LayerAssetCardProps = {
 
 export function LayerAssetCard({ title, action, onBack, backLabel, children }: LayerAssetCardProps) {
   return (
-    <div className="absolute top-1/2 left-4 z-10 w-[min(22rem,calc(100%-2rem))] -translate-y-1/2 rounded-lg border border-border bg-bg-panel/95 p-3 shadow-lg backdrop-blur">
+    <div
+      data-fly="wallet"
+      className="absolute top-1/2 left-4 z-10 w-[min(22rem,calc(100%-2rem))] -translate-y-1/2 rounded-lg border border-border bg-bg-panel/95 p-3 shadow-lg backdrop-blur"
+    >
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-1.5">
           {onBack && (
@@ -29,7 +32,7 @@ export function LayerAssetCard({ title, action, onBack, backLabel, children }: L
         </div>
         {action}
       </div>
-      <div className="max-h-60 overflow-y-auto">{children}</div>
+      <div className="max-h-72 overflow-y-auto">{children}</div>
     </div>
   )
 }

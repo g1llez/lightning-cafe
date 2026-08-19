@@ -1,6 +1,7 @@
 import {
   INITIAL_MARKET_RATE,
   clearsThisBlock,
+  estimateFeeSats,
   feeZone,
   marketQuotes,
   type Priority,
@@ -10,6 +11,8 @@ export const STARTING_CAD = 1_000
 export const BTC_PRICE_CAD = 100_000
 export const SATS_PER_BTC = 100_000_000
 export const PUBLIC_ADDRESS_PREFIX = 'lc1q'
+/** Cut the exchange keeps on a buy. Not the miner fee — they pick sat/vB themselves. */
+export const EXCHANGE_SPREAD = 0.01
 
 const SANDBOX_WORDS = [
   'cafe',
@@ -65,16 +68,24 @@ export type Wallet = {
 /** A tx sits in the mempool at a fixed sat/vB until the market lets it in. */
 export type PendingTx = {
   id: string
-  walletId: string
+  /** Destination wallet, or null when the address is not one of ours. */
+  walletId: string | null
+  /** Source wallet for a send; null when an exchange is paying you. */
+  fromWalletId: string | null
   address: string
   sats: number
   feeRate: number
+}
+
+export type SettledTx = PendingTx & {
+  height: number
 }
 
 export type PlayerState = {
   cad: number
   wallets: Wallet[]
   pending: PendingTx[]
+  settled: SettledTx[]
   nextWalletId: number
   nextTxId: number
 }
@@ -84,6 +95,7 @@ export function createInitialPlayer(): PlayerState {
     cad: STARTING_CAD,
     wallets: [],
     pending: [],
+    settled: [],
     nextWalletId: 1,
     nextTxId: 1,
   }
@@ -104,8 +116,9 @@ export function pendingSats(player: PlayerState, walletId?: string): number {
 }
 
 export function pendingSatsForAddress(player: PlayerState, address: string): number {
+  const wanted = normalizeAddress(address)
   return player.pending
-    .filter((tx) => tx.address === address)
+    .filter((tx) => tx.address === wanted)
     .reduce((sum, tx) => sum + tx.sats, 0)
 }
 
@@ -126,8 +139,31 @@ export function pendingCountByZone(
   return pendingForZone(player, marketRate, zone).length
 }
 
+export function settledInBlock(player: PlayerState, height: number): SettledTx[] {
+  return player.settled.filter((tx) => tx.height === height)
+}
+
 export function cadToSats(cad: number, priceCad = BTC_PRICE_CAD): number {
   return Math.floor((cad / priceCad) * SATS_PER_BTC)
+}
+
+export function satsToCad(sats: number, priceCad = BTC_PRICE_CAD): number {
+  return (sats / SATS_PER_BTC) * priceCad
+}
+
+export function formatCad(cad: number): string {
+  const rounded = Math.round(cad * 100) / 100
+  if (Number.isInteger(rounded)) {
+    return rounded.toLocaleString()
+  }
+  return rounded.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}
+
+export function exchangeSpreadCad(cadAmount: number): number {
+  return Math.max(0, Math.round(cadAmount * EXCHANGE_SPREAD))
 }
 
 export function createWallet(
@@ -135,8 +171,11 @@ export function createWallet(
   name: string,
   random: () => number = Math.random,
 ): PlayerState {
+  return addWalletFromSeed(player, name, walletSeed(random))
+}
+
+function addWalletFromSeed(player: PlayerState, name: string, seed: string[]): PlayerState {
   const id = `w-${player.nextWalletId}`
-  const seed = walletSeed(random)
   const wallet: Wallet = {
     id,
     name,
@@ -149,6 +188,31 @@ export function createWallet(
     nextWalletId: player.nextWalletId + 1,
     wallets: [...player.wallets, wallet],
   }
+}
+
+export function parseSeed(value: string): string[] {
+  const words = value.trim().toLowerCase().split(/\s+/).filter(Boolean)
+  if (words.length !== 12) {
+    throw new Error('seed-invalid')
+  }
+  return words
+}
+
+export function findWalletBySeed(player: PlayerState, seed: string[]): Wallet | undefined {
+  const phrase = seedPhrase(seed)
+  return player.wallets.find((wallet) => seedPhrase(wallet.seed) === phrase)
+}
+
+/**
+ * The 12 words recover the keys, not a copy of the balance. If this seed is
+ * already on the list we keep that wallet; otherwise we derive a fresh empty one.
+ */
+export function restoreWallet(player: PlayerState, name: string, words: string): PlayerState {
+  const seed = parseSeed(words)
+  if (findWalletBySeed(player, seed)) {
+    throw new Error('seed-exists')
+  }
+  return addWalletFromSeed(player, name, seed)
 }
 
 /** Every address comes from the seed, so the 12 words really are the wallet. */
@@ -241,12 +305,18 @@ export function renameWallet(player: PlayerState, walletId: string, name: string
 }
 
 export function looksLikeAddress(value: string): boolean {
-  return value.trim().toLowerCase().startsWith(PUBLIC_ADDRESS_PREFIX)
+  return normalizeAddress(value).startsWith(PUBLIC_ADDRESS_PREFIX)
+}
+
+export function normalizeAddress(value: string): string {
+  return value.trim().toLowerCase()
 }
 
 export function findWalletByAddress(player: PlayerState, address: string): Wallet | undefined {
-  const wanted = address.trim()
-  return player.wallets.find((wallet) => wallet.addresses.some((item) => item.value === wanted))
+  const wanted = normalizeAddress(address)
+  return player.wallets.find((wallet) =>
+    wallet.addresses.some((item) => item.value === wanted),
+  )
 }
 
 function creditAddress(wallet: Wallet, address: string, sats: number): WalletAddress[] {
@@ -255,10 +325,28 @@ function creditAddress(wallet: Wallet, address: string, sats: number): WalletAdd
   )
 }
 
+function debitSats(wallet: Wallet, sats: number): WalletAddress[] {
+  let left = sats
+  const addresses = wallet.addresses.map((item) => {
+    if (left <= 0 || item.sats <= 0) {
+      return item
+    }
+    const take = Math.min(item.sats, left)
+    left -= take
+    return { ...item, sats: item.sats - take }
+  })
+
+  if (left > 0) {
+    throw new Error('insufficient-sats')
+  }
+
+  return addresses
+}
+
 /**
  * Takes an address, not a wallet: the exchange only knows where to send.
- * The $ leave right away, the sats only land when a block carries the tx.
- * `feeRate` is the bid; it does not change while the tx waits.
+ * The $ leave right away (spot + their cut). They pick the sat/vB; you do not.
+ * The sats only land when a block carries the tx.
  */
 export function buyBitcoin(
   player: PlayerState,
@@ -267,26 +355,30 @@ export function buyBitcoin(
   priceCad = BTC_PRICE_CAD,
   feeRate: number = marketQuotes(INITIAL_MARKET_RATE).high,
 ): PlayerState {
-  if (cadAmount <= 0 || cadAmount > player.cad) {
+  const spread = exchangeSpreadCad(cadAmount)
+  const totalCad = cadAmount + spread
+  if (cadAmount <= 0 || totalCad > player.cad) {
     throw new Error('insufficient-cad')
   }
 
-  const wallet = findWalletByAddress(player, address)
-  if (!wallet) {
-    throw new Error('address-unknown')
+  const destination = normalizeAddress(address)
+  if (!destination) {
+    throw new Error('address-invalid')
   }
 
+  const wallet = findWalletByAddress(player, destination)
   const tx: PendingTx = {
     id: `tx-${player.nextTxId}`,
-    walletId: wallet.id,
-    address: address.trim(),
+    walletId: wallet?.id ?? null,
+    fromWalletId: null,
+    address: destination,
     sats: cadToSats(cadAmount, priceCad),
     feeRate,
   }
 
   return {
     ...player,
-    cad: player.cad - cadAmount,
+    cad: player.cad - totalCad,
     pending: [...player.pending, tx],
     nextTxId: player.nextTxId + 1,
   }
@@ -297,16 +389,19 @@ export function advanceBlock(
   player: PlayerState,
   marketRate: number,
   random: () => number = Math.random,
+  height = 0,
 ): PlayerState {
   if (player.pending.length === 0) {
     return player
   }
 
   const confirmed = player.pending.filter((tx) => clearsThisBlock(tx.feeRate, marketRate, random))
+  const settled: SettledTx[] = confirmed.map((tx) => ({ ...tx, height }))
 
   return {
     ...player,
     pending: player.pending.filter((tx) => !confirmed.includes(tx)),
+    settled: [...settled, ...player.settled].slice(0, 40),
     wallets: player.wallets.map((wallet) => {
       const forWallet = confirmed.filter((tx) => tx.walletId === wallet.id)
       if (forWallet.length === 0) {
@@ -318,5 +413,57 @@ export function advanceBlock(
         wallet,
       )
     }),
+  }
+}
+
+/**
+ * Spends confirmed sats now. They sit in the mempool until the market accepts
+ * the bid. If the destination is not one of our addresses, confirmation burns them.
+ */
+export function sendBitcoin(
+  player: PlayerState,
+  fromWalletId: string,
+  toAddress: string,
+  sats: number,
+  feeRate: number,
+): PlayerState {
+  if (!Number.isFinite(sats) || sats <= 0) {
+    throw new Error('amount-invalid')
+  }
+
+  const destination = normalizeAddress(toAddress)
+  if (!destination) {
+    throw new Error('address-invalid')
+  }
+
+  const sender = player.wallets.find((wallet) => wallet.id === fromWalletId)
+  if (!sender) {
+    throw new Error('wallet-missing')
+  }
+
+  const fee = estimateFeeSats(feeRate)
+  if (sats + fee > walletSats(sender)) {
+    throw new Error('insufficient-sats')
+  }
+
+  const receiver = findWalletByAddress(player, destination)
+  const tx: PendingTx = {
+    id: `tx-${player.nextTxId}`,
+    walletId: receiver?.id ?? null,
+    fromWalletId,
+    address: destination,
+    sats,
+    feeRate,
+  }
+
+  return {
+    ...player,
+    pending: [...player.pending, tx],
+    nextTxId: player.nextTxId + 1,
+    wallets: player.wallets.map((wallet) =>
+      wallet.id === fromWalletId
+        ? { ...wallet, addresses: debitSats(wallet, sats + fee) }
+        : wallet,
+    ),
   }
 }

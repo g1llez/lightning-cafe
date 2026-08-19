@@ -2,7 +2,7 @@
 
 Source of truth for what to build next. Do not replan after each task: take the first open item in the current version.
 
-**Now:** v0.2.2c done → next is **v0.2.3**
+**Now:** v0.2.3 done → next is **v0.2.4**
 
 | Version | Goal | Status |
 |---|---|---|
@@ -75,10 +75,14 @@ A wallet can receive, send, and watch its money move on the fake chain. Buying a
 - Buy buttons copy the current quotes as the bid
 - Sim in `/tests/fees.test.ts`: min / med / max bids vs a falling market (6 / 4 / 1 blocks when unlucky)
 
-### v0.2.3 — Send on-chain
-- Send sats from wallet A to wallet B (or a pasteable fake address)
-- Same mempool → confirm flow (bid vs the current market)
-- Fee choice already built in the buy modal: reuse it here
+### v0.2.3 — Send on-chain ✅
+- List of wallets: Receive and Send on the source row; creating a wallet stays on the list
+- Wallet detail is a summary: confirmed sats, UTXOs, backup / restore
+- Confirmed sats leave the sender immediately; they land on the destination when a block accepts the bid
+- Another of your wallets, or an unknown `lc1q` (those sats burn at confirmation — a typo lesson)
+- Spends from the addresses that actually hold the sats
+- Restore from 12 words recovers keys (and sats only if those addresses still hold them)
+- Sim in `/tests/send.test.ts`
 
 ### v0.2.4 — Inspect txs
 - Click a mempool or confirmed block to see txs inside

@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
+import { InfoMark } from './Tooltip'
 
 type ModalProps = {
   title: string
@@ -34,10 +35,10 @@ export function Modal({ title, subtitle, closeLabel, onClose, children }: ModalP
         className="w-full max-w-md rounded-lg border border-border bg-bg-panel p-4 shadow-xl"
       >
         <div className="mb-3 flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-base font-semibold tracking-tight">{title}</h2>
-            {subtitle && <p className="mt-0.5 text-xs text-text-muted">{subtitle}</p>}
-          </div>
+          <h2 className="flex items-center gap-1.5 text-base font-semibold tracking-tight">
+            {title}
+            {subtitle ? <InfoMark text={subtitle} /> : null}
+          </h2>
           <button
             type="button"
             onClick={onClose}

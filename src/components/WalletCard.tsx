@@ -1,54 +1,63 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  findWalletBySeed,
+  parseSeed,
   pendingSats,
   pendingSatsForAddress,
-  receiveAddress,
   shortAddress,
   walletSats,
-  type Wallet,
 } from '../simulation/player'
 import { useSimulation } from '../simulation/SimulationProvider'
 import { LayerAssetCard } from './LayerAssetCard'
 import { Modal } from './Modal'
+import { ReceiveModal } from './ReceiveModal'
+import { SendModal } from './SendModal'
 import { Tooltip } from './Tooltip'
 
 type SeedStep = 'hidden' | 'warned' | 'shown'
 
 type WalletCardProps = {
   onMessage: (message: string) => void
+  onSatsSent: (label: string, target: string, from?: string) => void
 }
 
-export function WalletCard({ onMessage }: WalletCardProps) {
+export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
   const { t } = useTranslation()
-  const { player, addWallet, renameWallet, newAddress } = useSimulation()
+  const { player, addWallet, renameWallet, newAddress, restoreWallet } = useSimulation()
   const [openWalletId, setOpenWalletId] = useState('')
   const [justCreatedId, setJustCreatedId] = useState('')
+  const [sendWalletId, setSendWalletId] = useState('')
+  const [receiveWalletId, setReceiveWalletId] = useState('')
+  const [restoreOpen, setRestoreOpen] = useState(false)
+  const [restoreDraft, setRestoreDraft] = useState('')
   const [editingName, setEditingName] = useState('')
   const [renaming, setRenaming] = useState(false)
   const [seedStep, setSeedStep] = useState<SeedStep>('hidden')
-  const [addressesOpen, setAddressesOpen] = useState(false)
+  const [utxosOpen, setUtxosOpen] = useState(false)
 
   const openWallet = player.wallets.find((wallet) => wallet.id === openWalletId)
+  const sendWallet = player.wallets.find((wallet) => wallet.id === sendWalletId)
+  const receiveWallet = player.wallets.find((wallet) => wallet.id === receiveWalletId)
+  const createdWallet = player.wallets.find((wallet) => wallet.id === justCreatedId)
 
   function openDetail(walletId: string) {
     setOpenWalletId(walletId)
     setRenaming(false)
     setSeedStep('hidden')
-    setAddressesOpen(false)
+    setUtxosOpen(false)
+    setRestoreOpen(false)
   }
 
   function closeDetail() {
     setOpenWalletId('')
-    setJustCreatedId('')
     setRenaming(false)
+    setRestoreOpen(false)
   }
 
   function handleAddWallet() {
     const id = `w-${player.nextWalletId}`
-    const name = t('assets.walletName', { number: player.nextWalletId })
-    addWallet(name)
-    openDetail(id)
+    addWallet(t('assets.walletName', { number: player.nextWalletId }))
     setJustCreatedId(id)
   }
 
@@ -59,7 +68,6 @@ export function WalletCard({ onMessage }: WalletCardProps) {
     } catch {
       onMessage(t('assets.walletRenameFailed'))
     }
-
     setRenaming(false)
   }
 
@@ -72,98 +80,204 @@ export function WalletCard({ onMessage }: WalletCardProps) {
     }
   }
 
-  function handleNewAddress(wallet: Wallet) {
-    newAddress(wallet.id)
-    setAddressesOpen(true)
-    onMessage(t('assets.newAddressDone'))
+  function handleRestore() {
+    try {
+      restoreWallet(t('assets.walletName', { number: player.nextWalletId }), restoreDraft)
+      onMessage(t('assets.restoreCreated'))
+      setRestoreOpen(false)
+      setRestoreDraft('')
+      closeDetail()
+    } catch (error) {
+      const code = error instanceof Error ? error.message : ''
+      if (code === 'seed-exists') {
+        const existed = findWalletBySeed(player, parseSeed(restoreDraft))
+        onMessage(t('assets.restoreExists', { wallet: existed?.name ?? '' }))
+        setRestoreOpen(false)
+        setRestoreDraft('')
+        closeDetail()
+        return
+      }
+      onMessage(t('assets.restoreInvalid'))
+    }
   }
+
+  const createdModal = createdWallet && (
+    <Modal
+      title={t('assets.createdTitle')}
+      closeLabel={t('common.close')}
+      onClose={() => setJustCreatedId('')}
+    >
+      <div className="flex flex-col gap-2.5 text-sm leading-relaxed">
+        <p>{t('assets.createdRandom')}</p>
+        <p>{t('assets.createdWords')}</p>
+        <p className="rounded-md border border-danger/60 bg-danger/10 px-2.5 py-2 text-[13px]">
+          {t('assets.createdRealLife')}
+        </p>
+        <p className="text-xs text-text-muted">{t('assets.createdWhere')}</p>
+        <button
+          type="button"
+          onClick={() => setJustCreatedId('')}
+          className="mt-1 rounded-md bg-accent px-3 py-2 text-sm font-semibold text-bg-primary transition hover:brightness-110"
+        >
+          {t('assets.createdOk')}
+        </button>
+      </div>
+    </Modal>
+  )
+
+  const restoreModal = restoreOpen && (
+    <Modal
+      title={t('assets.restoreTitle')}
+      subtitle={t('assets.restoreSubtitle')}
+      closeLabel={t('common.close')}
+      onClose={() => setRestoreOpen(false)}
+    >
+      <div className="flex flex-col gap-3">
+        <textarea
+          value={restoreDraft}
+          onChange={(event) => setRestoreDraft(event.target.value)}
+          rows={3}
+          spellCheck={false}
+          placeholder={t('assets.restorePlaceholder')}
+          className="w-full resize-none rounded-md border border-border bg-bg-primary px-2 py-1.5 font-mono text-[11px] outline-none focus:border-accent"
+        />
+        <button
+          type="button"
+          onClick={handleRestore}
+          className="rounded-md bg-accent px-3 py-2 text-sm font-semibold text-bg-primary transition hover:brightness-110"
+        >
+          {t('assets.restore')}
+        </button>
+      </div>
+    </Modal>
+  )
 
   if (!openWallet) {
     return (
-      <LayerAssetCard
-        title={t('assets.wallets')}
-        action={
-          <button
-            type="button"
-            onClick={handleAddWallet}
-            aria-label={t('assets.addWallet')}
-            title={t('assets.addWallet')}
-            className="flex h-7 w-7 items-center justify-center rounded-md border border-accent/70 bg-bg-panel text-accent transition hover:bg-accent/10"
-          >
-            <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden="true">
-              <path
-                d="M8 2.5v11M2.5 8h11"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
-        }
-      >
-        {player.wallets.length === 0 ? (
-          <p className="px-2 py-2 text-sm text-text-muted">{t('assets.noWallets')}</p>
-        ) : (
-          <table className="w-full text-left text-sm">
-            <tbody>
-              {player.wallets.map((wallet) => {
-                const waiting = pendingSats(player, wallet.id)
-                return (
-                  <tr
-                    key={wallet.id}
-                    onClick={() => openDetail(wallet.id)}
-                    className="cursor-pointer border-t border-border first:border-t-0 hover:bg-bg-primary/40"
-                  >
-                    <td className="truncate px-2 py-2 font-medium">{wallet.name}</td>
-                    <td className="whitespace-nowrap px-2 py-2 text-right font-mono text-xs">
-                      {walletSats(wallet).toLocaleString()} sats
-                      {waiting > 0 && (
-                        <span className="block text-[10px] text-text-muted">
-                          {t('assets.pending', { sats: waiting.toLocaleString() })}
-                        </span>
-                      )}
-                    </td>
-                    <td className="w-4 pr-1 text-right text-text-muted">›</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+      <>
+        {createdModal}
+        {restoreModal}
+        {sendWallet && (
+          <SendModal
+            walletId={sendWallet.id}
+            onClose={() => setSendWalletId('')}
+            onMessage={onMessage}
+            onSatsSent={(label, target) => onSatsSent(label, target, 'wallet')}
+          />
         )}
-      </LayerAssetCard>
+        {receiveWallet && (
+          <ReceiveModal
+            wallet={receiveWallet}
+            onClose={() => setReceiveWalletId('')}
+            onCopy={(address) => void copyAddress(address)}
+            onNewAddress={() => {
+              newAddress(receiveWallet.id)
+              onMessage(t('assets.newAddressDone'))
+            }}
+          />
+        )}
+        <LayerAssetCard
+          title={t('assets.wallets')}
+          action={
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setRestoreOpen(true)}
+                className="rounded-md border border-border px-2 py-1 text-[11px] text-text-muted transition hover:border-accent/60 hover:text-accent"
+              >
+                {t('assets.restore')}
+              </button>
+              <button
+                type="button"
+                onClick={handleAddWallet}
+                aria-label={t('assets.addWallet')}
+                title={t('assets.addWallet')}
+                className="flex h-7 w-7 items-center justify-center rounded-md border border-accent/70 bg-bg-panel text-accent transition hover:bg-accent/10"
+              >
+                <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden="true">
+                  <path
+                    d="M8 2.5v11M2.5 8h11"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </button>
+            </div>
+          }
+        >
+          {player.wallets.length === 0 ? (
+            <p className="px-2 py-2 text-sm text-text-muted">{t('assets.noWallets')}</p>
+          ) : (
+            <table className="w-full text-left text-sm">
+              <tbody>
+                {player.wallets.map((wallet) => {
+                  const waiting = pendingSats(player, wallet.id)
+                  return (
+                    <tr
+                      key={wallet.id}
+                      data-testid={`wallet-row-${wallet.id}`}
+                      onClick={() => openDetail(wallet.id)}
+                      className="cursor-pointer border-t border-border first:border-t-0 hover:bg-bg-primary/40"
+                    >
+                      <td className="truncate px-2 py-2 font-medium">{wallet.name}</td>
+                      <td className="whitespace-nowrap px-1 py-2 text-right font-mono text-xs">
+                        <span data-testid={`wallet-sats-${wallet.id}`}>
+                          {walletSats(wallet).toLocaleString()} sats
+                        </span>
+                        {waiting > 0 && (
+                          <span
+                            data-testid={`wallet-pending-${wallet.id}`}
+                            className="block text-[10px] text-text-muted"
+                          >
+                            {t('assets.pending', { sats: waiting.toLocaleString() })}
+                          </span>
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap pr-1 text-right">
+                        <button
+                          type="button"
+                          data-testid={`receive-${wallet.id}`}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            setReceiveWalletId(wallet.id)
+                          }}
+                          className="rounded-md border border-border px-2 py-1 text-[11px] text-text-muted transition hover:border-accent/60 hover:text-accent"
+                        >
+                          {t('assets.receive')}
+                        </button>
+                      </td>
+                      <td className="whitespace-nowrap pr-1 text-right">
+                        <button
+                          type="button"
+                          data-testid={`send-${wallet.id}`}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            setSendWalletId(wallet.id)
+                          }}
+                          className="rounded-md border border-accent/70 px-2 py-1 text-[11px] font-semibold text-accent transition hover:bg-accent/10"
+                        >
+                          {t('assets.send')}
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        </LayerAssetCard>
+      </>
     )
   }
 
-  const address = receiveAddress(openWallet)
   const waitingSats = pendingSats(player, openWallet.id)
+  const utxos = openWallet.addresses.filter((item) => item.sats > 0)
 
   return (
     <>
-      {justCreatedId === openWallet.id && (
-        <Modal
-          title={t('assets.createdTitle')}
-          closeLabel={t('common.close')}
-          onClose={() => setJustCreatedId('')}
-        >
-          <div className="flex flex-col gap-2.5 text-sm leading-relaxed">
-            <p>{t('assets.createdRandom')}</p>
-            <p>{t('assets.createdWords')}</p>
-            <p className="rounded-md border border-danger/60 bg-danger/10 px-2.5 py-2 text-[13px]">
-              {t('assets.createdRealLife')}
-            </p>
-            <p className="text-xs text-text-muted">{t('assets.createdWhere')}</p>
-            <button
-              type="button"
-              onClick={() => setJustCreatedId('')}
-              className="mt-1 rounded-md bg-accent px-3 py-2 text-sm font-semibold text-bg-primary transition hover:brightness-110"
-            >
-              {t('assets.createdOk')}
-            </button>
-          </div>
-        </Modal>
-      )}
-
+      {restoreModal}
       <LayerAssetCard
         title={openWallet.name}
         onBack={closeDetail}
@@ -203,8 +317,14 @@ export function WalletCard({ onMessage }: WalletCardProps) {
           )}
 
           <div>
-            <p className="font-mono text-sm text-accent">
+            <p className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
+              {t('assets.summary')}
+            </p>
+            <p className="mt-0.5 font-mono text-sm text-accent">
               {walletSats(openWallet).toLocaleString()} sats
+            </p>
+            <p className="text-[11px] text-text-muted">
+              {t('assets.utxoCount', { count: utxos.length })}
             </p>
             {waitingSats > 0 && (
               <p className="mt-0.5 font-mono text-[11px] text-text-muted">
@@ -214,66 +334,27 @@ export function WalletCard({ onMessage }: WalletCardProps) {
           </div>
 
           <section>
-            <div className="mb-1 flex items-center gap-1.5">
-              <span className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
-                {t('assets.receive')}
-              </span>
-              <Tooltip text={t('assets.publicTip')}>
-                <span className="text-[11px] text-text-muted">ⓘ</span>
-              </Tooltip>
-            </div>
-            <p className="break-all rounded-md border border-border bg-bg-primary px-2 py-1.5 font-mono text-[11px]">
-              {address}
-            </p>
-            <div className="mt-1.5 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => void copyAddress(address)}
-                className="rounded-md border border-border px-2 py-1 text-[11px] text-text-muted transition hover:border-accent/60 hover:text-text-primary"
-              >
-                {t('assets.copy')}
-              </button>
-              <button
-                type="button"
-                onClick={() => handleNewAddress(openWallet)}
-                className="rounded-md border border-border px-2 py-1 text-[11px] text-text-muted transition hover:border-accent/60 hover:text-text-primary"
-              >
-                {t('assets.newAddress')}
-              </button>
-            </div>
-            <p className="mt-1.5 text-[11px] leading-relaxed text-text-muted">
-              {t('assets.receiveHint')}
-            </p>
-          </section>
-
-          <section>
             <button
               type="button"
-              onClick={() => setAddressesOpen((open) => !open)}
+              onClick={() => setUtxosOpen((open) => !open)}
               className="flex w-full items-center justify-between text-[11px] uppercase tracking-[0.14em] text-text-muted transition hover:text-text-primary"
             >
-              <span>{t('assets.myAddresses', { count: openWallet.addresses.length })}</span>
-              <span>{addressesOpen ? '−' : '+'}</span>
+              <span>{t('assets.utxos', { count: utxos.length })}</span>
+              <span>{utxosOpen ? '−' : '+'}</span>
             </button>
-            {addressesOpen && (
+            {utxosOpen && utxos.length === 0 && (
+              <p className="mt-1.5 text-[11px] leading-relaxed text-text-muted">{t('assets.utxoEmpty')}</p>
+            )}
+            {utxosOpen && utxos.length > 0 && (
               <ul className="mt-1.5 flex flex-col gap-1">
-                {openWallet.addresses.map((item, index) => {
+                {utxos.map((item, index) => {
                   const waiting = pendingSatsForAddress(player, item.value)
                   return (
                     <li key={item.value} className="flex items-baseline gap-2 font-mono text-[11px]">
-                      <span className="text-text-muted">{index}.</span>
-                      <span className={item.value === address ? 'text-text-primary' : 'text-text-muted'}>
-                        {shortAddress(item.value)}
-                      </span>
-                      {item.value === address && (
-                        <span className="text-[10px] uppercase tracking-wide text-accent">
-                          {t('assets.currentAddress')}
-                        </span>
-                      )}
-                      <span className="ml-auto whitespace-nowrap text-right">
-                        <span className={item.sats > 0 ? 'text-accent' : 'text-text-muted/60'}>
-                          {item.sats.toLocaleString()} sats
-                        </span>
+                      <span className="text-text-muted">{index + 1}.</span>
+                      <span className="text-text-primary">{shortAddress(item.value)}</span>
+                      <span className="ml-auto whitespace-nowrap text-right text-accent">
+                        {item.sats.toLocaleString()} sats
                         {waiting > 0 && (
                           <span className="block text-[10px] text-text-muted">
                             {t('assets.pending', { sats: waiting.toLocaleString() })}
@@ -285,10 +366,8 @@ export function WalletCard({ onMessage }: WalletCardProps) {
                 })}
               </ul>
             )}
-            {addressesOpen && (
-              <p className="mt-1.5 text-[11px] leading-relaxed text-text-muted">
-                {t('assets.addressesHint')}
-              </p>
+            {utxosOpen && (
+              <p className="mt-1.5 text-[11px] leading-relaxed text-text-muted">{t('assets.utxoHint')}</p>
             )}
           </section>
 
@@ -303,13 +382,22 @@ export function WalletCard({ onMessage }: WalletCardProps) {
             </div>
 
             {seedStep === 'hidden' && (
-              <button
-                type="button"
-                onClick={() => setSeedStep('warned')}
-                className="rounded-md border border-border px-2 py-1 text-[11px] text-text-muted transition hover:border-accent/60 hover:text-text-primary"
-              >
-                {t('assets.revealSeed')}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSeedStep('warned')}
+                  className="rounded-md border border-border px-2 py-1 text-[11px] text-text-muted transition hover:border-accent/60 hover:text-text-primary"
+                >
+                  {t('assets.revealSeed')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRestoreOpen(true)}
+                  className="rounded-md border border-border px-2 py-1 text-[11px] text-text-muted transition hover:border-accent/60 hover:text-text-primary"
+                >
+                  {t('assets.restore')}
+                </button>
+              </div>
             )}
 
             {seedStep === 'warned' && (
@@ -339,7 +427,7 @@ export function WalletCard({ onMessage }: WalletCardProps) {
                 <ol className="grid grid-cols-3 gap-1">
                   {openWallet.seed.map((word, index) => (
                     <li
-                      key={word}
+                      key={`${word}-${index}`}
                       className="rounded border border-border bg-bg-primary px-1.5 py-1 font-mono text-[11px]"
                     >
                       <span className="text-text-muted">{index + 1}.</span> {word}
