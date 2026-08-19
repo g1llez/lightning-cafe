@@ -222,7 +222,7 @@ export function restoreWallet(player: PlayerState, name: string, words: string):
   return addWalletFromSeed(player, name, seed)
 }
 
-/** Every address comes from the seed, so the 12 words really are the wallet. */
+/** Every address comes from the secret those 12 words write down. */
 export function walletAddress(seed: string[], index: number): string {
   let state = fingerprint(`${seed.join(' ')}/${index}`)
   let body = ''
@@ -317,7 +317,10 @@ export function createAddress(player: PlayerState, walletId: string): PlayerStat
   }
 }
 
-/** Drawn at random, like a real wallet: nobody can guess the combination. */
+/**
+ * Sandbox stand-in for BIP39: a real wallet draws entropy, then encodes it as
+ * words. Here we pick 12 sandbox words; they still stand in for that secret.
+ */
 export function walletSeed(random: () => number = Math.random): string[] {
   const pool = [...SANDBOX_WORDS]
   const seed: string[] = []

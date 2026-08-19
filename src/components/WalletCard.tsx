@@ -252,6 +252,7 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
           onClose={() => setJustCreatedId('')}
         >
           <div className="flex flex-col gap-3">
+            <p className="text-sm leading-relaxed text-text-primary">{t('assets.createdBlurb')}</p>
             <ol className="grid grid-cols-3 gap-1">
               {createdWallet.seed.map((word, index) => (
                 <li
