@@ -32,7 +32,7 @@ export function LayerAssetCard({ title, action, onBack, backLabel, children }: L
         </div>
         {action}
       </div>
-      <div className="max-h-72 overflow-y-auto">{children}</div>
+      <div className="max-h-96 overflow-y-auto">{children}</div>
     </div>
   )
 }
