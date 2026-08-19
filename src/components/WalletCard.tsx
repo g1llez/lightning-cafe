@@ -315,6 +315,7 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
             void copyAddress(address).then((copied) => {
               if (copied) {
                 newAddress(receiveWallet.id)
+                setReceiveWalletId('')
               }
             })
           }}

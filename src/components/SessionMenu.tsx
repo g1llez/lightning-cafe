@@ -60,7 +60,8 @@ export function SessionMenu() {
         {t('session.button')}
       </button>
       {open && (
-        <div className="absolute right-0 z-30 mt-2 w-72 rounded-md border border-border bg-bg-panel p-3 shadow-lg">
+        <div className="absolute left-0 z-30 mt-2 flex w-72 flex-col gap-2.5 rounded-md border border-border bg-bg-panel p-3 shadow-lg">
+          <p className="text-[12px] leading-relaxed text-text-primary">{t('session.invite')}</p>
           {roomId ? (
             <div className="flex flex-col gap-2">
               <p className="font-mono text-[11px] break-all text-text-muted">{roomId}</p>

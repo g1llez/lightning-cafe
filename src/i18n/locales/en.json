@@ -15,6 +15,7 @@
   },
   "session": {
     "button": "Cafe",
+    "invite": "You can learn with a friend by sending them a link.",
     "create": "New session",
     "join": "Join",
     "leave": "Leave",
