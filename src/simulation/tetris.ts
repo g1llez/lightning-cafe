@@ -7,14 +7,34 @@ export const TETRIS_SPAWN_ROWS = 4
 /** First slice of each piece's time slot is the fall; the rest is a pause. */
 export const TETRIS_DROP_SHARE = 0.28
 
-export type TetrisCell = 'empty' | 'npc' | 'mine'
+/** Classic tetromino palette (hex for inline styles). */
+export const TETRIS_PALETTE = {
+  cyan: '#22d3ee',
+  yellow: '#facc15',
+  purple: '#c084fc',
+  orange: '#fb923c',
+  blue: '#60a5fa',
+  green: '#4ade80',
+  red: '#f87171',
+  mine: '#f7931a',
+} as const
+
+export type TetrisColor = keyof typeof TETRIS_PALETTE
 export type TetrisKind = 'npc' | 'mine'
+
+export type TetrisPaint = {
+  color: Exclude<TetrisColor, 'mine'>
+  kind: TetrisKind
+}
+
+export type TetrisCell = TetrisPaint | null
 
 export type TetrisPiece = {
   cells: [number, number][]
   x: number
   landY: number
   kind: TetrisKind
+  color: Exclude<TetrisColor, 'mine'>
 }
 
 export type TetrisFalling = {
@@ -22,85 +42,121 @@ export type TetrisFalling = {
   x: number
   y: number
   kind: TetrisKind
+  color: Exclude<TetrisColor, 'mine'>
 }
 
 type Raw = Omit<TetrisPiece, 'kind'>
 
-const O: [number, number][] = [
-  [0, 0],
-  [1, 0],
-  [0, 1],
-  [1, 1],
-]
-const I_H: [number, number][] = [
-  [0, 0],
-  [1, 0],
-  [2, 0],
-  [3, 0],
-]
-const I_V: [number, number][] = [
-  [0, 0],
-  [0, 1],
-  [0, 2],
-  [0, 3],
-]
-const T_U: [number, number][] = [
-  [0, 0],
-  [1, 0],
-  [2, 0],
-  [1, 1],
-]
-const T_D: [number, number][] = [
-  [1, 0],
-  [0, 1],
-  [1, 1],
-  [2, 1],
-]
-const T_L: [number, number][] = [
-  [1, 0],
-  [0, 1],
-  [1, 1],
-  [1, 2],
-]
-const T_R: [number, number][] = [
-  [0, 0],
-  [0, 1],
-  [1, 1],
-  [0, 2],
-]
-const L: [number, number][] = [
-  [0, 0],
-  [0, 1],
-  [0, 2],
-  [1, 2],
-]
-const J: [number, number][] = [
-  [1, 0],
-  [1, 1],
-  [1, 2],
-  [0, 2],
-]
-const S: [number, number][] = [
-  [1, 0],
-  [2, 0],
-  [0, 1],
-  [1, 1],
-]
-const Z: [number, number][] = [
-  [0, 0],
-  [1, 0],
-  [1, 1],
-  [2, 1],
-]
+type Shape = { cells: [number, number][]; color: Exclude<TetrisColor, 'mine'> }
 
-const SHAPES: [number, number][][] = [O, I_H, I_V, T_U, T_D, T_L, T_R, L, J, S, Z]
+const O: Shape = {
+  color: 'yellow',
+  cells: [
+    [0, 0],
+    [1, 0],
+    [0, 1],
+    [1, 1],
+  ],
+}
+const I_H: Shape = {
+  color: 'cyan',
+  cells: [
+    [0, 0],
+    [1, 0],
+    [2, 0],
+    [3, 0],
+  ],
+}
+const I_V: Shape = {
+  color: 'cyan',
+  cells: [
+    [0, 0],
+    [0, 1],
+    [0, 2],
+    [0, 3],
+  ],
+}
+const T_U: Shape = {
+  color: 'purple',
+  cells: [
+    [0, 0],
+    [1, 0],
+    [2, 0],
+    [1, 1],
+  ],
+}
+const T_D: Shape = {
+  color: 'purple',
+  cells: [
+    [1, 0],
+    [0, 1],
+    [1, 1],
+    [2, 1],
+  ],
+}
+const T_L: Shape = {
+  color: 'purple',
+  cells: [
+    [1, 0],
+    [0, 1],
+    [1, 1],
+    [1, 2],
+  ],
+}
+const T_R: Shape = {
+  color: 'purple',
+  cells: [
+    [0, 0],
+    [0, 1],
+    [1, 1],
+    [0, 2],
+  ],
+}
+const L: Shape = {
+  color: 'orange',
+  cells: [
+    [0, 0],
+    [0, 1],
+    [0, 2],
+    [1, 2],
+  ],
+}
+const J: Shape = {
+  color: 'blue',
+  cells: [
+    [1, 0],
+    [1, 1],
+    [1, 2],
+    [0, 2],
+  ],
+}
+const S: Shape = {
+  color: 'green',
+  cells: [
+    [1, 0],
+    [2, 0],
+    [0, 1],
+    [1, 1],
+  ],
+}
+const Z: Shape = {
+  color: 'red',
+  cells: [
+    [0, 0],
+    [1, 0],
+    [1, 1],
+    [2, 1],
+  ],
+}
+
+const SHAPES: Shape[] = [O, I_H, I_V, T_U, T_D, T_L, T_R, L, J, S, Z]
 
 function emptyOcc(): boolean[][] {
   return Array.from({ length: TETRIS_ROWS }, () => Array.from({ length: TETRIS_COLS }, () => false))
 }
 
 function emptyGrid(): TetrisCell[][] {
-  return Array.from({ length: TETRIS_ROWS }, () => Array.from({ length: TETRIS_COLS }, () => 'empty' as const))
+  return Array.from({ length: TETRIS_ROWS }, () => Array.from({ length: TETRIS_COLS }, () => null))
 }
 
 function shuffle<T>(items: T[], random: () => number): T[] {
@@ -145,11 +201,12 @@ function cover(occ: boolean[][], cells: [number, number][], originX: number, ori
   }
 }
 
-function toRaw(cells: [number, number][], originX: number, originY: number): Raw {
+function toRaw(shape: Shape, originX: number, originY: number): Raw {
   return {
     x: originX,
     landY: originY,
-    cells: cells.map(([x, y]) => [x, y] as [number, number]),
+    color: shape.color,
+    cells: shape.cells.map(([x, y]) => [x, y] as [number, number]),
   }
 }
 
@@ -213,13 +270,13 @@ function coversExactly(raw: Raw[]): boolean {
         return false
       }
       const row = grid[y]
-      if (!row || row[x] !== 'empty') {
+      if (!row || row[x] !== null) {
         return false
       }
-      row[x] = 'npc'
+      row[x] = { color: item.color, kind: 'npc' }
     }
   }
-  return grid.every((row) => row.every((cell) => cell !== 'empty'))
+  return grid.every((row) => row.every((cell) => cell !== null))
 }
 
 function searchTile(random: () => number): Raw[] | null {
@@ -238,20 +295,20 @@ function searchTile(random: () => number): Raw[] | null {
       return true
     }
     const [emptyX, emptyY] = hole
-    for (const cells of bag) {
-      for (const [px, py] of cells) {
+    for (const shape of bag) {
+      for (const [px, py] of shape.cells) {
         const originX = emptyX - px
         const originY = emptyY - py
-        if (!fits(occ, cells, originX, originY)) {
+        if (!fits(occ, shape.cells, originX, originY)) {
           continue
         }
-        cover(occ, cells, originX, originY, true)
-        placed.push(toRaw(cells, originX, originY))
+        cover(occ, shape.cells, originX, originY, true)
+        placed.push(toRaw(shape, originX, originY))
         if (solve()) {
           return true
         }
         placed.pop()
-        cover(occ, cells, originX, originY, false)
+        cover(occ, shape.cells, originX, originY, false)
       }
     }
     return false
@@ -276,12 +333,15 @@ function pickWell(seed: string, txCount: number): Raw[] {
   return SAFE_WELLS[Math.floor(random() * SAFE_WELLS.length)] ?? wellZipper()
 }
 
-function stamp(grid: TetrisCell[][], item: { cells: [number, number][]; x: number; y: number; kind: TetrisKind }) {
+function stamp(
+  grid: TetrisCell[][],
+  item: { cells: [number, number][]; x: number; y: number; kind: TetrisKind; color: Exclude<TetrisColor, 'mine'> },
+) {
   for (const [dx, dy] of item.cells) {
     const row = grid[Math.round(item.y) + dy]
     const x = item.x + dx
     if (row && x >= 0 && x < TETRIS_COLS) {
-      row[x] = item.kind
+      row[x] = { color: item.color, kind: item.kind }
     }
   }
 }
@@ -347,16 +407,28 @@ export function tetrisSnapshot(plan: TetrisPiece[], progress: number): {
       x: current.x,
       y: -TETRIS_SPAWN_ROWS + dropT * travel,
       kind: current.kind,
+      color: current.color,
     },
   }
 }
 
 export function tetrisFilledCount(grid: TetrisCell[][]): number {
-  return grid.reduce((sum, row) => sum + row.filter((cell) => cell !== 'empty').length, 0)
+  return grid.reduce((sum, row) => sum + row.filter((cell) => cell !== null).length, 0)
 }
 
 export function tetrisShapeKey(cells: [number, number][]): string {
   return [...cells.map(([x, y]) => `${x},${y}`)].sort().join(';')
+}
+
+export function tetrisCellFill(cell: TetrisCell | Pick<TetrisFalling, 'color' | 'kind'>, falling = false): string {
+  if (!cell || typeof cell !== 'object') {
+    return 'transparent'
+  }
+  if ('kind' in cell && cell.kind === 'mine') {
+    return TETRIS_PALETTE.mine
+  }
+  const hex = TETRIS_PALETTE[cell.color]
+  return falling ? hex : hex
 }
 
 export function tetrisWellsAreFull(): boolean {

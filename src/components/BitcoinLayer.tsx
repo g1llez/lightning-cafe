@@ -73,11 +73,11 @@ function BlockTile({
           className="relative"
         >
           <div
-            className={`h-16 w-16 overflow-hidden rounded-md ${toneForFee(feeRate)} ${
-              upcoming ? 'border border-dashed border-text-muted/50' : ''
-            } ${highlight ? 'ring-2 ring-accent ring-offset-2 ring-offset-bg-secondary' : ''} ${
-              ghost ? 'opacity-0' : ''
-            }`}
+            className={`h-16 w-16 overflow-hidden rounded-md ${
+              packing ? 'bg-bg-primary' : toneForFee(feeRate)
+            } ${upcoming ? 'border border-dashed border-text-muted/50' : ''} ${
+              highlight ? 'ring-2 ring-accent ring-offset-2 ring-offset-bg-secondary' : ''
+            } ${ghost ? 'opacity-0' : ''}`}
           >
             {packing && !ghost ? (
               <BlockTetris
@@ -105,12 +105,12 @@ function BlockTile({
 }
 
 function MineFlight({
-  colorClass,
+  packing,
   highlight,
   badge,
   onDone,
 }: {
-  colorClass: string
+  packing: { seed: string; txCount: number; minePieces: number }
   highlight: boolean
   badge: number
   onDone: () => void
@@ -166,10 +166,17 @@ function MineFlight({
     <div
       ref={tileRef}
       aria-hidden="true"
-      className={`pointer-events-none fixed z-[55] rounded-md ${colorClass} ${
+      className={`pointer-events-none fixed z-[55] overflow-hidden rounded-md bg-bg-primary ${
         highlight ? 'ring-2 ring-accent ring-offset-2 ring-offset-bg-secondary' : ''
       }`}
     >
+      <BlockTetris
+        seed={packing.seed}
+        fill={1}
+        txCount={packing.txCount}
+        minePieces={packing.minePieces}
+        interval={0}
+      />
       {badge > 0 && (
         <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 font-mono text-[10px] font-semibold text-bg-primary">
           {badge}
@@ -352,6 +359,13 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
                     flyId={index === 0 ? 'confirmed-head' : undefined}
                     ghost={index === 0 && mining?.id === block.id}
                     testId={`block-confirmed-${block.height}`}
+                    packing={{
+                      seed: block.id,
+                      fill: 1,
+                      txCount: block.txCount,
+                      minePieces: mine.length,
+                      interval: 0,
+                    }}
                     onInspect={() => setInspect({ kind: 'confirmed', block })}
                     blockTip={confirmedTip(block)}
                   />
@@ -396,7 +410,11 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
       {mining && (
         <MineFlight
           key={mining.id}
-          colorClass={toneForFee(mining.feeRate)}
+          packing={{
+            seed: mining.id,
+            txCount: mining.txCount,
+            minePieces: ownSettledInBlock(player, mining.height).length,
+          }}
           highlight={ownSettledInBlock(player, mining.height).length > 0}
           badge={ownSettledInBlock(player, mining.height).length}
           onDone={() => setMining(null)}

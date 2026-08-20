@@ -72,7 +72,15 @@ describe('block tetris packing', () => {
   it('paints the last landed pieces as yours', () => {
     const plain = tetrisSnapshot(tetrisPlan('u-2', 2_300, 0), 1).landed
     const mine = tetrisSnapshot(tetrisPlan('u-2', 2_300, 2), 1).landed
-    expect(plain.flat().filter((cell) => cell === 'mine')).toHaveLength(0)
-    expect(mine.flat().filter((cell) => cell === 'mine').length).toBeGreaterThan(0)
+    expect(plain.flat().filter((cell) => cell?.kind === 'mine')).toHaveLength(0)
+    expect(mine.flat().filter((cell) => cell?.kind === 'mine').length).toBeGreaterThan(0)
+  })
+
+  it('keeps a colored mosaic for the same block id after it is full', () => {
+    const plan = tetrisPlan('u-2', 2_300)
+    const done = tetrisSnapshot(plan, 1)
+    const colors = new Set(done.landed.flat().map((cell) => cell?.color).filter(Boolean))
+    expect(colors.size).toBeGreaterThan(1)
+    expect(tetrisPlan('u-2', 2_300).map((piece) => piece.color)).toEqual(plan.map((piece) => piece.color))
   })
 })
