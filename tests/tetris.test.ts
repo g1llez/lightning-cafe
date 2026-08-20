@@ -1,19 +1,23 @@
 import { describe, expect, it } from 'vitest'
 import {
-  pickTetrisScenario,
+  TETRIS_COLS,
+  TETRIS_DROP_SHARE,
+  TETRIS_ROWS,
   tetrisFilledCount,
   tetrisPlan,
+  tetrisShapeKey,
   tetrisSnapshot,
-  TETRIS_COLS,
-  TETRIS_ROWS,
 } from '../src/simulation/tetris'
 
 describe('block tetris packing', () => {
   it('fills every cell by the end of the minute', () => {
-    const plan = tetrisPlan('u-2', 2_300)
-    const done = tetrisSnapshot(plan, 1)
-    expect(done.falling).toBeNull()
-    expect(tetrisFilledCount(done.landed)).toBe(TETRIS_COLS * TETRIS_ROWS)
+    for (const seed of ['u-2', 'u-8', 'block-a', 'cafe']) {
+      const plan = tetrisPlan(seed, 2_300)
+      const done = tetrisSnapshot(plan, 1)
+      expect(done.falling).toBeNull()
+      expect(tetrisFilledCount(done.landed)).toBe(TETRIS_COLS * TETRIS_ROWS)
+      expect(plan).toHaveLength(16)
+    }
   })
 
   it('starts empty with a piece falling from the top, already in its column', () => {
@@ -25,26 +29,34 @@ describe('block tetris packing', () => {
     expect(start.falling?.cells).toEqual(plan[0]?.cells)
   })
 
-  it('only moves the active piece down, never sideways', () => {
+  it('drops a piece quickly then pauses, never sideways', () => {
     const plan = tetrisPlan('u-8', 2_000)
-    const mid = tetrisSnapshot(plan, 0.03)
-    const later = tetrisSnapshot(plan, 0.04)
-    expect(mid.falling?.x).toBe(later.falling?.x)
-    expect(later.falling?.y ?? 0).toBeGreaterThanOrEqual(mid.falling?.y ?? 0)
+    const slot = 1 / plan.length
+    const during = tetrisSnapshot(plan, slot * TETRIS_DROP_SHARE * 0.4)
+    const later = tetrisSnapshot(plan, slot * TETRIS_DROP_SHARE * 0.8)
+    const rest = tetrisSnapshot(plan, slot * 0.5)
+    expect(during.falling?.x).toBe(plan[0]?.x)
+    expect(later.falling?.x).toBe(plan[0]?.x)
+    expect(later.falling?.y ?? 0).toBeGreaterThan(during.falling?.y ?? 0)
+    expect(rest.falling).toBeNull()
+    expect(tetrisFilledCount(rest.landed)).toBe(4)
   })
 
   it('replays the same drops for the same block id', () => {
     expect(tetrisPlan('u-2', 2_300)).toEqual(tetrisPlan('u-2', 2_300))
-    expect(pickTetrisScenario('u-2', 2_300)).not.toBeUndefined()
     expect(tetrisPlan('u-2', 2_300)).not.toEqual(tetrisPlan('u-8', 2_300))
   })
 
-  it('keeps four full tilings (squares, rows, columns, split)', () => {
-    const names = new Set(Array.from({ length: 12 }, (_, index) => pickTetrisScenario(`id-${index}`, 2_300)))
-    expect(names.size).toBeGreaterThan(1)
-    for (const txs of [1_742, 2_318, 2_905]) {
-      expect(tetrisFilledCount(tetrisSnapshot(tetrisPlan('pack', txs), 1).landed)).toBe(64)
+  it('uses mixed tetrominoes, not only long bars', () => {
+    const keys = new Set<string>()
+    for (const seed of ['u-0', 'u-1', 'u-2', 'u-3', 'u-4', 'u-5']) {
+      for (const piece of tetrisPlan(seed, 2_300)) {
+        keys.add(tetrisShapeKey(piece.cells))
+      }
     }
+    expect(keys.size).toBeGreaterThan(3)
+    const onlyBars = [...keys].every((key) => key === '0,0;1,0;2,0;3,0' || key === '0,0;0,1;0,2;0,3')
+    expect(onlyBars).toBe(false)
   })
 
   it('paints the last landed pieces as yours', () => {

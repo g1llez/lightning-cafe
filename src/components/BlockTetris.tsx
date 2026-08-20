@@ -16,12 +16,12 @@ type BlockTetrisProps = {
   interval: number
 }
 
-function cellClass(cell: TetrisCell | TetrisFalling['kind']): string {
+function cellClass(cell: TetrisCell | TetrisFalling['kind'], falling = false): string {
   if (cell === 'mine') {
-    return 'bg-accent'
+    return falling ? 'bg-accent brightness-125' : 'bg-accent'
   }
   if (cell === 'npc') {
-    return 'bg-bg-primary/55'
+    return falling ? 'bg-white/70' : 'bg-bg-primary/55'
   }
   return 'bg-black/25'
 }
@@ -78,7 +78,7 @@ function FallingPiece({ piece }: { piece: TetrisFalling }) {
       {piece.cells.map(([dx, dy]) => (
         <span
           key={`${dx}-${dy}`}
-          className={`absolute rounded-[1px] ${cellClass(piece.kind)}`}
+          className={`absolute rounded-[1px] ${cellClass(piece.kind, true)}`}
           style={{
             left: `${(piece.x + dx) * width}%`,
             top: `${(piece.y + dy) * height}%`,
