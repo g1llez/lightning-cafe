@@ -163,6 +163,8 @@
     }
   },
   "footer": {
-    "inspired": "Interface inspirée de mempool.space"
+    "inspired": "Interface inspirée de mempool.space",
+    "reset": "Réinitialiser le sandbox",
+    "resetConfirm": "Effacer les portefeuilles, les sats et la chaîne enregistrée dans ce navigateur ?"
   }
 }

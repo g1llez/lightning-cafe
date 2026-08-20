@@ -2,7 +2,7 @@
 
 Source of truth for what to build next. Do not replan after each task: take the first open item in the current version.
 
-**Now:** v0.2.4 done → next is **v0.2.5**
+**Now:** v0.2.6 persist done → next is **v0.2.5 Sell BTC**
 
 | Version | Goal | Status |
 |---|---|---|
@@ -97,14 +97,16 @@ A wallet can receive, send, and watch its money move on the fake chain. Buying a
 - Wallet UTXOs: same tooltip on each address that holds sats
 - Sim in `/tests/inspect.test.ts`
 
+### v0.2.6 — Persist ✅
+- Solo: save chain + player in localStorage so F5 keeps wallets, $ and sats
+- Café: keep the 12 words locally; the room rebuilds txs (no double credit)
+- Reset sandbox in the footer (this browser only)
+- Sim in `/tests/persist.test.ts`
+
 ### v0.2.5 — Sell BTC
 - Sell sats back to $ from the same nav service as Buy
 - Also an on-chain tx (service sweep), spending from the wallet addresses
 - Inverse of buy
-
-### v0.2.6 — Persist
-- Save chain + player in localStorage
-- Reset sandbox action
 
 **v0.2 done when:** you can create two wallets, buy, wait for a block, send between them with a fee choice, see the tx in a block, sell, refresh the page and still have the same state.
 

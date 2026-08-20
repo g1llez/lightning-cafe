@@ -163,6 +163,8 @@
     }
   },
   "footer": {
-    "inspired": "Interface inspired by mempool.space"
+    "inspired": "Interface inspired by mempool.space",
+    "reset": "Reset sandbox",
+    "resetConfirm": "Clear wallets, sats, and the chain saved in this browser?"
   }
 }

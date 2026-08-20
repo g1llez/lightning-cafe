@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSimulation } from '../simulation/SimulationProvider'
 
@@ -9,6 +9,19 @@ export function SessionMenu() {
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+    function handleKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setOpen(false)
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [open])
 
   async function handleCreate() {
     setBusy(true)
@@ -54,8 +67,10 @@ export function SessionMenu() {
     <div className="relative">
       <button
         type="button"
+        aria-expanded={open}
+        aria-haspopup="dialog"
         onClick={() => setOpen((current) => !current)}
-        className={`rounded-md border px-3 py-2 text-sm transition ${
+        className={`relative z-30 rounded-md border px-3 py-2 text-sm transition ${
           sessionStatus === 'error'
             ? 'border-danger/70 bg-danger/10 text-danger'
             : roomId
@@ -66,7 +81,18 @@ export function SessionMenu() {
         {t('session.button')}
       </button>
       {open && (
-        <div className="absolute left-0 z-30 mt-2 flex w-72 flex-col gap-2.5 rounded-md border border-border bg-bg-panel p-3 shadow-lg">
+        <div
+          className="fixed inset-0 z-20"
+          onClick={() => setOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      {open && (
+        <div
+          role="dialog"
+          aria-label={t('session.button')}
+          className="absolute left-0 z-30 mt-2 flex w-72 flex-col gap-2.5 rounded-md border border-border bg-bg-panel p-3 shadow-lg"
+        >
           <p className="text-[12px] leading-relaxed text-text-primary">{t('session.invite')}</p>
           {roomId ? (
             <div className="flex flex-col gap-2">

@@ -23,6 +23,13 @@ import {
   type PlayerState,
 } from './player'
 import {
+  clearPersist,
+  hydrateSandbox,
+  persistBlob,
+  readPersistRaw,
+  writePersist,
+} from './persist'
+import {
   createRoom,
   fetchEvents,
   fetchRoom,
@@ -56,6 +63,7 @@ type SimulationContextValue = {
   createCafe: () => Promise<void>
   joinCafe: (roomId: string) => Promise<void>
   leaveCafe: () => void
+  resetSandbox: () => void
 }
 
 const SimulationContext = createContext<SimulationContextValue | null>(null)
@@ -65,11 +73,20 @@ type SimulationProviderProps = {
 }
 
 export function SimulationProvider({ children }: SimulationProviderProps) {
-  const [blockInterval] = useState(sandboxBlockInterval)
-  const [chain, setChain] = useState(createInitialChain)
-  const [secondsLeft, setSecondsLeft] = useState(blockInterval)
-  const [player, setPlayer] = useState(createInitialPlayer)
-  const [roomId, setRoomId] = useState<string | null>(null)
+  const [boot] = useState(() => {
+    const interval = sandboxBlockInterval()
+    const room = roomIdFromLocation()
+    return {
+      blockInterval: interval,
+      roomId: room,
+      ...hydrateSandbox(readPersistRaw(), room, interval),
+    }
+  })
+  const blockInterval = boot.blockInterval
+  const [chain, setChain] = useState(boot.chain)
+  const [secondsLeft, setSecondsLeft] = useState(boot.secondsLeft)
+  const [player, setPlayer] = useState(boot.player)
+  const [roomId, setRoomId] = useState<string | null>(boot.roomId)
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>('off')
   const chainRef = useRef(chain)
   const socketRef = useRef<WebSocket | null>(null)
@@ -81,11 +98,8 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
   chainRef.current = chain
 
   useEffect(() => {
-    const fromUrl = roomIdFromLocation()
-    if (fromUrl) {
-      setRoomId(fromUrl)
-    }
-  }, [])
+    writePersist(persistBlob(player, chain, secondsLeft))
+  }, [player, chain, secondsLeft])
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -321,8 +335,18 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
         setRoomId(null)
         setSessionStatus('off')
       },
+      resetSandbox: () => {
+        clearPersist()
+        writeRoomToLocation(null)
+        outboxRef.current = []
+        setRoomId(null)
+        setSessionStatus('off')
+        setPlayer(createInitialPlayer())
+        setChain(createInitialChain())
+        setSecondsLeft(blockInterval)
+      },
     }),
-    [chain, player, secondsLeft, roomId, sessionStatus],
+    [chain, player, secondsLeft, roomId, sessionStatus, blockInterval],
   )
 
   return <SimulationContext.Provider value={value}>{children}</SimulationContext.Provider>
