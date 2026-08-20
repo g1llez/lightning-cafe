@@ -6,13 +6,18 @@ import {
   marketQuotes,
 } from '../src/simulation/chain'
 import {
+  advanceBlock,
   buyBitcoin,
   cadToSats,
+  createAddress,
   createInitialPlayer,
   createWallet,
   ingestRemoteTx,
   receiveAddress,
+  restoreWallet,
+  seedPhrase,
   totalSats,
+  walletSats,
 } from '../src/simulation/player'
 import { parseRemoteTx, parseRoomInput, parseTick } from '../src/simulation/sessionApi'
 
@@ -136,5 +141,75 @@ describe('shared cafe session', () => {
     expect(
       parseRoomInput('https://g1llez.github.io/lightning-cafe/?room=abcdefghijklmnop&block=1'),
     ).toBe('abcdefghijklmnop')
+  })
+
+  it('after F5 in a room, restore claims confirmed sats that landed on those 12 words', () => {
+    let alice = createWallet(createInitialPlayer(), 'Alice', () => 0)
+    const words = seedPhrase(alice.wallets[0].seed)
+    const address = receiveAddress(alice.wallets[0])
+    alice = buyBitcoin(alice, address, 100)
+    const payload = {
+      kind: 'buy' as const,
+      address,
+      sats: alice.pending[0]!.sats,
+      fee_rate: alice.pending[0]!.feeRate,
+      id: alice.pending[0]!.id,
+    }
+    alice = advanceBlock(alice, INITIAL_MARKET_RATE, () => 0, 912_005)
+    const expected = walletSats(alice.wallets[0])
+    expect(expected).toBe(cadToSats(100))
+
+    let bob = createInitialPlayer()
+    bob = ingestRemoteTx(bob, payload)
+    bob = advanceBlock(bob, INITIAL_MARKET_RATE, () => 0, 912_005)
+    expect(bob.wallets).toHaveLength(0)
+    expect(totalSats(bob)).toBe(0)
+
+    bob = restoreWallet(bob, 'Recovered', words)
+    expect(bob.wallets[0].addresses[0]?.value).toBe(address)
+    expect(walletSats(bob.wallets[0])).toBe(expected)
+  })
+
+  it('restore on a second client claims a buy that is still in the mempool', () => {
+    let alice = createWallet(createInitialPlayer(), 'Alice', () => 0)
+    const words = seedPhrase(alice.wallets[0].seed)
+    const address = receiveAddress(alice.wallets[0])
+    alice = buyBitcoin(alice, address, 100)
+    const payload = {
+      kind: 'buy' as const,
+      address,
+      sats: alice.pending[0]!.sats,
+      fee_rate: alice.pending[0]!.feeRate,
+      id: alice.pending[0]!.id,
+    }
+
+    let bob = ingestRemoteTx(createInitialPlayer(), payload)
+    bob = restoreWallet(bob, 'Recovered', words)
+    expect(walletSats(bob.wallets[0])).toBe(0)
+    expect(bob.pending[0]?.walletId).toBe(bob.wallets[0].id)
+    bob = advanceBlock(bob, INITIAL_MARKET_RATE, () => 0, 912_005)
+    expect(walletSats(bob.wallets[0])).toBe(cadToSats(100))
+  })
+
+  it('restore finds sats that landed on a later receive address', () => {
+    let alice = createWallet(createInitialPlayer(), 'Alice', () => 0)
+    alice = createAddress(alice, alice.wallets[0].id)
+    const words = seedPhrase(alice.wallets[0].seed)
+    const address = receiveAddress(alice.wallets[0])
+    alice = buyBitcoin(alice, address, 100)
+    const payload = {
+      kind: 'buy' as const,
+      address,
+      sats: alice.pending[0]!.sats,
+      fee_rate: alice.pending[0]!.feeRate,
+      id: alice.pending[0]!.id,
+    }
+    alice = advanceBlock(alice, INITIAL_MARKET_RATE, () => 0, 912_005)
+
+    let bob = ingestRemoteTx(createInitialPlayer(), payload)
+    bob = advanceBlock(bob, INITIAL_MARKET_RATE, () => 0, 912_005)
+    bob = restoreWallet(bob, 'Recovered', words)
+    expect(bob.wallets[0].addresses.some((item) => item.value === address)).toBe(true)
+    expect(walletSats(bob.wallets[0])).toBe(cadToSats(100))
   })
 })

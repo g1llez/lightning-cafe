@@ -16,6 +16,7 @@ import {
   createInitialPlayer,
   ingestRemoteTx,
   renameWallet,
+  deleteWallet as applyDelete,
   restoreWallet as applyRestore,
   sendBitcoin,
   createWallet,
@@ -49,6 +50,7 @@ type SimulationContextValue = {
   renameWallet: (walletId: string, name: string) => void
   newAddress: (walletId: string) => void
   restoreWallet: (name: string, words: string) => void
+  deleteWallet: (walletId: string) => void
   buyBtc: (address: string, cadAmount: number) => void
   sendBtc: (fromWalletId: string, toAddress: string, sats: number, feeRate: number) => void
   createCafe: () => Promise<void>
@@ -274,6 +276,10 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
       newAddress: (walletId) => setPlayer((current) => createAddress(current, walletId)),
       restoreWallet: (name, words) => {
         const next = applyRestore(player, name, words)
+        setPlayer(next)
+      },
+      deleteWallet: (walletId) => {
+        const next = applyDelete(player, walletId)
         setPlayer(next)
       },
       buyBtc: (address, cadAmount) => {

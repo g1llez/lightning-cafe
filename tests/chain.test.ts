@@ -29,6 +29,7 @@ import {
   renameWallet,
   parseSeed,
   restoreWallet,
+  deleteWallet,
   seedPhrase,
   settledInBlock,
   shortAddress,
@@ -256,5 +257,20 @@ describe('player wallets', () => {
 
     const restored = restoreWallet(createInitialPlayer(), 'Recovered', hyphen)
     expect(restored.wallets[0].addresses[0]?.value).toBe(original.wallets[0].addresses[0]?.value)
+  })
+
+  it('delete then restore claims confirmed sats on those 12 words', () => {
+    let player = createWallet(createInitialPlayer(), 'Wallet 1', () => 0)
+    const words = seedPhrase(player.wallets[0].seed)
+    const address = receiveAddress(player.wallets[0])
+    player = buyBitcoin(player, address, 100)
+    player = advanceBlock(player, INITIAL_MARKET_RATE, () => 0, 912_005)
+    const expected = walletSats(player.wallets[0])
+
+    player = deleteWallet(player, player.wallets[0].id)
+    expect(player.wallets).toHaveLength(0)
+
+    player = restoreWallet(player, 'Recovered', words)
+    expect(walletSats(player.wallets[0])).toBe(expected)
   })
 })

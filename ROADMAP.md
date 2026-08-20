@@ -88,6 +88,8 @@ A wallet can receive, send, and watch its money move on the fake chain. Buying a
 - Restore uses 12 fields, like Sparrow
 - Paste still works if the backup copy kept `1.` / `1-` in front of each word
 - Invalid seed shows a toast; it no longer blanks the whole screen
+- Restore claims pending/confirmed sats already on those addresses (F5 or another client in the same Café room)
+- Copy / paste the 12 words; delete a wallet from the screen (restore brings it back)
 
 ### v0.2.4 — Inspect txs ✅
 - Click a mempool or confirmed block to see the `lc1q` addresses it pays (yours highlighted)

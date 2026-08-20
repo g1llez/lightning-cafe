@@ -241,15 +241,104 @@ export function findWalletBySeed(player: PlayerState, seed: string[]): Wallet | 
 }
 
 /**
- * The 12 words recover the keys, not a copy of the balance. If this seed is
- * already on the list we keep that wallet; otherwise we derive a fresh empty one.
+ * The 12 words recover the keys. Sats already sitting on those addresses
+ * (pending or confirmed, including after a cafe catch-up) are claimed too.
  */
 export function restoreWallet(player: PlayerState, name: string, words: string): PlayerState {
   const seed = parseSeed(words)
   if (findWalletBySeed(player, seed)) {
     throw new Error('seed-exists')
   }
-  return addWalletFromSeed(player, name, seed)
+  const added = addWalletFromSeed(player, name, seed)
+  const wallet = added.wallets[added.wallets.length - 1]
+  if (!wallet) {
+    return added
+  }
+  return claimWalletOnChain(added, wallet.id, seed)
+}
+
+const RESTORE_GAP = 20
+
+function chainAddresses(player: PlayerState): Set<string> {
+  const known = new Set<string>()
+  for (const tx of [...player.pending, ...player.settled]) {
+    known.add(tx.address)
+    if (tx.changeAddress) {
+      known.add(tx.changeAddress)
+    }
+  }
+  return known
+}
+
+function deriveRestoredAddresses(seed: string[], known: Set<string>): WalletAddress[] {
+  const values: string[] = [walletAddress(seed, 0)]
+  let lastUsed = 0
+  let hit = known.has(values[0])
+  for (let index = 1; index < RESTORE_GAP; index += 1) {
+    const value = walletAddress(seed, index)
+    if (known.has(value)) {
+      while (values.length <= index) {
+        values.push(walletAddress(seed, values.length))
+      }
+      lastUsed = index
+      hit = true
+    }
+  }
+  if (hit) {
+    values.push(walletAddress(seed, lastUsed + 1))
+  }
+  const seen = new Set<string>()
+  return values
+    .filter((value) => {
+      if (seen.has(value)) {
+        return false
+      }
+      seen.add(value)
+      return true
+    })
+    .map((value) => ({ value, sats: 0 }))
+}
+
+function claimWalletOnChain(player: PlayerState, walletId: string, seed: string[]): PlayerState {
+  const known = chainAddresses(player)
+  const addresses = deriveRestoredAddresses(seed, known)
+  const mine = new Set(addresses.map((item) => item.value))
+
+  const bind = <T extends PendingTx>(tx: T): T => ({
+    ...tx,
+    walletId: tx.walletId == null && mine.has(tx.address) ? walletId : tx.walletId,
+  })
+
+  const pending = player.pending.map(bind)
+  const settled = player.settled.map(bind)
+
+  const creditedById = new Set<string>()
+  let credited = addresses
+  for (const tx of settled) {
+    if (tx.walletId !== walletId || creditedById.has(tx.id)) {
+      continue
+    }
+    creditedById.add(tx.id)
+    if (mine.has(tx.address)) {
+      credited = creditAddress({ id: walletId, name: '', seed, addresses: credited }, tx.address, tx.sats)
+    }
+    if (tx.changeAddress && mine.has(tx.changeAddress) && tx.changeSats > 0) {
+      credited = creditAddress(
+        { id: walletId, name: '', seed, addresses: credited },
+        tx.changeAddress,
+        tx.changeSats,
+      )
+    }
+  }
+
+  return {
+    ...player,
+    pending,
+    settled,
+    wallets: player.wallets.map((wallet) =>
+      wallet.id === walletId ? { ...wallet, addresses: credited } : wallet,
+    ),
+  }
 }
 
 /** Every address comes from the secret those 12 words write down. */
@@ -391,6 +480,26 @@ export function renameWallet(player: PlayerState, walletId: string, name: string
     wallets: player.wallets.map((item) =>
       item.id === walletId ? { ...item, name: trimmed } : item,
     ),
+  }
+}
+
+/** Removes the wallet from this screen. Txs stay on the chain; restore can claim them. */
+export function deleteWallet(player: PlayerState, walletId: string): PlayerState {
+  if (!player.wallets.some((wallet) => wallet.id === walletId)) {
+    throw new Error('wallet-missing')
+  }
+
+  const unbind = <T extends PendingTx>(tx: T): T => ({
+    ...tx,
+    walletId: tx.walletId === walletId ? null : tx.walletId,
+    fromWalletId: tx.fromWalletId === walletId ? null : tx.fromWalletId,
+  })
+
+  return {
+    ...player,
+    wallets: player.wallets.filter((wallet) => wallet.id !== walletId),
+    pending: player.pending.map(unbind),
+    settled: player.settled.map(unbind),
   }
 }
 

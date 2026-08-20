@@ -5,6 +5,7 @@ import {
   parseSeed,
   pendingSats,
   pendingSatsForAddress,
+  seedPhrase,
   shortAddress,
   tokenizeSeedInput,
   walletSats,
@@ -32,7 +33,7 @@ type WalletCardProps = {
 
 export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
   const { t } = useTranslation()
-  const { player, addWallet, renameWallet, newAddress, restoreWallet } = useSimulation()
+  const { player, addWallet, renameWallet, newAddress, restoreWallet, deleteWallet } = useSimulation()
   const [openWalletId, setOpenWalletId] = useState('')
   const [justCreatedId, setJustCreatedId] = useState('')
   const [sendWalletId, setSendWalletId] = useState('')
@@ -42,6 +43,7 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
   const [editingName, setEditingName] = useState('')
   const [renaming, setRenaming] = useState(false)
   const [seedStep, setSeedStep] = useState<SeedStep>('hidden')
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const sendWallet = player.wallets.find((wallet) => wallet.id === sendWalletId)
   const receiveWallet = player.wallets.find((wallet) => wallet.id === receiveWalletId)
@@ -52,11 +54,13 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
       setOpenWalletId('')
       setRenaming(false)
       setSeedStep('hidden')
+      setConfirmDelete(false)
       return
     }
     setOpenWalletId(walletId)
     setRenaming(false)
     setSeedStep('hidden')
+    setConfirmDelete(false)
   }
 
   function handleAddWallet() {
@@ -86,6 +90,40 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
     } catch {
       onMessage(address)
       return false
+    }
+  }
+
+  async function copySeed(words: string[]) {
+    try {
+      await navigator.clipboard.writeText(seedPhrase(words))
+      onMessage(t('assets.seedCopied'))
+    } catch {
+      onMessage(seedPhrase(words))
+    }
+  }
+
+  async function pasteRestore() {
+    try {
+      const text = await navigator.clipboard.readText()
+      const tokens = tokenizeSeedInput(text)
+      if (tokens.length === 0) {
+        onMessage(t('assets.pasteSeedFailed'))
+        return
+      }
+      fillRestoreWords(0, tokens)
+    } catch {
+      onMessage(t('assets.pasteSeedFailed'))
+    }
+  }
+
+  function handleDelete(walletId: string) {
+    try {
+      deleteWallet(walletId)
+      setOpenWalletId('')
+      setConfirmDelete(false)
+      onMessage(t('assets.walletDeleted'))
+    } catch {
+      onMessage(t('assets.walletRenameFailed'))
     }
   }
 
@@ -183,6 +221,36 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
               className="self-start px-0.5 text-[11px] text-text-muted transition hover:text-accent"
             >
               ✎ {t('assets.rename')}
+            </button>
+          )}
+
+          {confirmDelete ? (
+            <div className="rounded-md border border-danger/60 bg-danger/10 px-2.5 py-2">
+              <p className="text-[11px] leading-relaxed text-text-primary">{t('assets.deleteConfirm')}</p>
+              <div className="mt-1.5 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleDelete(wallet.id)}
+                  className="rounded-md border border-danger/60 px-2 py-1 text-[11px] text-text-primary transition hover:bg-danger/20"
+                >
+                  {t('assets.deleteConfirmYes')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(false)}
+                  className="px-1 text-[11px] text-text-muted transition hover:text-text-primary"
+                >
+                  {t('common.cancel')}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              className="self-start px-0.5 text-[11px] text-text-muted transition hover:text-danger"
+            >
+              {t('assets.deleteWallet')}
             </button>
           )}
 
@@ -288,13 +356,22 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
                     </li>
                   ))}
                 </ol>
-                <button
-                  type="button"
-                  onClick={() => setSeedStep('hidden')}
-                  className="mt-1.5 rounded-md border border-border px-2 py-1 text-[11px] text-text-muted transition hover:border-accent/60 hover:text-text-primary"
-                >
-                  {t('assets.hideSecret')}
-                </button>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void copySeed(wallet.seed)}
+                    className="rounded-md border border-border px-2 py-1 text-[11px] text-text-muted transition hover:border-accent/60 hover:text-text-primary"
+                  >
+                    {t('assets.copySeed')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSeedStep('hidden')}
+                    className="rounded-md border border-border px-2 py-1 text-[11px] text-text-muted transition hover:border-accent/60 hover:text-text-primary"
+                  >
+                    {t('assets.hideSecret')}
+                  </button>
+                </div>
               </div>
             )}
           </section>
@@ -324,13 +401,22 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
                 </li>
               ))}
             </ol>
-            <button
-              type="button"
-              onClick={() => setJustCreatedId('')}
-              className="rounded-md bg-accent px-3 py-2 text-sm font-semibold text-bg-primary transition hover:brightness-110"
-            >
-              {t('assets.createdOk')}
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => void copySeed(createdWallet.seed)}
+                className="flex-1 rounded-md border border-border px-3 py-2 text-sm text-text-primary transition hover:border-accent/60"
+              >
+                {t('assets.copySeed')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setJustCreatedId('')}
+                className="flex-1 rounded-md bg-accent px-3 py-2 text-sm font-semibold text-bg-primary transition hover:brightness-110"
+              >
+                {t('assets.createdOk')}
+              </button>
+            </div>
           </div>
         </Modal>
       )}
@@ -345,7 +431,16 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
           }}
         >
           <div className="flex flex-col gap-3">
-            <p className="text-[11px] leading-relaxed text-text-muted">{t('assets.restoreHint')}</p>
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-[11px] leading-relaxed text-text-muted">{t('assets.restoreHint')}</p>
+              <button
+                type="button"
+                onClick={() => void pasteRestore()}
+                className="shrink-0 rounded-md border border-border px-2 py-1 text-[11px] text-text-muted transition hover:border-accent/60 hover:text-text-primary"
+              >
+                {t('assets.pasteSeed')}
+              </button>
+            </div>
             <div className="grid grid-cols-3 gap-1.5">
               {restoreWords.map((word, index) => (
                 <label
