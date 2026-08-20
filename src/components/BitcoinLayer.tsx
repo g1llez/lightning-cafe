@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  estimateFeeSats,
   formatCountdown,
   toneForFee,
   type ConfirmedBlock,
@@ -11,12 +10,12 @@ import {
 import {
   inspectConfirmedBlock,
   inspectMempoolLane,
+  type FundedAddress,
 } from '../simulation/inspect'
 import {
   ownPendingForZone,
   ownSettledInBlock,
   shortAddress,
-  type PendingTx,
 } from '../simulation/player'
 import { useSimulation } from '../simulation/SimulationProvider'
 import { mempoolFlyId } from './SatsFlight'
@@ -191,43 +190,20 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
     return t(`layers.priority.${priority}`)
   }
 
-  function walletName(walletId: string | null) {
-    return walletId
-      ? player.wallets.find((wallet) => wallet.id === walletId)?.name ?? walletId
-      : t('layers.unknownAddress')
-  }
-
-  function txLine(tx: PendingTx) {
-    const payment = t('layers.myTxLine', {
-      sats: tx.sats.toLocaleString(),
-      feeSats: estimateFeeSats(tx.feeRate).toLocaleString(),
-      fee: tx.feeRate,
-      address: shortAddress(tx.address),
-      wallet: walletName(tx.walletId),
-    })
-    if (!tx.changeSats || !tx.changeAddress) {
-      return payment
-    }
-    return `${payment} · ${t('layers.myTxChange', {
-      sats: tx.changeSats.toLocaleString(),
-      address: shortAddress(tx.changeAddress),
-    })}`
-  }
-
-  function myTxsTip(txs: PendingTx[]) {
-    if (txs.length === 0) {
+  function addressTip(rows: FundedAddress[]) {
+    if (rows.length === 0) {
       return null
     }
 
     return (
       <div className="border-t border-border pt-1.5">
         <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-accent">
-          {t('layers.myTxsHeading', { count: txs.length })}
+          {t('layers.myAddressesHeading', { count: rows.length })}
         </p>
         <ul className="flex flex-col gap-1">
-          {txs.map((tx) => (
-            <li key={tx.id} className="font-mono text-[11px] leading-snug">
-              {txLine(tx)}
+          {rows.map((row) => (
+            <li key={`${row.tx.id}-${row.address}-${row.role}`} className="font-mono text-[11px]">
+              {shortAddress(row.address)} · {row.sats.toLocaleString()} sats
             </li>
           ))}
         </ul>
@@ -235,7 +211,8 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
     )
   }
 
-  function mempoolTip(block: ProjectedBlock, myPending: PendingTx[]) {
+  function mempoolTip(block: ProjectedBlock) {
+    const rows = inspectMempoolLane(player, chain.marketRate, block.priority)
     return (
       <div className="flex flex-col gap-1.5">
         <p>
@@ -250,13 +227,12 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
         {block.priority === 'high' && (
           <p className="text-[11px] text-text-muted">{t('layers.nextUp')}</p>
         )}
-        {myTxsTip(myPending)}
+        {addressTip(rows)}
       </div>
     )
   }
 
   function confirmedTip(block: ConfirmedBlock) {
-    const mine = ownSettledInBlock(player, block.height)
     return (
       <div className="flex flex-col gap-1.5">
         <p>
@@ -267,7 +243,7 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
             txs: block.txCount.toLocaleString(),
           })}
         </p>
-        {myTxsTip(mine)}
+        {addressTip(inspectConfirmedBlock(player, block.height))}
       </div>
     )
   }
@@ -314,7 +290,7 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
                     myTxs={myPending.length}
                     testId={`block-mempool-${block.priority}`}
                     onInspect={() => setInspect({ kind: 'mempool', block })}
-                    blockTip={mempoolTip(block, myPending)}
+                    blockTip={mempoolTip(block)}
                   />
                 )
               })}
@@ -366,13 +342,10 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
             txs: inspect.block.txCount.toLocaleString(),
           })}
           player={player}
-          inspect={inspectMempoolLane(
+          addresses={inspectMempoolLane(
             player,
             chain.marketRate,
             inspect.block.priority,
-            inspect.block.txCount,
-            inspect.block.id,
-            inspect.block.feeRate,
           )}
           onClose={() => setInspect(null)}
         />
@@ -387,13 +360,7 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
             txs: inspect.block.txCount.toLocaleString(),
           })}
           player={player}
-          inspect={inspectConfirmedBlock(
-            player,
-            inspect.block.height,
-            inspect.block.txCount,
-            inspect.block.id,
-            inspect.block.feeRate,
-          )}
+          addresses={inspectConfirmedBlock(player, inspect.block.height)}
           onClose={() => setInspect(null)}
         />
       )}

@@ -85,9 +85,9 @@ A wallet can receive, send, and watch its money move on the fake chain. Buying a
 - Sim in `/tests/send.test.ts`
 
 ### v0.2.4 — Inspect txs ✅
-- Click a mempool or confirmed block to see txs inside
-- Player txs highlighted
-- Click a wallet to see its tx history
+- Click a mempool or confirmed block to see the `lc1q` addresses it pays (yours highlighted)
+- Hover an address for sats, miner fee, mempool vs block
+- Wallet UTXOs: same tooltip on each address that holds sats
 - Sim in `/tests/inspect.test.ts`
 
 ### v0.2.5 — Sell BTC

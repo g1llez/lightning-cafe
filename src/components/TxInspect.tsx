@@ -1,123 +1,73 @@
 import { useTranslation } from 'react-i18next'
 import { estimateFeeSats } from '../simulation/chain'
-import {
-  highlightedInInspect,
-  isSettledTx,
-  type BlockInspect,
-  type KnownTx,
-  type OtherTx,
-} from '../simulation/inspect'
+import { isSettledTx, type FundedAddress, type KnownTx } from '../simulation/inspect'
 import { shortAddress, type PlayerState } from '../simulation/player'
 import { Modal } from './Modal'
+import { Tooltip } from './Tooltip'
 
-function walletLabel(player: PlayerState, walletId: string | null, fallback: string) {
-  if (!walletId) {
-    return fallback
-  }
-  return player.wallets.find((wallet) => wallet.id === walletId)?.name ?? walletId
-}
-
-function knownKind(tx: KnownTx): 'send' | 'receive' {
-  return tx.fromWalletId ? 'send' : 'receive'
-}
-
-export function KnownTxRow({
+export function TxDetailTip({
   player,
   tx,
-  testId,
+  sats,
+  address,
 }: {
   player: PlayerState
   tx: KnownTx
-  testId?: string
+  sats: number
+  address: string
 }) {
   const { t } = useTranslation()
-  const mine = highlightedInInspect(player, tx)
+  const wallet = player.wallets.find((item) => item.id === tx.walletId || item.id === tx.fromWalletId)
   const status = isSettledTx(tx)
     ? t('layers.txConfirmed', { height: tx.height })
     : t('layers.txPending')
 
   return (
-    <li
-      data-testid={testId}
-      data-mine={mine ? 'yes' : 'no'}
-      className={`rounded-md px-2 py-1.5 ${
-        mine ? 'bg-accent/10 ring-1 ring-accent/50' : 'bg-bg-primary/40'
-      }`}
-    >
-      <div className="flex items-baseline gap-2 text-[11px]">
-        <span className="font-semibold text-text-primary">
-          {t(knownKind(tx) === 'send' ? 'layers.txSend' : 'layers.txReceive')}
-        </span>
-        {mine && <span className="text-accent">{t('layers.inspectYours')}</span>}
-        <span className="ml-auto font-mono text-text-muted">{status}</span>
-      </div>
-      <p className="mt-0.5 font-mono text-[11px] leading-snug text-text-primary">
-        {t('layers.myTxLine', {
-          sats: tx.sats.toLocaleString(),
-          feeSats: estimateFeeSats(tx.feeRate).toLocaleString(),
+    <div className="flex flex-col gap-0.5 font-mono text-[11px] leading-snug">
+      <p>{shortAddress(address)}</p>
+      <p>{t('layers.inspectSats', { sats: sats.toLocaleString() })}</p>
+      <p className="text-text-muted">
+        {t('layers.inspectFee', {
+          sats: estimateFeeSats(tx.feeRate).toLocaleString(),
           fee: tx.feeRate,
-          address: shortAddress(tx.address),
-          wallet: walletLabel(player, tx.walletId, t('layers.unknownAddress')),
         })}
       </p>
-      {tx.changeSats > 0 && tx.changeAddress && (
-        <p className="font-mono text-[11px] text-text-muted">
-          {t('layers.myTxChange', {
-            sats: tx.changeSats.toLocaleString(),
-            address: shortAddress(tx.changeAddress),
-          })}
-        </p>
-      )}
-    </li>
+      <p className="text-text-muted">{status}</p>
+      {wallet && <p className="text-text-muted">{wallet.name}</p>}
+    </div>
   )
 }
 
-function OtherTxRow({ tx }: { tx: OtherTx }) {
-  const { t } = useTranslation()
-  return (
-    <li data-testid={`inspect-other-${tx.id}`} className="rounded-md bg-bg-primary/40 px-2 py-1.5">
-      <div className="flex items-baseline gap-2 text-[11px]">
-        <span className="font-semibold text-text-muted">{t('layers.txOther')}</span>
-        <span className="ml-auto font-mono text-text-muted">{tx.feeRate} sat/vB</span>
-      </div>
-      <p className="mt-0.5 font-mono text-[11px] leading-snug text-text-muted">
-        {tx.sats.toLocaleString()} sats → {shortAddress(tx.address)}
-      </p>
-    </li>
-  )
-}
-
-export function TxList({
+export function AddressRow({
   player,
-  inspect,
-  idPrefix,
+  item,
+  testId,
 }: {
   player: PlayerState
-  inspect: BlockInspect
-  idPrefix: string
+  item: FundedAddress
+  testId?: string
 }) {
   const { t } = useTranslation()
-  const more = inspect.total - inspect.known.length - inspect.others.length
-
   return (
-    <ul className="flex max-h-[60vh] flex-col gap-1.5 overflow-y-auto">
-      {inspect.known.map((tx) => (
-        <KnownTxRow
-          key={tx.id}
-          player={player}
-          tx={tx}
-          testId={`${idPrefix}-${tx.id}`}
-        />
-      ))}
-      {inspect.others.map((tx) => (
-        <OtherTxRow key={tx.id} tx={tx} />
-      ))}
-      {more > 0 && (
-        <li className="px-1 pt-1 text-center text-[11px] text-text-muted">
-          {t('layers.inspectMore', { count: more.toLocaleString() })}
-        </li>
-      )}
-    </ul>
+    <li
+      data-testid={testId}
+      data-mine={item.mine ? 'yes' : 'no'}
+      className={`flex items-baseline gap-2 rounded-md px-2 py-1.5 font-mono text-[11px] ${
+        item.mine ? 'bg-accent/10 ring-1 ring-accent/50' : 'bg-bg-primary/40'
+      }`}
+    >
+      <Tooltip
+        side="top"
+        text={<TxDetailTip player={player} tx={item.tx} sats={item.sats} address={item.address} />}
+      >
+        <span className="min-w-0 truncate text-text-primary">
+          {shortAddress(item.address)}
+          {item.role === 'change' ? ` · ${t('layers.txChange')}` : ''}
+        </span>
+      </Tooltip>
+      {item.mine && <span className="text-accent">{t('layers.inspectYours')}</span>}
+      <span className="ml-auto whitespace-nowrap text-accent">{item.sats.toLocaleString()} sats</span>
+    </li>
   )
 }
 
@@ -125,20 +75,33 @@ export function BlockInspectModal({
   title,
   subtitle,
   player,
-  inspect,
+  addresses,
   onClose,
 }: {
   title: string
   subtitle?: string
   player: PlayerState
-  inspect: BlockInspect
+  addresses: FundedAddress[]
   onClose: () => void
 }) {
   const { t } = useTranslation()
   return (
     <Modal title={title} subtitle={subtitle} closeLabel={t('common.close')} onClose={onClose}>
       <div data-testid="inspect-block">
-        <TxList player={player} inspect={inspect} idPrefix="inspect-tx" />
+        {addresses.length === 0 ? (
+          <p className="text-sm text-text-muted">{t('layers.inspectEmpty')}</p>
+        ) : (
+          <ul className="flex max-h-[60vh] flex-col gap-1.5 overflow-y-auto">
+            {addresses.map((item) => (
+              <AddressRow
+                key={`${item.tx.id}-${item.address}-${item.role}`}
+                player={player}
+                item={item}
+                testId={`inspect-addr-${item.address}`}
+              />
+            ))}
+          </ul>
+        )}
       </div>
     </Modal>
   )
