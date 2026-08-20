@@ -4,9 +4,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   TETRIS_COLS,
+  TETRIS_DROP_GAP,
   TETRIS_DROP_SHARE,
   TETRIS_ROWS,
-  TETRIS_SPAWN_ROWS,
   tetrisFilledCount,
   tetrisPlan,
   tetrisShapeKey,
@@ -29,11 +29,11 @@ describe('block tetris packing', () => {
     }
   })
 
-  it('starts empty with a piece falling from above the well', () => {
+  it('starts empty with a short hop onto the seat', () => {
     const plan = tetrisPlan('u-2', 2_300)
     const start = tetrisSnapshot(plan, 0)
     expect(tetrisFilledCount(start.landed)).toBe(0)
-    expect(start.falling?.y).toBe(-TETRIS_SPAWN_ROWS)
+    expect(start.falling?.y).toBe((plan[0]?.landY ?? 0) - TETRIS_DROP_GAP)
     expect(start.falling?.x).toBe(plan[0]?.x)
     expect(start.falling?.cells).toEqual(plan[0]?.cells)
   })
@@ -74,7 +74,7 @@ describe('block tetris packing', () => {
     expect(keys.size).toBeGreaterThan(4)
   })
 
-  it('makes every piece travel downward during its drop window', () => {
+  it('makes every piece travel a short hop without crossing below its seat', () => {
     const plan = tetrisPlan('u-2', 2_300)
     for (let index = 0; index < plan.length; index += 1) {
       const slot = 1 / plan.length
@@ -82,12 +82,14 @@ describe('block tetris packing', () => {
       const early = tetrisSnapshot(plan, base + slot * TETRIS_DROP_SHARE * 0.15)
       const mid = tetrisSnapshot(plan, base + slot * TETRIS_DROP_SHARE * 0.55)
       const late = tetrisSnapshot(plan, base + slot * TETRIS_DROP_SHARE * 0.95)
+      const landY = plan[index]?.landY ?? 0
       expect(early.falling).not.toBeNull()
       expect(mid.falling).not.toBeNull()
       expect(late.falling).not.toBeNull()
       expect(mid.falling!.y).toBeGreaterThan(early.falling!.y)
       expect(late.falling!.y).toBeGreaterThan(mid.falling!.y)
-      expect(late.falling!.y).toBeLessThanOrEqual((plan[index]?.landY ?? 0) + 0.05)
+      expect(early.falling!.y).toBeGreaterThanOrEqual(landY - TETRIS_DROP_GAP - 0.05)
+      expect(late.falling!.y).toBeLessThanOrEqual(landY + 0.05)
     }
   })
 

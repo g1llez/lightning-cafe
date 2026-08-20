@@ -2,8 +2,8 @@ import { seededRandom } from './chain'
 
 export const TETRIS_COLS = 8
 export const TETRIS_ROWS = 8
-/** Fall from this many rows above the well so every piece travels. */
-export const TETRIS_SPAWN_ROWS = 4
+/** Short hop onto the seat — long falls ghost through already-landed tiles. */
+export const TETRIS_DROP_GAP = 1.5
 /** First slice of each piece's time slot is the fall; the rest is a pause. */
 export const TETRIS_DROP_SHARE = 0.55
 
@@ -235,14 +235,13 @@ export function tetrisSnapshot(plan: TetrisPiece[], progress: number): {
   }
 
   const dropT = frac / TETRIS_DROP_SHARE
-  const travel = current.landY + TETRIS_SPAWN_ROWS
 
   return {
     landed: grid,
     falling: {
       cells: current.cells,
       x: current.x,
-      y: -TETRIS_SPAWN_ROWS + dropT * travel,
+      y: current.landY - TETRIS_DROP_GAP + dropT * TETRIS_DROP_GAP,
       kind: current.kind,
       color: current.color,
     },

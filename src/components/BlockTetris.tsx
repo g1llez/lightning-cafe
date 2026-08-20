@@ -4,9 +4,9 @@ import {
   tetrisPlan,
   tetrisSnapshot,
   TETRIS_COLS,
+  TETRIS_DROP_GAP,
   TETRIS_DROP_SHARE,
   TETRIS_ROWS,
-  TETRIS_SPAWN_ROWS,
   type TetrisCell,
   type TetrisFalling,
   type TetrisPiece,
@@ -65,7 +65,7 @@ export function BlockTetris({ seed, fill, txCount, minePieces, interval }: Block
   }, [seed, interval, frozen])
 
   const snap = tetrisSnapshot(plan, frozen ? 1 : progress)
-  const dropMs = Math.max(600, (interval / Math.max(1, plan.length)) * TETRIS_DROP_SHARE * 1000)
+  const dropMs = Math.max(400, (interval / Math.max(1, plan.length)) * TETRIS_DROP_SHARE * 1000)
   const fallingIndex =
     snap.falling && plan.length > 0
       ? Math.min(plan.length - 1, Math.floor(Math.min(0.999, progress) * plan.length))
@@ -99,7 +99,7 @@ function CssFallingPiece({ piece, dropMs }: { piece: TetrisPiece; dropMs: number
   const layerRef = useRef<HTMLDivElement>(null)
   const width = 100 / TETRIS_COLS
   const height = 100 / TETRIS_ROWS
-  const fromPercent = ((-TETRIS_SPAWN_ROWS - piece.landY) / TETRIS_ROWS) * 100
+  const fromPercent = (-TETRIS_DROP_GAP / TETRIS_ROWS) * 100
   const look = cellStyle(piece, true)
 
   useEffect(() => {
