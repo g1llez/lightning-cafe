@@ -4,6 +4,8 @@ import { estimateFeeSats, type Priority } from '../simulation/chain'
 import {
   findWalletByAddress,
   formatCad,
+  isExchangeAddress,
+  EXCHANGE_CONFIRMATIONS,
   planSend,
   receiveAddress,
   satsToCad,
@@ -15,6 +17,7 @@ import { AmountSats, SEND_PRESETS } from './AmountSats'
 import { FeePicker, feeRateFor } from './FeePicker'
 import { Modal } from './Modal'
 import { mempoolFlyId } from './SatsFlight'
+import { InfoMark } from './Tooltip'
 
 type SendModalProps = {
   walletId: string
@@ -34,6 +37,7 @@ export function SendModal({ walletId, onClose, onMessage, onSatsSent }: SendModa
   const [amount, setAmount] = useState(Math.min(10_000, maxSend) || maxSend)
   const [addressDraft, setAddressDraft] = useState('')
 
+  const toExchange = isExchangeAddress(addressDraft)
   const owner = findWalletByAddress(player, addressDraft)
   const others = player.wallets.filter((item) => item.id !== walletId)
   const amountOk = amount > 0 && amount <= maxSend
@@ -128,7 +132,13 @@ export function SendModal({ walletId, onClose, onMessage, onSatsSent }: SendModa
                 {t('services.paste')}
               </button>
             </div>
-            {addressOk && (
+            {addressOk && toExchange && (
+              <p className="mt-1.5 flex items-center gap-1.5 text-[11px] leading-relaxed text-text-muted">
+                {t('services.sellConfirmations', { count: EXCHANGE_CONFIRMATIONS })}
+                <InfoMark text={t('services.sellConfirmationsTip', { count: EXCHANGE_CONFIRMATIONS })} />
+              </p>
+            )}
+            {addressOk && !toExchange && (
               <p className="mt-1.5 text-[11px] leading-relaxed text-text-muted">
                 {t('services.addressWarning')}
               </p>

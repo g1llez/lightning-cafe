@@ -104,10 +104,9 @@ A wallet can receive, send, and watch its money move on the fake chain. Buying a
 - Sim in `/tests/persist.test.ts`
 
 ### v0.2.5 — Sell BTC ✅
-- Sell from the nav, same amount chips as Send (10k / 50k / 100k)
-- Exchange shows its `lc1` deposit; you pick sat/vB; no extra cut
-- $ only after 3 confirmations (tooltip in the sell dialog)
-- Sim in `/tests/sell.test.ts`
+- Vendre shows the exchange `lc1` deposit only (copy). Send from a wallet, like a real deposit
+- You pick sat/vB on Send; no extra cut; $ after 3 confirmations (tooltip on the deposit screen and on Send)
+- Sim in `/tests/sell.test.ts` (a send to that address)
 
 **v0.2 done when:** you can create two wallets, buy, wait for a block, send between them with a fee choice, see the tx in a block, sell, refresh the page and still have the same state.
 

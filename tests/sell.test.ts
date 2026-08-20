@@ -10,8 +10,7 @@ import {
   receiveAddress,
   restoreWallet,
   satsToCad,
-  sellBitcoin,
-  STARTING_CAD,
+  sendBitcoin,
   totalSats,
   walletSats,
 } from '../src/simulation/player'
@@ -34,7 +33,7 @@ function mine(player: ReturnType<typeof fundedWallet>, height: number) {
   return advanceBlock(player, INITIAL_MARKET_RATE, () => 0, height)
 }
 
-describe('sell to the exchange', () => {
+describe('deposit to the exchange', () => {
   it('uses a sandbox lc1 deposit address that is not one of ours', () => {
     const player = fundedWallet()
     const deposit = exchangeAddress()
@@ -50,7 +49,7 @@ describe('sell to the exchange', () => {
     const startSats = walletSats(player.wallets[0])
     const sold = 10_000
 
-    player = sellBitcoin(player, 'w-1', sold, quotes.high)
+    player = sendBitcoin(player, 'w-1', exchangeAddress(), sold, quotes.high)
 
     expect(player.pending[0]?.address).toBe(exchangeAddress())
     expect(player.pending[0]?.fromWalletId).toBe('w-1')
@@ -81,7 +80,7 @@ describe('sell to the exchange', () => {
     expect(EXCHANGE_CONFIRMATIONS).toBe(3)
     let player = fundedWallet()
     const cadBefore = player.cad
-    player = sellBitcoin(player, 'w-1', 10_000, quotes.high)
+    player = sendBitcoin(player, 'w-1', exchangeAddress(), 10_000, quotes.high)
 
     player = mine(player, 100)
     expect(player.settled[0]?.height).toBe(100)
@@ -97,7 +96,7 @@ describe('sell to the exchange', () => {
   it('still pays after F5 in a cafe room once later blocks arrive', () => {
     let player = fundedWallet()
     const cadBefore = player.cad
-    player = sellBitcoin(player, 'w-1', 10_000, quotes.high)
+    player = sendBitcoin(player, 'w-1', exchangeAddress(), 10_000, quotes.high)
     player = mine(player, 200)
 
     const reloaded = playerForRoomReload(player)

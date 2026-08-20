@@ -793,15 +793,3 @@ export function payoutExchangeSells(
     paidSellIds: [...player.paidSellIds, ...newlyPaid],
   }
 }
-
-/**
- * Send to the exchange deposit address. You pick sat/vB. $ wait for 3 blocks.
- */
-export function sellBitcoin(
-  player: PlayerState,
-  fromWalletId: string,
-  sats: number,
-  feeRate: number,
-): PlayerState {
-  return sendBitcoin(player, fromWalletId, exchangeAddress(), sats, feeRate)
-}

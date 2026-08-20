@@ -67,13 +67,7 @@ function AppShell() {
           onSatsSent={(label, target) => setFlight({ id: Date.now(), label, target, from: 'funds' })}
         />
       )}
-      {sellOpen && (
-        <SellModal
-          onClose={() => setSellOpen(false)}
-          onMessage={setToastMessage}
-          onSatsSent={(label, target) => setFlight({ id: Date.now(), label, target, from: 'wallet' })}
-        />
-      )}
+      {sellOpen && <SellModal onClose={() => setSellOpen(false)} onMessage={setToastMessage} />}
       {flight && (
         <SatsFlight
           key={flight.id}

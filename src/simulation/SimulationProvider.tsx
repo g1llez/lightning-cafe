@@ -20,7 +20,6 @@ import {
   restoreWallet as applyRestore,
   sendBitcoin,
   createWallet,
-  sellBitcoin,
   type PlayerState,
 } from './player'
 import {
@@ -61,7 +60,6 @@ type SimulationContextValue = {
   deleteWallet: (walletId: string) => void
   buyBtc: (address: string, cadAmount: number) => void
   sendBtc: (fromWalletId: string, toAddress: string, sats: number, feeRate: number) => void
-  sellBtc: (fromWalletId: string, sats: number, feeRate: number) => void
   createCafe: () => Promise<void>
   joinCafe: (roomId: string) => Promise<void>
   leaveCafe: () => void
@@ -314,14 +312,6 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
       },
       sendBtc: (fromWalletId, toAddress, sats, feeRate) => {
         const next = sendBitcoin(player, fromWalletId, toAddress, sats, feeRate)
-        setPlayer(next)
-        const tx = next.pending[next.pending.length - 1]
-        if (tx) {
-          publishTx('send', tx.address, tx.sats, tx.feeRate, tx.id)
-        }
-      },
-      sellBtc: (fromWalletId, sats, feeRate) => {
-        const next = sellBitcoin(player, fromWalletId, sats, feeRate)
         setPlayer(next)
         const tx = next.pending[next.pending.length - 1]
         if (tx) {
