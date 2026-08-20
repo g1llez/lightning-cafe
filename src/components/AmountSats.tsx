@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { formatCad, satsToCad } from '../simulation/player'
 
 export const SAT_PRESETS = [100_000, 250_000, 500_000]
+export const SEND_PRESETS = [10_000, 50_000, 100_000]
 
 type AmountSatsProps = {
   value: number

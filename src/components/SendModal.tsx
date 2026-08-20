@@ -11,12 +11,10 @@ import {
   walletSats,
 } from '../simulation/player'
 import { useSimulation } from '../simulation/SimulationProvider'
-import { AmountSats } from './AmountSats'
+import { AmountSats, SEND_PRESETS } from './AmountSats'
 import { FeePicker, feeRateFor } from './FeePicker'
 import { Modal } from './Modal'
 import { mempoolFlyId } from './SatsFlight'
-
-const SEND_PRESETS = [10_000, 50_000, 100_000]
 
 type SendModalProps = {
   walletId: string

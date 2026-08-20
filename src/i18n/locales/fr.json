@@ -96,6 +96,7 @@
     "title": "Services",
     "price": "BTC {{price}} $",
     "buy": "Acheter",
+    "sell": "Vendre",
     "buyTitle": "Acheter du Bitcoin",
     "amount": "Montant",
     "destination": "Destination",
@@ -126,7 +127,16 @@
     "confirmBuy": "Acheter {{sats}} sats ({{cad}} $)",
     "exchangeSpread": "Échange +{{pct}} % · {{cad}} $",
     "exchangeSpreadTip": "Coupe que l'échange garde sur la conversion. C'est lui qui paie le mineur.",
-    "buySent": "Transaction envoyée au mempool"
+    "buySent": "Transaction envoyée au mempool",
+    "sellTitle": "Vendre du Bitcoin",
+    "sellFrom": "Depuis",
+    "sellDeposit": "Dépôt de l'échange",
+    "sellDepositCopied": "Adresse de l'échange copiée",
+    "sellConfirmations": "Officiel après {{count}} blocs",
+    "sellConfirmationsTip": "L'échange ne crédite tes $ qu'après {{count}} confirmations. Le premier bloc peut encore être réorganisé ; attendre {{count}} blocs est la pratique habituelle pour un dépôt Bitcoin. Pas de coupe de l'échange — tu paies seulement le frais mineur que tu choisis.",
+    "sellConfirm": "Vendre {{sats}} sats ({{cad}} $)",
+    "sellSent": "Envoyé à l'échange. $ après 3 blocs.",
+    "sellNoWallet": "Crée d'abord un portefeuille et achète des sats."
   },
   "layers": {
     "lightning": "Lightning (L2)",

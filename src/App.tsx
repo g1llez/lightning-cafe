@@ -6,6 +6,7 @@ import { Footer } from './components/Footer'
 import { LightningLayer } from './components/LightningLayer'
 import { Nav } from './components/Nav'
 import { SatsFlight } from './components/SatsFlight'
+import { SellModal } from './components/SellModal'
 import { Toast } from './components/Toast'
 import { SimulationProvider } from './simulation/SimulationProvider'
 
@@ -21,6 +22,7 @@ function AppShell() {
   const { t } = useTranslation()
   const [toastMessage, setToastMessage] = useState('')
   const [buyOpen, setBuyOpen] = useState(false)
+  const [sellOpen, setSellOpen] = useState(false)
   const [lightningOpen, setLightningOpen] = useState(false)
   const [flight, setFlight] = useState<{
     id: number
@@ -43,6 +45,7 @@ function AppShell() {
       <Nav
         onGuideClick={() => setToastMessage(t('nav.guideSoon'))}
         onBuyClick={() => setBuyOpen(true)}
+        onSellClick={() => setSellOpen(true)}
       />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <LightningLayer
@@ -62,6 +65,13 @@ function AppShell() {
           onClose={() => setBuyOpen(false)}
           onMessage={setToastMessage}
           onSatsSent={(label, target) => setFlight({ id: Date.now(), label, target, from: 'funds' })}
+        />
+      )}
+      {sellOpen && (
+        <SellModal
+          onClose={() => setSellOpen(false)}
+          onMessage={setToastMessage}
+          onSatsSent={(label, target) => setFlight({ id: Date.now(), label, target, from: 'wallet' })}
         />
       )}
       {flight && (

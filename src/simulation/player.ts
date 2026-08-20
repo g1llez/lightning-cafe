@@ -92,6 +92,8 @@ export type PlayerState = {
   settled: SettledTx[]
   nextWalletId: number
   nextTxId: number
+  /** Exchange deposits already paid out in $, so a later block cannot credit twice. */
+  paidSellIds: string[]
 }
 
 export function createInitialPlayer(): PlayerState {
@@ -102,6 +104,7 @@ export function createInitialPlayer(): PlayerState {
     settled: [],
     nextWalletId: 1,
     nextTxId: 1,
+    paidSellIds: [],
   }
 }
 
@@ -626,36 +629,37 @@ export function advanceBlock(
   random: (() => number) | null = Math.random,
   height = 0,
 ): PlayerState {
-  if (player.pending.length === 0) {
-    return player
+  let next = player
+  if (player.pending.length > 0) {
+    const confirmed = player.pending.filter((tx) =>
+      clearsThisBlock(
+        tx.feeRate,
+        marketRate,
+        random ?? seededRandom(`${tx.id}:${height}:${marketRate}`),
+      ),
+    )
+    const settled: SettledTx[] = confirmed.map((tx) => ({ ...tx, height }))
+
+    next = {
+      ...player,
+      pending: player.pending.filter((tx) => !confirmed.includes(tx)),
+      settled: [...settled, ...player.settled].slice(0, 40),
+      wallets: player.wallets.map((wallet) => {
+        let updated = wallet
+        for (const tx of confirmed) {
+          if (tx.walletId === wallet.id) {
+            updated = { ...updated, addresses: creditAddress(updated, tx.address, tx.sats) }
+          }
+          if (tx.fromWalletId === wallet.id && tx.changeSats > 0 && tx.changeAddress) {
+            updated = { ...updated, addresses: creditAddress(updated, tx.changeAddress, tx.changeSats) }
+          }
+        }
+        return updated
+      }),
+    }
   }
 
-  const confirmed = player.pending.filter((tx) =>
-    clearsThisBlock(
-      tx.feeRate,
-      marketRate,
-      random ?? seededRandom(`${tx.id}:${height}:${marketRate}`),
-    ),
-  )
-  const settled: SettledTx[] = confirmed.map((tx) => ({ ...tx, height }))
-
-  return {
-    ...player,
-    pending: player.pending.filter((tx) => !confirmed.includes(tx)),
-    settled: [...settled, ...player.settled].slice(0, 40),
-    wallets: player.wallets.map((wallet) => {
-      let next = wallet
-      for (const tx of confirmed) {
-        if (tx.walletId === wallet.id) {
-          next = { ...next, addresses: creditAddress(next, tx.address, tx.sats) }
-        }
-        if (tx.fromWalletId === wallet.id && tx.changeSats > 0 && tx.changeAddress) {
-          next = { ...next, addresses: creditAddress(next, tx.changeAddress, tx.changeSats) }
-        }
-      }
-      return next
-    }),
-  }
+  return payoutExchangeSells(next, height)
 }
 
 /**
@@ -718,4 +722,86 @@ export function sendBitcoin(
       wallet.id === fromWalletId ? { ...wallet, addresses } : wallet,
     ),
   }
+}
+
+/** Words that are not in the wallet list, so a restore cannot steal the cashier. */
+const EXCHANGE_SEED = [
+  'exchange',
+  'deposit',
+  'sweep',
+  'cashier',
+  'window',
+  'counter',
+  'ticker',
+  'spot',
+  'desk',
+  'vault',
+  'custody',
+  'clearing',
+]
+
+/** How many blocks an exchange waits before the deposit is official. */
+export const EXCHANGE_CONFIRMATIONS = 3
+
+export function exchangeAddress(): string {
+  return walletAddress(EXCHANGE_SEED, 0)
+}
+
+export function isExchangeAddress(address: string): boolean {
+  return normalizeAddress(address) === exchangeAddress()
+}
+
+export function isOurExchangeSend(tx: PendingTx): boolean {
+  return isExchangeAddress(tx.address) && tx.fromWalletId != null
+}
+
+export function confirmationsOf(txHeight: number, chainHeight: number): number {
+  if (txHeight <= 0 || chainHeight < txHeight) {
+    return 0
+  }
+  return chainHeight - txHeight + 1
+}
+
+/** $ for a sell: spot price, no exchange cut. Miner fee already left the wallet. */
+export function payoutExchangeSells(
+  player: PlayerState,
+  confirmedHeight: number,
+  priceCad = BTC_PRICE_CAD,
+): PlayerState {
+  const paid = new Set(player.paidSellIds)
+  let cad = player.cad
+  const newlyPaid: string[] = []
+
+  for (const tx of player.settled) {
+    if (!isOurExchangeSend(tx) || paid.has(tx.id)) {
+      continue
+    }
+    if (confirmationsOf(tx.height, confirmedHeight) < EXCHANGE_CONFIRMATIONS) {
+      continue
+    }
+    cad = Math.round((cad + satsToCad(tx.sats, priceCad)) * 100) / 100
+    newlyPaid.push(tx.id)
+  }
+
+  if (newlyPaid.length === 0) {
+    return player
+  }
+
+  return {
+    ...player,
+    cad,
+    paidSellIds: [...player.paidSellIds, ...newlyPaid],
+  }
+}
+
+/**
+ * Send to the exchange deposit address. You pick sat/vB. $ wait for 3 blocks.
+ */
+export function sellBitcoin(
+  player: PlayerState,
+  fromWalletId: string,
+  sats: number,
+  feeRate: number,
+): PlayerState {
+  return sendBitcoin(player, fromWalletId, exchangeAddress(), sats, feeRate)
 }

@@ -8,9 +8,10 @@ import { Tooltip } from './Tooltip'
 type NavProps = {
   onGuideClick: () => void
   onBuyClick: () => void
+  onSellClick: () => void
 }
 
-export function Nav({ onGuideClick, onBuyClick }: NavProps) {
+export function Nav({ onGuideClick, onBuyClick, onSellClick }: NavProps) {
   const { t, i18n } = useTranslation()
   const { player, btcPriceCad } = useSimulation()
   const currentLanguage = i18n.language.startsWith('fr') ? 'fr' : 'en'
@@ -61,6 +62,14 @@ export function Nav({ onGuideClick, onBuyClick }: NavProps) {
           className="rounded-md bg-accent px-3 py-2 text-sm font-semibold text-bg-primary transition hover:brightness-110"
         >
           {t('services.buy')}
+        </button>
+
+        <button
+          type="button"
+          onClick={onSellClick}
+          className="rounded-md border border-border bg-bg-panel px-3 py-2 text-sm transition hover:border-accent/60"
+        >
+          {t('services.sell')}
         </button>
 
         <button

@@ -30,7 +30,7 @@ npm run test:session-api  # read-only health/404/CORS against cafe-session prod
 
 ## Sprint 1 — walking skeleton
 
-Done. See [ROADMAP.md](ROADMAP.md) for versions (now: **v0.2.6 persist**, next **v0.2.5 Sell**). Shared sessions: button **Café** on the live site (GitHub Pages); the API is not callable from localhost. Solo F5 keeps wallets and the chain in this browser; Café F5 keeps the 12 words and rebuilds sats from the room.
+Done. See [ROADMAP.md](ROADMAP.md) for versions (now: **v0.2.5 Sell**, persist and inspect already shipped). Shared sessions: button **Café** on the live site (GitHub Pages); the API is not callable from localhost. Solo F5 keeps wallets and the chain in this browser; Café F5 keeps the 12 words and rebuilds sats from the room.
 
 ## License
 

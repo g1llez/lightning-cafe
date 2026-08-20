@@ -1,5 +1,13 @@
 import { createInitialChain, type ChainState, type ConfirmedBlock, type Priority, type ProjectedBlock } from './chain'
-import { createInitialPlayer, type PendingTx, type PlayerState, type SettledTx, type Wallet, type WalletAddress } from './player'
+import {
+  createInitialPlayer,
+  isOurExchangeSend,
+  type PendingTx,
+  type PlayerState,
+  type SettledTx,
+  type Wallet,
+  type WalletAddress,
+} from './player'
 
 export const PERSIST_KEY = 'lightning-cafe.sandbox'
 export const PERSIST_VERSION = 1
@@ -27,6 +35,10 @@ function isInt(value: unknown): value is number {
 
 function isNonNegInt(value: unknown): value is number {
   return isInt(value) && value >= 0
+}
+
+function isNonNegNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0
 }
 
 function isPriority(value: unknown): value is Priority {
@@ -105,11 +117,32 @@ function parseSettled(value: unknown): SettledTx | null {
   return { ...tx, height: value.height }
 }
 
+function parseIdList(value: unknown): string[] | null {
+  if (value === undefined) {
+    return []
+  }
+  if (!Array.isArray(value)) {
+    return null
+  }
+  const ids: string[] = []
+  for (const item of value) {
+    if (typeof item !== 'string' || !item) {
+      return null
+    }
+    ids.push(item)
+  }
+  return ids
+}
+
 function parsePlayer(value: unknown): PlayerState | null {
-  if (!isRecord(value) || !isNonNegInt(value.cad) || !isNonNegInt(value.nextWalletId) || !isNonNegInt(value.nextTxId)) {
+  if (!isRecord(value) || !isNonNegNumber(value.cad) || !isNonNegInt(value.nextWalletId) || !isNonNegInt(value.nextTxId)) {
     return null
   }
   if (!Array.isArray(value.wallets) || !Array.isArray(value.pending) || !Array.isArray(value.settled)) {
+    return null
+  }
+  const paidSellIds = parseIdList(value.paidSellIds)
+  if (!paidSellIds) {
     return null
   }
   const wallets: Wallet[] = []
@@ -143,6 +176,7 @@ function parsePlayer(value: unknown): PlayerState | null {
     settled,
     nextWalletId: value.nextWalletId,
     nextTxId: value.nextTxId,
+    paidSellIds,
   }
 }
 
@@ -238,8 +272,8 @@ export function parsePersist(raw: string | null): PersistBlob | null {
 export function playerForRoomReload(player: PlayerState): PlayerState {
   return {
     ...player,
-    pending: [],
-    settled: [],
+    pending: player.pending.filter(isOurExchangeSend),
+    settled: player.settled.filter(isOurExchangeSend),
     wallets: player.wallets.map((wallet) => ({
       ...wallet,
       addresses: wallet.addresses.map((address) => ({ ...address, sats: 0 })),

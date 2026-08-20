@@ -2,7 +2,7 @@
 
 Source of truth for what to build next. Do not replan after each task: take the first open item in the current version.
 
-**Now:** v0.2.6 persist done → next is **v0.2.5 Sell BTC**
+**Now:** v0.2.5 Sell BTC done → v0.2 L1 close (buy, send, inspect, sell, persist)
 
 | Version | Goal | Status |
 |---|---|---|
@@ -103,10 +103,11 @@ A wallet can receive, send, and watch its money move on the fake chain. Buying a
 - Reset sandbox in the footer (this browser only)
 - Sim in `/tests/persist.test.ts`
 
-### v0.2.5 — Sell BTC
-- Sell sats back to $ from the same nav service as Buy
-- Also an on-chain tx (service sweep), spending from the wallet addresses
-- Inverse of buy
+### v0.2.5 — Sell BTC ✅
+- Sell from the nav, same amount chips as Send (10k / 50k / 100k)
+- Exchange shows its `lc1` deposit; you pick sat/vB; no extra cut
+- $ only after 3 confirmations (tooltip in the sell dialog)
+- Sim in `/tests/sell.test.ts`
 
 **v0.2 done when:** you can create two wallets, buy, wait for a block, send between them with a fee choice, see the tx in a block, sell, refresh the page and still have the same state.
 

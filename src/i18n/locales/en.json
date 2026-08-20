@@ -96,6 +96,7 @@
     "title": "Services",
     "price": "BTC {{price}} $",
     "buy": "Buy",
+    "sell": "Sell",
     "buyTitle": "Buy Bitcoin",
     "amount": "Amount",
     "destination": "Destination",
@@ -126,7 +127,16 @@
     "confirmBuy": "Buy {{sats}} sats ({{cad}} $)",
     "exchangeSpread": "Exchange +{{pct}} % · {{cad}} $",
     "exchangeSpreadTip": "Cut the exchange keeps on the conversion. It pays the miner fee.",
-    "buySent": "Transaction sent to the mempool"
+    "buySent": "Transaction sent to the mempool",
+    "sellTitle": "Sell Bitcoin",
+    "sellFrom": "From",
+    "sellDeposit": "Exchange deposit",
+    "sellDepositCopied": "Exchange address copied",
+    "sellConfirmations": "Official after {{count}} blocks",
+    "sellConfirmationsTip": "The exchange only credits your $ after {{count}} confirmations. The first block can still be reorganized; waiting {{count}} blocks is the usual practice for a Bitcoin deposit. No extra cut from the exchange — you only pay the miner fee you pick.",
+    "sellConfirm": "Sell {{sats}} sats ({{cad}} $)",
+    "sellSent": "Sent to the exchange. $ after 3 blocks.",
+    "sellNoWallet": "Create a wallet and buy sats first."
   },
   "layers": {
     "lightning": "Lightning (L2)",
