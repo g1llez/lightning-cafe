@@ -24,7 +24,8 @@ npm run dev
 ```bash
 npm run build    # production build
 npm run preview  # preview production build locally
-npm test         # Vitest in /tests (GitHub runs this before Pages)
+npm test              # Vitest in /tests (GitHub runs this before Pages)
+npm run test:session-api  # read-only health/404/CORS against cafe-session prod
 ```
 
 ## Sprint 1 — walking skeleton
