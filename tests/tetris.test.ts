@@ -28,12 +28,21 @@ describe('block tetris scenarios', () => {
     }
   })
 
-  it('picks a spawn that never sits above a blocked full-height path blindly', () => {
+  it('only falls through empty cells onto the recorded seat', () => {
     for (const seed of ['u-0', 'u-1', 'u-2', 'u-3', 'u-4', 'u-5']) {
       const plan = tetrisPlan(seed, 2_300)
       for (let index = 0; index < plan.length; index += 1) {
+        const piece = plan[index]!
         const spawn = tetrisSpawnY(plan, index)
-        expect(spawn).toBeLessThanOrEqual(plan[index]!.landY)
+        expect(spawn).toBeLessThanOrEqual(piece.landY)
+        const snapStart = tetrisSnapshot(plan, index / plan.length)
+        // Mid-fall y stays between spawn and seat
+        const mid = tetrisSnapshot(plan, (index + TETRIS_DROP_SHARE * 0.5) / plan.length)
+        if (mid.falling && spawn < piece.landY) {
+          expect(mid.falling.y).toBeGreaterThanOrEqual(spawn)
+          expect(mid.falling.y).toBeLessThanOrEqual(piece.landY)
+        }
+        void snapStart
       }
     }
   })

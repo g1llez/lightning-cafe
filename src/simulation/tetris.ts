@@ -4,8 +4,6 @@ export const TETRIS_COLS = 8
 export const TETRIS_ROWS = 8
 /** Default spawn above the well when the drop path is clear. */
 export const TETRIS_SPAWN_Y = -2
-/** Short hop when a recorded piece would ghost through the stack. */
-export const TETRIS_HOP_GAP = 1.5
 /** First slice of each piece's time slot is the fall; the rest is a pause. */
 export const TETRIS_DROP_SHARE = 0.5
 
@@ -163,9 +161,11 @@ function fits(occ: boolean[][], cells: [number, number][], x: number, y: number)
 
 function cover(occ: boolean[][], cells: [number, number][], x: number, y: number) {
   for (const [dx, dy] of cells) {
-    const row = occ[y + dy]
-    if (row) {
-      row[x + dx] = true
+    const px = x + dx
+    const py = y + dy
+    const row = occ[py]
+    if (row && px >= 0 && px < TETRIS_COLS) {
+      row[px] = true
     }
   }
 }
@@ -195,34 +195,49 @@ function stamp(
   }
 }
 
-/** True if every intermediate drop pose sits only on empty cells (no ghosting). */
-export function tetrisPathClear(plan: TetrisPiece[], index: number): boolean {
+function occupiedBefore(plan: TetrisPiece[], index: number): boolean[][] {
   const occ = emptyOcc()
   for (const item of plan.slice(0, index)) {
     cover(occ, item.cells, item.x, item.landY)
   }
-  const current = plan[index]
-  if (!current) {
-    return false
-  }
-  for (let y = TETRIS_SPAWN_Y; y <= current.landY; y += 1) {
-    if (!fits(occ, current.cells, current.x, y)) {
-      return false
-    }
-  }
-  return true
+  return occ
 }
 
-/** Spawn Y for CSS / snapshot: full fall if clear, else short hop onto the seat. */
+/** True if every intermediate drop pose from spawn sits only on empty cells. */
+export function tetrisPathClear(plan: TetrisPiece[], index: number): boolean {
+  const piece = plan[index]
+  if (!piece) {
+    return false
+  }
+  return tetrisSpawnY(plan, index) <= TETRIS_SPAWN_Y
+}
+
+/**
+ * Highest Y from which the final pose can fall straight down onto landY
+ * without overlapping already-landed tiles. No cosmetic hop through the stack:
+ * if the piece was packed sideways in the lab, the fall starts just above the seat.
+ */
 export function tetrisSpawnY(plan: TetrisPiece[], index: number): number {
   const piece = plan[index]
   if (!piece) {
     return TETRIS_SPAWN_Y
   }
-  if (tetrisPathClear(plan, index)) {
-    return Math.min(TETRIS_SPAWN_Y, piece.landY)
+  const occ = occupiedBefore(plan, index)
+  let spawn = piece.landY
+  for (let y = piece.landY - 1; y >= TETRIS_SPAWN_Y; y -= 1) {
+    let clear = true
+    for (let t = y; t <= piece.landY; t += 1) {
+      if (!fits(occ, piece.cells, piece.x, t)) {
+        clear = false
+        break
+      }
+    }
+    if (!clear) {
+      break
+    }
+    spawn = y
   }
-  return piece.landY - TETRIS_HOP_GAP
+  return spawn
 }
 
 export function tetrisPlan(seed: string, txCount: number, minePieces = 0): TetrisPiece[] {
