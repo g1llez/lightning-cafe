@@ -1,11 +1,9 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   tetrisPlan,
   tetrisSnapshot,
   TETRIS_COLS,
-  TETRIS_DROP_SHARE,
   TETRIS_ROWS,
-  TETRIS_SPAWN_ROWS,
   type TetrisCell,
   type TetrisFalling,
 } from '../simulation/tetris'
@@ -29,9 +27,30 @@ function cellClass(cell: TetrisCell | TetrisFalling['kind'], falling = false): s
 }
 
 export function BlockTetris({ seed, fill, txCount, minePieces, interval }: BlockTetrisProps) {
+  const fillRef = useRef(fill)
+  fillRef.current = fill
+  const [progress, setProgress] = useState(fill)
   const plan = useMemo(() => tetrisPlan(seed, txCount, minePieces), [seed, txCount, minePieces])
-  const snap = tetrisSnapshot(plan, fill)
-  const dropMs = Math.max(280, (interval / Math.max(1, plan.length)) * TETRIS_DROP_SHARE * 1000)
+
+  useEffect(() => {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduced || interval <= 0) {
+      setProgress(fillRef.current)
+      return
+    }
+
+    // Smooth clock for this block: fill only seeds the start (do not restart every second).
+    const started = performance.now() - fillRef.current * interval * 1000
+    let frame = 0
+    const tick = (now: number) => {
+      setProgress(Math.min(1, Math.max(0, (now - started) / (interval * 1000))))
+      frame = window.requestAnimationFrame(tick)
+    }
+    frame = window.requestAnimationFrame(tick)
+    return () => window.cancelAnimationFrame(frame)
+  }, [seed, interval])
+
+  const snap = tetrisSnapshot(plan, progress)
 
   return (
     <div className="relative h-full w-full" aria-hidden="true">
@@ -46,56 +65,24 @@ export function BlockTetris({ seed, fill, txCount, minePieces, interval }: Block
           row.map((cell, x) => <span key={`${x}-${y}`} className={`rounded-[1px] ${cellClass(cell)}`} />),
         )}
       </div>
-      {snap.falling ? (
-        <FallingPiece key={`${seed}-${snap.falling.x}-${snap.falling.landY}`} piece={snap.falling} dropMs={dropMs} />
-      ) : null}
+      {snap.falling ? <FallingPiece piece={snap.falling} /> : null}
     </div>
   )
 }
 
-function FallingPiece({ piece, dropMs }: { piece: TetrisFalling; dropMs: number }) {
-  const layerRef = useRef<HTMLDivElement>(null)
-  const seekRef = useRef(piece.dropT)
+function FallingPiece({ piece }: { piece: TetrisFalling }) {
   const width = 100 / TETRIS_COLS
   const height = 100 / TETRIS_ROWS
-  const from = ((-TETRIS_SPAWN_ROWS - piece.landY) / TETRIS_ROWS) * 100
-
-  useEffect(() => {
-    const layer = layerRef.current
-    if (!layer) {
-      return
-    }
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reduced) {
-      layer.style.transform = 'translateY(0)'
-      return
-    }
-
-    const animation = layer.animate(
-      [{ transform: `translateY(${from}%)` }, { transform: 'translateY(0)' }],
-      {
-        duration: dropMs,
-        delay: -seekRef.current * dropMs,
-        easing: 'linear',
-        fill: 'both',
-      },
-    )
-    return () => animation.cancel()
-  }, [dropMs, from])
 
   return (
-    <div
-      ref={layerRef}
-      className="pointer-events-none absolute inset-0.5"
-      style={{ transform: `translateY(${from}%)` }}
-    >
+    <div className="pointer-events-none absolute inset-0.5">
       {piece.cells.map(([dx, dy]) => (
         <span
           key={`${dx}-${dy}`}
           className={`absolute rounded-[1px] ${cellClass(piece.kind, true)}`}
           style={{
             left: `${(piece.x + dx) * width}%`,
-            top: `${(piece.landY + dy) * height}%`,
+            top: `${(piece.y + dy) * height}%`,
             width: `${width}%`,
             height: `${height}%`,
           }}

@@ -1,3 +1,6 @@
+/**
+ * One-off well coverage check — run via vitest.
+ */
 import { describe, expect, it } from 'vitest'
 import {
   TETRIS_COLS,
@@ -8,9 +11,14 @@ import {
   tetrisPlan,
   tetrisShapeKey,
   tetrisSnapshot,
+  tetrisWellsAreFull,
 } from '../src/simulation/tetris'
 
 describe('block tetris packing', () => {
+  it('keeps every hand-packed well full with no overlaps', () => {
+    expect(tetrisWellsAreFull()).toBe(true)
+  })
+
   it('fills every cell by the end of the minute', () => {
     for (const seed of ['u-2', 'u-8', 'block-a', 'cafe']) {
       const plan = tetrisPlan(seed, 2_300)
@@ -21,7 +29,7 @@ describe('block tetris packing', () => {
     }
   })
 
-  it('starts empty with a piece falling from the top, already in its column', () => {
+  it('starts empty with a piece falling from above the well', () => {
     const plan = tetrisPlan('u-2', 2_300)
     const start = tetrisSnapshot(plan, 0)
     expect(tetrisFilledCount(start.landed)).toBe(0)
@@ -49,16 +57,16 @@ describe('block tetris packing', () => {
     expect(tetrisPlan('u-2', 2_300)).not.toEqual(tetrisPlan('u-8', 2_300))
   })
 
-  it('uses mixed tetrominoes, not only long bars', () => {
+  it('uses mixed tetrominoes, not only squares or long bars', () => {
     const keys = new Set<string>()
-    for (const seed of ['u-0', 'u-1', 'u-2', 'u-3', 'u-4', 'u-5']) {
+    for (const seed of ['u-0', 'u-1', 'u-2', 'u-3', 'u-4', 'u-5', 'u-6', 'u-7']) {
       for (const piece of tetrisPlan(seed, 2_300)) {
         keys.add(tetrisShapeKey(piece.cells))
       }
     }
-    expect(keys.size).toBeGreaterThan(3)
-    const onlyBars = [...keys].every((key) => key === '0,0;1,0;2,0;3,0' || key === '0,0;0,1;0,2;0,3')
-    expect(onlyBars).toBe(false)
+    expect(keys.size).toBeGreaterThan(4)
+    const onlySquares = [...keys].every((key) => key === '0,0;0,1;1,0;1,1')
+    expect(onlySquares).toBe(false)
   })
 
   it('paints the last landed pieces as yours', () => {

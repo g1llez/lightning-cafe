@@ -5,7 +5,7 @@ export const TETRIS_ROWS = 8
 /** Fall from this many rows above the well so every piece travels. */
 export const TETRIS_SPAWN_ROWS = 4
 /** First slice of each piece's time slot is the fall; the rest is a pause. */
-export const TETRIS_DROP_SHARE = 0.35
+export const TETRIS_DROP_SHARE = 0.28
 
 export type TetrisCell = 'empty' | 'npc' | 'mine'
 export type TetrisKind = 'npc' | 'mine'
@@ -21,75 +21,79 @@ export type TetrisFalling = {
   cells: [number, number][]
   x: number
   y: number
-  landY: number
   kind: TetrisKind
-  /** 0 at spawn, 1 as it locks. */
-  dropT: number
 }
 
-const SHAPES: [number, number][][] = [
-  [
-    [0, 0],
-    [1, 0],
-    [0, 1],
-    [1, 1],
-  ],
-  [
-    [0, 0],
-    [1, 0],
-    [2, 0],
-    [3, 0],
-  ],
-  [
-    [0, 0],
-    [1, 0],
-    [2, 0],
-    [1, 1],
-  ],
-  [
-    [0, 0],
-    [0, 1],
-    [0, 2],
-    [1, 2],
-  ],
-  [
-    [1, 0],
-    [1, 1],
-    [1, 2],
-    [0, 2],
-  ],
-  [
-    [1, 0],
-    [2, 0],
-    [0, 1],
-    [1, 1],
-  ],
-  [
-    [0, 0],
-    [1, 0],
-    [1, 1],
-    [2, 1],
-  ],
+type Raw = Omit<TetrisPiece, 'kind'>
+
+const O: [number, number][] = [
+  [0, 0],
+  [1, 0],
+  [0, 1],
+  [1, 1],
+]
+const I_H: [number, number][] = [
+  [0, 0],
+  [1, 0],
+  [2, 0],
+  [3, 0],
+]
+const I_V: [number, number][] = [
+  [0, 0],
+  [0, 1],
+  [0, 2],
+  [0, 3],
+]
+const T_U: [number, number][] = [
+  [0, 0],
+  [1, 0],
+  [2, 0],
+  [1, 1],
+]
+const T_D: [number, number][] = [
+  [1, 0],
+  [0, 1],
+  [1, 1],
+  [2, 1],
+]
+const T_L: [number, number][] = [
+  [1, 0],
+  [0, 1],
+  [1, 1],
+  [1, 2],
+]
+const T_R: [number, number][] = [
+  [0, 0],
+  [0, 1],
+  [1, 1],
+  [0, 2],
+]
+const L: [number, number][] = [
+  [0, 0],
+  [0, 1],
+  [0, 2],
+  [1, 2],
+]
+const J: [number, number][] = [
+  [1, 0],
+  [1, 1],
+  [1, 2],
+  [0, 2],
+]
+const S: [number, number][] = [
+  [1, 0],
+  [2, 0],
+  [0, 1],
+  [1, 1],
+]
+const Z: [number, number][] = [
+  [0, 0],
+  [1, 0],
+  [1, 1],
+  [2, 1],
 ]
 
-const SQUARES: Omit<TetrisPiece, 'kind'>[] = (() => {
-  const placed: Omit<TetrisPiece, 'kind'>[] = []
-  for (let y = TETRIS_ROWS - 2; y >= 0; y -= 2) {
-    for (let x = 0; x < TETRIS_COLS; x += 2) {
-      placed.push({
-        cells: [
-          [0, 0],
-          [1, 0],
-          [0, 1],
-          [1, 1],
-        ],
-        x,
-        landY: y,
-      })
-    }
-  }
-  return placed
-})()
+const SHAPES: [number, number][][] = [O, I_H, I_V, T_U, T_D, T_L, T_R, L, J, S, Z]
 
 function emptyOcc(): boolean[][] {
   return Array.from({ length: TETRIS_ROWS }, () => Array.from({ length: TETRIS_COLS }, () => false))
@@ -97,31 +101,6 @@ function emptyOcc(): boolean[][] {
 
 function emptyGrid(): TetrisCell[][] {
   return Array.from({ length: TETRIS_ROWS }, () => Array.from({ length: TETRIS_COLS }, () => 'empty' as const))
-}
-
-function rotate(cells: [number, number][]): [number, number][] {
-  const next = cells.map(([x, y]) => [y, -x] as [number, number])
-  const minX = Math.min(...next.map(([x]) => x))
-  const minY = Math.min(...next.map(([, y]) => y))
-  return next.map(([x, y]) => [x - minX, y - minY] as [number, number])
-}
-
-function rotations(cells: [number, number][]): [number, number][][] {
-  const seen = new Set<string>()
-  const out: [number, number][][] = []
-  let current = cells
-  for (let step = 0; step < 4; step += 1) {
-    const key = current
-      .map(([x, y]) => `${x},${y}`)
-      .sort()
-      .join(';')
-    if (!seen.has(key)) {
-      seen.add(key)
-      out.push(current)
-    }
-    current = rotate(current)
-  }
-  return out
 }
 
 function shuffle<T>(items: T[], random: () => number): T[] {
@@ -166,15 +145,92 @@ function cover(occ: boolean[][], cells: [number, number][], originX: number, ori
   }
 }
 
-function tileWell(random: () => number): [number, number][][] {
+function toRaw(cells: [number, number][], originX: number, originY: number): Raw {
+  return {
+    x: originX,
+    landY: originY,
+    cells: cells.map(([x, y]) => [x, y] as [number, number]),
+  }
+}
+
+/** Guaranteed full wells — used when the search fails. Never all-O alone. */
+function wellRows(): Raw[] {
+  const out: Raw[] = []
+  for (let y = 0; y < TETRIS_ROWS; y += 1) {
+    out.push(toRaw(I_H, 0, y))
+    out.push(toRaw(I_H, 4, y))
+  }
+  return out
+}
+
+function wellCols(): Raw[] {
+  const out: Raw[] = []
+  for (let x = 0; x < TETRIS_COLS; x += 1) {
+    out.push(toRaw(I_V, x, 0))
+    out.push(toRaw(I_V, x, 4))
+  }
+  return out
+}
+
+function wellZipper(): Raw[] {
+  const out: Raw[] = []
+  for (let band = 0; band < 4; band += 1) {
+    const y = band * 2
+    if (band % 2 === 0) {
+      for (let x = 0; x < TETRIS_COLS; x += 2) {
+        out.push(toRaw(O, x, y))
+      }
+    } else {
+      out.push(toRaw(I_H, 0, y))
+      out.push(toRaw(I_H, 4, y))
+      out.push(toRaw(I_H, 0, y + 1))
+      out.push(toRaw(I_H, 4, y + 1))
+    }
+  }
+  return out
+}
+
+function wellCorners(): Raw[] {
+  const out: Raw[] = []
+  out.push(toRaw(L, 0, 5), toRaw(J, 2, 5), toRaw(L, 4, 5), toRaw(J, 6, 5))
+  out.push(toRaw(S, 0, 4), toRaw(Z, 2, 4), toRaw(S, 4, 4), toRaw(Z, 6, 4))
+  out.push(toRaw(T_U, 0, 2), toRaw(T_U, 3, 2), toRaw(O, 6, 2))
+  out.push(toRaw(I_H, 0, 3), toRaw(I_H, 4, 3))
+  out.push(toRaw(O, 0, 0), toRaw(O, 2, 0), toRaw(I_H, 4, 0), toRaw(I_H, 4, 1))
+  return out
+}
+
+function coversExactly(raw: Raw[]): boolean {
+  if (raw.length !== 16) {
+    return false
+  }
+  const grid = emptyGrid()
+  for (const item of raw) {
+    for (const [dx, dy] of item.cells) {
+      const x = item.x + dx
+      const y = item.landY + dy
+      if (x < 0 || x >= TETRIS_COLS || y < 0 || y >= TETRIS_ROWS) {
+        return false
+      }
+      const row = grid[y]
+      if (!row || row[x] !== 'empty') {
+        return false
+      }
+      row[x] = 'npc'
+    }
+  }
+  return grid.every((row) => row.every((cell) => cell !== 'empty'))
+}
+
+function searchTile(random: () => number): Raw[] | null {
   const occ = emptyOcc()
-  const placed: [number, number][][] = []
-  const bag = shuffle(SHAPES, random).flatMap(rotations)
+  const placed: Raw[] = []
+  const bag = shuffle(SHAPES, random)
   let steps = 0
 
   function solve(): boolean {
     steps += 1
-    if (steps > 8_000) {
+    if (steps > 20_000) {
       return false
     }
     const hole = firstEmpty(occ)
@@ -190,7 +246,7 @@ function tileWell(random: () => number): [number, number][][] {
           continue
         }
         cover(occ, cells, originX, originY, true)
-        placed.push(cells.map(([dx, dy]) => [originX + dx, originY + dy] as [number, number]))
+        placed.push(toRaw(cells, originX, originY))
         if (solve()) {
           return true
         }
@@ -201,17 +257,23 @@ function tileWell(random: () => number): [number, number][][] {
     return false
   }
 
-  return solve() ? placed : []
+  return solve() ? placed : null
 }
 
-function toPiece(cells: [number, number][]): Omit<TetrisPiece, 'kind'> {
-  const minX = Math.min(...cells.map(([x]) => x))
-  const minY = Math.min(...cells.map(([, y]) => y))
-  return {
-    x: minX,
-    landY: minY,
-    cells: cells.map(([x, y]) => [x - minX, y - minY] as [number, number]),
+const SAFE_WELLS = [wellZipper, wellRows, wellCols, wellCorners].map((build) => build()).filter(coversExactly)
+
+function pickWell(seed: string, txCount: number): Raw[] {
+  const random = seededRandom(`${seed}|${txCount}|tiles`)
+  for (let attempt = 0; attempt < 24; attempt += 1) {
+    const found = searchTile(() => random())
+    if (found && coversExactly(found)) {
+      const keys = new Set(found.map((item) => item.cells.map(([x, y]) => `${x},${y}`).sort().join(';')))
+      if (keys.size >= 3) {
+        return found
+      }
+    }
   }
+  return SAFE_WELLS[Math.floor(random() * SAFE_WELLS.length)] ?? wellZipper()
 }
 
 function stamp(grid: TetrisCell[][], item: { cells: [number, number][]; x: number; y: number; kind: TetrisKind }) {
@@ -226,18 +288,16 @@ function stamp(grid: TetrisCell[][], item: { cells: [number, number][]; x: numbe
 
 /** Drop order: already in the right column, gravity only. Fills every cell. */
 export function tetrisPlan(seed: string, txCount: number, minePieces = 0): TetrisPiece[] {
-  const tiled = tileWell(seededRandom(`${seed}|${txCount}|tiles`))
-  const raw = tiled.length === 16 ? tiled : SQUARES.map((item) => item.cells.map(([dx, dy]) => [item.x + dx, item.landY + dy] as [number, number]))
-  raw.sort((left, right) => {
-    const deep = Math.max(...right.map(([, y]) => y)) - Math.max(...left.map(([, y]) => y))
+  const raw = [...pickWell(seed, txCount)].sort((left, right) => {
+    const deep =
+      Math.max(...right.cells.map(([, y]) => right.landY + y)) - Math.max(...left.cells.map(([, y]) => left.landY + y))
     if (deep !== 0) {
       return deep
     }
-    return Math.min(...left.map(([x]) => x)) - Math.min(...right.map(([x]) => x))
+    return left.x - right.x
   })
-  const plan = raw.map(toPiece)
-  const mineFrom = Math.max(0, plan.length - Math.max(0, minePieces))
-  return plan.map((item, index) => ({
+  const mineFrom = Math.max(0, raw.length - Math.max(0, minePieces))
+  return raw.map((item, index) => ({
     ...item,
     kind: index >= mineFrom ? 'mine' : 'npc',
   }))
@@ -286,9 +346,7 @@ export function tetrisSnapshot(plan: TetrisPiece[], progress: number): {
       cells: current.cells,
       x: current.x,
       y: -TETRIS_SPAWN_ROWS + dropT * travel,
-      landY: current.landY,
       kind: current.kind,
-      dropT,
     },
   }
 }
@@ -299,4 +357,8 @@ export function tetrisFilledCount(grid: TetrisCell[][]): number {
 
 export function tetrisShapeKey(cells: [number, number][]): string {
   return [...cells.map(([x, y]) => `${x},${y}`)].sort().join(';')
+}
+
+export function tetrisWellsAreFull(): boolean {
+  return SAFE_WELLS.length > 0 && SAFE_WELLS.every(coversExactly)
 }
