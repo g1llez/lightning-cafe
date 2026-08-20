@@ -37,6 +37,7 @@ import {
   walletSats,
   walletAddress,
   walletSeed,
+  SANDBOX_WORDS,
 } from '../src/simulation/player'
 
 const quotes = marketQuotes(INITIAL_MARKET_RATE)
@@ -214,6 +215,16 @@ describe('player wallets', () => {
     expect(new Set(seed).size).toBe(12)
     expect(walletSeed()).not.toEqual(walletSeed())
     expect(walletSeed(() => 0.999)).toEqual(walletSeed(() => 0.999))
+  })
+
+  it('picks cat names, not a BIP39 or Bitcoin wordlist', () => {
+    expect(SANDBOX_WORDS.length).toBeGreaterThanOrEqual(12)
+    expect(SANDBOX_WORDS).toContain('chatoshi')
+    expect(SANDBOX_WORDS).not.toContain('halving')
+    expect(SANDBOX_WORDS).not.toContain('watchtower')
+    expect(SANDBOX_WORDS).not.toContain('mempool')
+    const seed = walletSeed(() => 0)
+    expect(seed.every((word) => (SANDBOX_WORDS as readonly string[]).includes(word))).toBe(true)
   })
 
   it('derives every address from the 12 words', () => {
