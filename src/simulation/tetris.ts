@@ -2,8 +2,10 @@ import { seededRandom } from './chain'
 
 export const TETRIS_COLS = 8
 export const TETRIS_ROWS = 8
+/** Fall from this many rows above the well so every piece travels. */
+export const TETRIS_SPAWN_ROWS = 4
 /** First slice of each piece's time slot is the fall; the rest is a pause. */
-export const TETRIS_DROP_SHARE = 0.12
+export const TETRIS_DROP_SHARE = 0.35
 
 export type TetrisCell = 'empty' | 'npc' | 'mine'
 export type TetrisKind = 'npc' | 'mine'
@@ -19,7 +21,10 @@ export type TetrisFalling = {
   cells: [number, number][]
   x: number
   y: number
+  landY: number
   kind: TetrisKind
+  /** 0 at spawn, 1 as it locks. */
+  dropT: number
 }
 
 const SHAPES: [number, number][][] = [
@@ -272,13 +277,18 @@ export function tetrisSnapshot(plan: TetrisPiece[], progress: number): {
     return { landed: grid, falling: null }
   }
 
+  const dropT = frac / TETRIS_DROP_SHARE
+  const travel = current.landY + TETRIS_SPAWN_ROWS
+
   return {
     landed: grid,
     falling: {
       cells: current.cells,
       x: current.x,
-      y: (frac / TETRIS_DROP_SHARE) * current.landY,
+      y: -TETRIS_SPAWN_ROWS + dropT * travel,
+      landY: current.landY,
       kind: current.kind,
+      dropT,
     },
   }
 }

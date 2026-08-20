@@ -3,6 +3,7 @@ import {
   TETRIS_COLS,
   TETRIS_DROP_SHARE,
   TETRIS_ROWS,
+  TETRIS_SPAWN_ROWS,
   tetrisFilledCount,
   tetrisPlan,
   tetrisShapeKey,
@@ -24,7 +25,7 @@ describe('block tetris packing', () => {
     const plan = tetrisPlan('u-2', 2_300)
     const start = tetrisSnapshot(plan, 0)
     expect(tetrisFilledCount(start.landed)).toBe(0)
-    expect(start.falling?.y).toBe(0)
+    expect(start.falling?.y).toBe(-TETRIS_SPAWN_ROWS)
     expect(start.falling?.x).toBe(plan[0]?.x)
     expect(start.falling?.cells).toEqual(plan[0]?.cells)
   })
@@ -38,6 +39,7 @@ describe('block tetris packing', () => {
     expect(during.falling?.x).toBe(plan[0]?.x)
     expect(later.falling?.x).toBe(plan[0]?.x)
     expect(later.falling?.y ?? 0).toBeGreaterThan(during.falling?.y ?? 0)
+    expect(later.falling?.y ?? 0).toBeLessThan(plan[0]?.landY ?? 0)
     expect(rest.falling).toBeNull()
     expect(tetrisFilledCount(rest.landed)).toBe(4)
   })

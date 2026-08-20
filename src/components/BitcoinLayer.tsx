@@ -62,8 +62,10 @@ function BlockTile({
 }: BlockTileProps) {
   const { t } = useTranslation()
 
+  const playfield = Boolean(packing && !ghost)
+
   return (
-    <div className="flex w-24 shrink-0 flex-col items-center gap-1 pt-2">
+    <div className={`flex shrink-0 flex-col items-center gap-1 pt-2 ${playfield ? 'w-36' : 'w-24'}`}>
       <Tooltip text={blockTip} side="bottom">
         <button
           type="button"
@@ -73,7 +75,7 @@ function BlockTile({
           className="relative"
         >
           <div
-            className={`h-16 w-16 overflow-hidden rounded-md ${toneForFee(feeRate)} ${
+            className={`overflow-hidden rounded-md ${playfield ? 'h-36 w-36' : 'h-16 w-16'} ${toneForFee(feeRate)} ${
               upcoming ? 'border border-dashed border-text-muted/50' : ''
             } ${highlight ? 'ring-2 ring-accent ring-offset-2 ring-offset-bg-secondary' : ''} ${
               ghost ? 'opacity-0' : ''
@@ -81,6 +83,7 @@ function BlockTile({
           >
             {packing && !ghost ? (
               <BlockTetris
+                key={packing.seed}
                 seed={packing.seed}
                 fill={packing.fill}
                 txCount={packing.txCount}
