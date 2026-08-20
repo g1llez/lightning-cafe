@@ -22,7 +22,7 @@ function cellStyle(cell: TetrisCell | Pick<TetrisFalling, 'color' | 'kind'>, fal
   style?: { backgroundColor: string; boxShadow?: string }
 } {
   if (!cell) {
-    return { className: 'bg-black/35' }
+    return { className: 'bg-transparent' }
   }
   return {
     className: falling ? 'brightness-125' : '',
@@ -38,7 +38,7 @@ export function BlockTetris({ seed, fill, txCount, minePieces, interval }: Block
   fillRef.current = fill
   const [progress, setProgress] = useState(fill)
   const plan = useMemo(() => tetrisPlan(seed, txCount, minePieces), [seed, txCount, minePieces])
-  const frozen = interval <= 0 || fill >= 1
+  const frozen = interval <= 0
 
   useEffect(() => {
     if (frozen) {
@@ -66,7 +66,7 @@ export function BlockTetris({ seed, fill, txCount, minePieces, interval }: Block
   const snap = tetrisSnapshot(plan, frozen ? 1 : progress)
 
   return (
-    <div className="relative h-full w-full bg-bg-primary/80" aria-hidden="true">
+    <div className="relative h-full w-full" data-testid="block-tetris" aria-hidden="true">
       <div
         className="grid h-full w-full gap-px p-0.5"
         style={{
@@ -92,7 +92,7 @@ function FallingPiece({ piece }: { piece: TetrisFalling }) {
   const look = cellStyle(piece, true)
 
   return (
-    <div className="pointer-events-none absolute inset-0.5">
+    <div className="pointer-events-none absolute inset-0.5" data-testid="tetris-falling" data-y={piece.y.toFixed(3)}>
       {piece.cells.map(([dx, dy]) => (
         <span
           key={`${dx}-${dy}`}

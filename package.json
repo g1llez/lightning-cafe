@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "test:session-api": "node tests/session-api-smoke.mjs",
     "test:browser": "node tests/browser/check-buy-flight.mjs",
-    "test:browser:send": "node tests/browser/check-send-wallets.mjs"
+    "test:browser:send": "node tests/browser/check-send-wallets.mjs",
+    "test:browser:tetris": "node tests/browser/check-tetris-drop.mjs"
   },
   "dependencies": {
     "i18next": "^25.3.2",

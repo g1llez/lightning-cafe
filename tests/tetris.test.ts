@@ -74,6 +74,23 @@ describe('block tetris packing', () => {
     expect(keys.size).toBeGreaterThan(4)
   })
 
+  it('makes every piece travel downward during its drop window', () => {
+    const plan = tetrisPlan('u-2', 2_300)
+    for (let index = 0; index < plan.length; index += 1) {
+      const slot = 1 / plan.length
+      const base = index * slot
+      const early = tetrisSnapshot(plan, base + slot * TETRIS_DROP_SHARE * 0.15)
+      const mid = tetrisSnapshot(plan, base + slot * TETRIS_DROP_SHARE * 0.55)
+      const late = tetrisSnapshot(plan, base + slot * TETRIS_DROP_SHARE * 0.95)
+      expect(early.falling).not.toBeNull()
+      expect(mid.falling).not.toBeNull()
+      expect(late.falling).not.toBeNull()
+      expect(mid.falling!.y).toBeGreaterThan(early.falling!.y)
+      expect(late.falling!.y).toBeGreaterThan(mid.falling!.y)
+      expect(late.falling!.y).toBeLessThanOrEqual((plan[index]?.landY ?? 0) + 0.05)
+    }
+  })
+
   it('paints the last landed pieces as yours', () => {
     const plain = tetrisSnapshot(tetrisPlan('u-2', 2_300, 0), 1).landed
     const mine = tetrisSnapshot(tetrisPlan('u-2', 2_300, 2), 1).landed

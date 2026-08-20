@@ -73,11 +73,11 @@ function BlockTile({
           className="relative"
         >
           <div
-            className={`h-16 w-16 overflow-hidden rounded-md ${
-              packing ? 'bg-bg-primary' : toneForFee(feeRate)
-            } ${upcoming ? 'border border-dashed border-text-muted/50' : ''} ${
-              highlight ? 'ring-2 ring-accent ring-offset-2 ring-offset-bg-secondary' : ''
-            } ${ghost ? 'opacity-0' : ''}`}
+            className={`h-16 w-16 overflow-hidden rounded-md ${toneForFee(feeRate)} ${
+              upcoming ? 'border border-dashed border-text-muted/50' : ''
+            } ${highlight ? 'ring-2 ring-accent ring-offset-2 ring-offset-bg-secondary' : ''} ${
+              ghost ? 'opacity-0' : ''
+            }`}
           >
             {packing && !ghost ? (
               <BlockTetris
@@ -106,11 +106,13 @@ function BlockTile({
 
 function MineFlight({
   packing,
+  feeRate,
   highlight,
   badge,
   onDone,
 }: {
   packing: { seed: string; txCount: number; minePieces: number }
+  feeRate: number
   highlight: boolean
   badge: number
   onDone: () => void
@@ -166,7 +168,7 @@ function MineFlight({
     <div
       ref={tileRef}
       aria-hidden="true"
-      className={`pointer-events-none fixed z-[55] overflow-hidden rounded-md bg-bg-primary ${
+      className={`pointer-events-none fixed z-[55] overflow-hidden rounded-md ${toneForFee(feeRate)} ${
         highlight ? 'ring-2 ring-accent ring-offset-2 ring-offset-bg-secondary' : ''
       }`}
     >
@@ -236,23 +238,10 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
   }
 
   function mempoolTip(block: ProjectedBlock) {
-    const rows = inspectMempoolLane(player, chain.marketRate, block.priority)
     return (
-      <div className="flex flex-col gap-1.5">
-        <p>
-          {t('layers.upcomingBlockTip', {
-            priority: priorityLabel(block.priority),
-            txs: block.txCount.toLocaleString(),
-          })}
-        </p>
-        <p className="font-mono text-[11px] text-text-muted">
-          {block.feeRate} sat/vB · {t('layers.feeTip')}
-        </p>
-        {block.priority === 'high' && (
-          <p className="text-[11px] text-text-muted">{t('layers.nextUp')}</p>
-        )}
-        {addressTip(rows)}
-      </div>
+      <p className="font-mono text-[11px]">
+        {t('layers.txCount', { txs: block.txCount.toLocaleString() })} · {block.feeRate} sat/vB
+      </p>
     )
   }
 
@@ -415,6 +404,7 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
             txCount: mining.txCount,
             minePieces: ownSettledInBlock(player, mining.height).length,
           }}
+          feeRate={mining.feeRate}
           highlight={ownSettledInBlock(player, mining.height).length > 0}
           badge={ownSettledInBlock(player, mining.height).length}
           onDone={() => setMining(null)}

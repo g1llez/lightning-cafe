@@ -45,167 +45,10 @@ export type TetrisFalling = {
   color: Exclude<TetrisColor, 'mine'>
 }
 
-type Raw = Omit<TetrisPiece, 'kind'>
-
-type Shape = { cells: [number, number][]; color: Exclude<TetrisColor, 'mine'> }
-
-const O: Shape = {
-  color: 'yellow',
-  cells: [
-    [0, 0],
-    [1, 0],
-    [0, 1],
-    [1, 1],
-  ],
-}
-const I_H: Shape = {
-  color: 'cyan',
-  cells: [
-    [0, 0],
-    [1, 0],
-    [2, 0],
-    [3, 0],
-  ],
-}
-const I_V: Shape = {
-  color: 'cyan',
-  cells: [
-    [0, 0],
-    [0, 1],
-    [0, 2],
-    [0, 3],
-  ],
-}
-const T_U: Shape = {
-  color: 'purple',
-  cells: [
-    [0, 0],
-    [1, 0],
-    [2, 0],
-    [1, 1],
-  ],
-}
-const T_D: Shape = {
-  color: 'purple',
-  cells: [
-    [1, 0],
-    [0, 1],
-    [1, 1],
-    [2, 1],
-  ],
-}
-const T_L: Shape = {
-  color: 'purple',
-  cells: [
-    [1, 0],
-    [0, 1],
-    [1, 1],
-    [1, 2],
-  ],
-}
-const T_R: Shape = {
-  color: 'purple',
-  cells: [
-    [0, 0],
-    [0, 1],
-    [1, 1],
-    [0, 2],
-  ],
-}
-const L: Shape = {
-  color: 'orange',
-  cells: [
-    [0, 0],
-    [0, 1],
-    [0, 2],
-    [1, 2],
-  ],
-}
-const J: Shape = {
-  color: 'blue',
-  cells: [
-    [1, 0],
-    [1, 1],
-    [1, 2],
-    [0, 2],
-  ],
-}
-const S: Shape = {
-  color: 'green',
-  cells: [
-    [1, 0],
-    [2, 0],
-    [0, 1],
-    [1, 1],
-  ],
-}
-const Z: Shape = {
-  color: 'red',
-  cells: [
-    [0, 0],
-    [1, 0],
-    [1, 1],
-    [2, 1],
-  ],
-}
-
-function emptyOcc(): boolean[][] {
-  return Array.from({ length: TETRIS_ROWS }, () => Array.from({ length: TETRIS_COLS }, () => false))
-}
+type Raw = Omit<TetrisPiece, "kind">
 
 function emptyGrid(): TetrisCell[][] {
   return Array.from({ length: TETRIS_ROWS }, () => Array.from({ length: TETRIS_COLS }, () => null))
-}
-
-function shuffle<T>(items: T[], random: () => number): T[] {
-  const next = [...items]
-  for (let index = next.length - 1; index > 0; index -= 1) {
-    const swap = Math.floor(random() * (index + 1))
-    const a = next[index]
-    const b = next[swap]
-    if (a !== undefined && b !== undefined) {
-      next[index] = b
-      next[swap] = a
-    }
-  }
-  return next
-}
-
-function firstEmpty(occ: boolean[][]): [number, number] | null {
-  for (let y = 0; y < TETRIS_ROWS; y += 1) {
-    for (let x = 0; x < TETRIS_COLS; x += 1) {
-      if (!occ[y]?.[x]) {
-        return [x, y]
-      }
-    }
-  }
-  return null
-}
-
-function fits(occ: boolean[][], cells: [number, number][], originX: number, originY: number): boolean {
-  return cells.every(([dx, dy]) => {
-    const x = originX + dx
-    const y = originY + dy
-    return x >= 0 && x < TETRIS_COLS && y >= 0 && y < TETRIS_ROWS && !occ[y]?.[x]
-  })
-}
-
-function cover(occ: boolean[][], cells: [number, number][], originX: number, originY: number, value: boolean) {
-  for (const [dx, dy] of cells) {
-    const row = occ[originY + dy]
-    if (row) {
-      row[originX + dx] = value
-    }
-  }
-}
-
-function toRaw(shape: Shape, originX: number, originY: number): Raw {
-  return {
-    x: originX,
-    landY: originY,
-    color: shape.color,
-    cells: shape.cells.map(([x, y]) => [x, y] as [number, number]),
-  }
 }
 
 /** Pre-packed mixed wells — never all-O or all-I. */
@@ -316,59 +159,15 @@ function isVaried(raw: Raw[]): boolean {
   return cyan <= 4 && yellow <= 4
 }
 
-const FANCY_SHAPES = [T_U, T_D, T_L, T_R, L, J, S, Z]
-const PLAIN_SHAPES = [O, I_H, I_V]
-
-function searchTile(random: () => number): Raw[] | null {
-  const occ = emptyOcc()
-  const placed: Raw[] = []
-  // Prefer T/L/J/S/Z so we do not collapse into only cubes or bars.
-  const bag = [...shuffle(FANCY_SHAPES, random), ...shuffle(PLAIN_SHAPES, random)]
-  let steps = 0
-
-  function solve(): boolean {
-    steps += 1
-    if (steps > 20_000) {
-      return false
-    }
-    const hole = firstEmpty(occ)
-    if (!hole) {
-      return true
-    }
-    const [emptyX, emptyY] = hole
-    for (const shape of bag) {
-      for (const [px, py] of shape.cells) {
-        const originX = emptyX - px
-        const originY = emptyY - py
-        if (!fits(occ, shape.cells, originX, originY)) {
-          continue
-        }
-        cover(occ, shape.cells, originX, originY, true)
-        placed.push(toRaw(shape, originX, originY))
-        if (solve()) {
-          return true
-        }
-        placed.pop()
-        cover(occ, shape.cells, originX, originY, false)
-      }
-    }
-    return false
-  }
-
-  return solve() ? placed : null
-}
-
 const SAFE_WELLS = MIXED_WELLS.filter(coversExactly).filter(isVaried)
 
+/** Instant pick among mixed wells — no search on the UI thread. */
 function pickWell(seed: string, txCount: number): Raw[] {
   const random = seededRandom(`${seed}|${txCount}|tiles`)
-  for (let attempt = 0; attempt < 32; attempt += 1) {
-    const found = searchTile(() => random())
-    if (found && coversExactly(found) && isVaried(found)) {
-      return found
-    }
+  if (SAFE_WELLS.length === 0) {
+    throw new Error('No mixed tetris wells available')
   }
-  return SAFE_WELLS[Math.floor(random() * SAFE_WELLS.length)] ?? SAFE_WELLS[0]!
+  return SAFE_WELLS[Math.floor(random() * SAFE_WELLS.length)]!
 }
 
 function stamp(
