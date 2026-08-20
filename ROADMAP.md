@@ -162,6 +162,9 @@ xpub (watch-only): show it in the wallet, explain that it derives every address 
 history without being able to spend. Possibly let the exchange take an xpub and pay a fresh address
 each time. Nostr identity (npub, zaps, Lightning address) belongs with L2, not with buying on-chain.
 
+Sandbox 12 words: make them loufoque / cafe-themed, clearly not BIP39 and not real-chain wordlists.
+Do not copy the real Bitcoin seed dictionary.
+
 ---
 
 ## How we work

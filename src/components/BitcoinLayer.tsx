@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   formatCountdown,
+  sandboxBlockInterval,
   toneForFee,
   type ConfirmedBlock,
   type Priority,
@@ -19,6 +20,7 @@ import {
 } from '../simulation/player'
 import { useSimulation } from '../simulation/SimulationProvider'
 import { mempoolFlyId } from './SatsFlight'
+import { BlockTetris } from './BlockTetris'
 import { BlockInspectModal } from './TxInspect'
 import { Tooltip } from './Tooltip'
 import { WalletCard } from './WalletCard'
@@ -40,6 +42,7 @@ type BlockTileProps = {
   ghost?: boolean
   testId?: string
   onInspect?: () => void
+  packing?: { seed: string; fill: number; txCount: number; minePieces: number }
 }
 
 function BlockTile({
@@ -55,6 +58,7 @@ function BlockTile({
   ghost = false,
   testId,
   onInspect,
+  packing,
 }: BlockTileProps) {
   const { t } = useTranslation()
 
@@ -69,12 +73,21 @@ function BlockTile({
           className="relative"
         >
           <div
-            className={`h-16 w-16 rounded-md ${toneForFee(feeRate)} ${
+            className={`h-16 w-16 overflow-hidden rounded-md ${toneForFee(feeRate)} ${
               upcoming ? 'border border-dashed border-text-muted/50' : ''
             } ${highlight ? 'ring-2 ring-accent ring-offset-2 ring-offset-bg-secondary' : ''} ${
               ghost ? 'opacity-0' : ''
             }`}
-          />
+          >
+            {packing && !ghost ? (
+              <BlockTetris
+                seed={packing.seed}
+                fill={packing.fill}
+                txCount={packing.txCount}
+                minePieces={packing.minePieces}
+              />
+            ) : null}
+          </div>
           {myTxs > 0 && !ghost && (
             <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 font-mono text-[10px] font-semibold text-bg-primary">
               {myTxs}
@@ -173,6 +186,8 @@ type BitcoinLayerProps = {
 export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps) {
   const { t } = useTranslation()
   const { chain, secondsLeft, player } = useSimulation()
+  const interval = sandboxBlockInterval()
+  const packingFill = 1 - secondsLeft / interval
   const lastMinedId = useRef(chain.confirmed[0]?.id)
   const [mining, setMining] = useState<ConfirmedBlock | null>(null)
   const [inspect, setInspect] = useState<InspectTarget | null>(null)
@@ -289,6 +304,16 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
                     flyId={mempoolFlyId(block.priority)}
                     myTxs={myPending.length}
                     testId={`block-mempool-${block.priority}`}
+                    packing={
+                      block.priority === 'high'
+                        ? {
+                            seed: block.id,
+                            fill: packingFill,
+                            txCount: block.txCount,
+                            minePieces: myPending.length,
+                          }
+                        : undefined
+                    }
                     onInspect={() => setInspect({ kind: 'mempool', block })}
                     blockTip={mempoolTip(block)}
                   />
