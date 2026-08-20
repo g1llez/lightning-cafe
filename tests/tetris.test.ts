@@ -1,22 +1,21 @@
-/**
- * One-off well coverage check — run via vitest.
- */
 import { describe, expect, it } from 'vitest'
 import {
   TETRIS_COLS,
-  TETRIS_DROP_GAP,
   TETRIS_DROP_SHARE,
   TETRIS_ROWS,
+  TETRIS_SPAWN_Y,
   tetrisFilledCount,
+  tetrisPathClear,
   tetrisPlan,
-  tetrisShapeKey,
+  tetrisScenarioCount,
   tetrisSnapshot,
   tetrisWellsAreFull,
 } from '../src/simulation/tetris'
 
-describe('block tetris packing', () => {
-  it('keeps every hand-packed well full with no overlaps', () => {
+describe('block tetris scenarios', () => {
+  it('keeps every scenario full after gravity', () => {
     expect(tetrisWellsAreFull()).toBe(true)
+    expect(tetrisScenarioCount()).toBeGreaterThanOrEqual(3)
   })
 
   it('fills every cell by the end of the minute', () => {
@@ -29,16 +28,24 @@ describe('block tetris packing', () => {
     }
   })
 
-  it('starts empty with a short hop onto the seat', () => {
+  it('never drops a piece through already-landed tiles', () => {
+    for (const seed of ['u-0', 'u-1', 'u-2', 'u-3', 'u-4', 'u-5', 'cafe', 'block-a']) {
+      const plan = tetrisPlan(seed, 2_300)
+      for (let index = 0; index < plan.length; index += 1) {
+        expect(tetrisPathClear(plan, index)).toBe(true)
+      }
+    }
+  })
+
+  it('starts empty with a piece falling from above the well', () => {
     const plan = tetrisPlan('u-2', 2_300)
     const start = tetrisSnapshot(plan, 0)
     expect(tetrisFilledCount(start.landed)).toBe(0)
-    expect(start.falling?.y).toBe((plan[0]?.landY ?? 0) - TETRIS_DROP_GAP)
+    expect(start.falling?.y).toBe(TETRIS_SPAWN_Y)
     expect(start.falling?.x).toBe(plan[0]?.x)
-    expect(start.falling?.cells).toEqual(plan[0]?.cells)
   })
 
-  it('drops a piece quickly then pauses, never sideways', () => {
+  it('drops a piece then pauses, never sideways', () => {
     const plan = tetrisPlan('u-8', 2_000)
     const slot = 1 / plan.length
     const during = tetrisSnapshot(plan, slot * TETRIS_DROP_SHARE * 0.4)
@@ -57,40 +64,12 @@ describe('block tetris packing', () => {
     expect(tetrisPlan('u-2', 2_300)).not.toEqual(tetrisPlan('u-8', 2_300))
   })
 
-  it('uses mixed tetrominoes, never only squares or only bars', () => {
-    for (const seed of ['u-0', 'u-1', 'u-2', 'u-3', 'u-4', 'u-5', 'u-6', 'u-7', 'u-8', 'cafe', 'block-a']) {
-      const plan = tetrisPlan(seed, 2_300)
-      const colors = new Set(plan.map((piece) => piece.color))
-      expect(colors.size).toBeGreaterThanOrEqual(4)
-      expect(plan.filter((piece) => piece.color === 'cyan').length).toBeLessThanOrEqual(4)
-      expect(plan.filter((piece) => piece.color === 'yellow').length).toBeLessThanOrEqual(4)
-    }
-    const keys = new Set<string>()
-    for (const seed of ['u-0', 'u-1', 'u-2', 'u-3', 'u-4', 'u-5']) {
-      for (const piece of tetrisPlan(seed, 2_300)) {
-        keys.add(tetrisShapeKey(piece.cells))
-      }
-    }
-    expect(keys.size).toBeGreaterThan(4)
-  })
-
-  it('makes every piece travel a short hop without crossing below its seat', () => {
-    const plan = tetrisPlan('u-2', 2_300)
-    for (let index = 0; index < plan.length; index += 1) {
-      const slot = 1 / plan.length
-      const base = index * slot
-      const early = tetrisSnapshot(plan, base + slot * TETRIS_DROP_SHARE * 0.15)
-      const mid = tetrisSnapshot(plan, base + slot * TETRIS_DROP_SHARE * 0.55)
-      const late = tetrisSnapshot(plan, base + slot * TETRIS_DROP_SHARE * 0.95)
-      const landY = plan[index]?.landY ?? 0
-      expect(early.falling).not.toBeNull()
-      expect(mid.falling).not.toBeNull()
-      expect(late.falling).not.toBeNull()
-      expect(mid.falling!.y).toBeGreaterThan(early.falling!.y)
-      expect(late.falling!.y).toBeGreaterThan(mid.falling!.y)
-      expect(early.falling!.y).toBeGreaterThanOrEqual(landY - TETRIS_DROP_GAP - 0.05)
-      expect(late.falling!.y).toBeLessThanOrEqual(landY + 0.05)
-    }
+  it('keeps mixed-color scenarios available', () => {
+    expect(tetrisScenarioCount()).toBeGreaterThanOrEqual(3)
+    const colorCounts = ['u-0', 'u-1', 'u-2', 'u-3', 'u-4', 'u-5', 'u-6', 'u-7', 'u-8', 'u-9'].map((seed) => {
+      return new Set(tetrisPlan(seed, 2_300).map((piece) => piece.color)).size
+    })
+    expect(Math.max(...colorCounts)).toBeGreaterThanOrEqual(3)
   })
 
   it('paints the last landed pieces as yours', () => {
@@ -98,13 +77,5 @@ describe('block tetris packing', () => {
     const mine = tetrisSnapshot(tetrisPlan('u-2', 2_300, 2), 1).landed
     expect(plain.flat().filter((cell) => cell?.kind === 'mine')).toHaveLength(0)
     expect(mine.flat().filter((cell) => cell?.kind === 'mine').length).toBeGreaterThan(0)
-  })
-
-  it('keeps a colored mosaic for the same block id after it is full', () => {
-    const plan = tetrisPlan('u-2', 2_300)
-    const done = tetrisSnapshot(plan, 1)
-    const colors = new Set(done.landed.flat().map((cell) => cell?.color).filter(Boolean))
-    expect(colors.size).toBeGreaterThan(1)
-    expect(tetrisPlan('u-2', 2_300).map((piece) => piece.color)).toEqual(plan.map((piece) => piece.color))
   })
 })

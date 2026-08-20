@@ -2,10 +2,10 @@ import { seededRandom } from './chain'
 
 export const TETRIS_COLS = 8
 export const TETRIS_ROWS = 8
-/** Short hop onto the seat — long falls ghost through already-landed tiles. */
-export const TETRIS_DROP_GAP = 1.5
+/** Spawn this many rows above the well; gravity keeps the path clear of landed tiles. */
+export const TETRIS_SPAWN_Y = -2
 /** First slice of each piece's time slot is the fall; the rest is a pause. */
-export const TETRIS_DROP_SHARE = 0.55
+export const TETRIS_DROP_SHARE = 0.5
 
 /** Classic tetromino palette (hex for inline styles). */
 export const TETRIS_PALETTE = {
@@ -21,12 +21,7 @@ export const TETRIS_PALETTE = {
 
 export type TetrisColor = keyof typeof TETRIS_PALETTE
 export type TetrisKind = 'npc' | 'mine'
-
-export type TetrisPaint = {
-  color: Exclude<TetrisColor, 'mine'>
-  kind: TetrisKind
-}
-
+export type TetrisPaint = { color: Exclude<TetrisColor, 'mine'>; kind: TetrisKind }
 export type TetrisCell = TetrisPaint | null
 
 export type TetrisPiece = {
@@ -45,130 +40,249 @@ export type TetrisFalling = {
   color: Exclude<TetrisColor, 'mine'>
 }
 
-type Raw = Omit<TetrisPiece, "kind">
+type ShapeName = 'O' | 'I_H' | 'I_V' | 'T_U' | 'T_D' | 'L' | 'J' | 'S' | 'Z'
+
+type Shape = { color: Exclude<TetrisColor, 'mine'>; cells: [number, number][] }
+
+/** Add a scenario: ordered drops `{ shape, x }`. landY is computed by gravity. */
+type Step = { shape: ShapeName; x: number }
+
+const SHAPES: Record<ShapeName, Shape> = {
+  O: {
+    color: 'yellow',
+    cells: [
+      [0, 0],
+      [1, 0],
+      [0, 1],
+      [1, 1],
+    ],
+  },
+  I_H: {
+    color: 'cyan',
+    cells: [
+      [0, 0],
+      [1, 0],
+      [2, 0],
+      [3, 0],
+    ],
+  },
+  I_V: {
+    color: 'cyan',
+    cells: [
+      [0, 0],
+      [0, 1],
+      [0, 2],
+      [0, 3],
+    ],
+  },
+  T_U: {
+    color: 'purple',
+    cells: [
+      [0, 0],
+      [1, 0],
+      [2, 0],
+      [1, 1],
+    ],
+  },
+  T_D: {
+    color: 'purple',
+    cells: [
+      [1, 0],
+      [0, 1],
+      [1, 1],
+      [2, 1],
+    ],
+  },
+  L: {
+    color: 'orange',
+    cells: [
+      [0, 0],
+      [0, 1],
+      [0, 2],
+      [1, 2],
+    ],
+  },
+  J: {
+    color: 'blue',
+    cells: [
+      [1, 0],
+      [1, 1],
+      [1, 2],
+      [0, 2],
+    ],
+  },
+  S: {
+    color: 'green',
+    cells: [
+      [1, 0],
+      [2, 0],
+      [0, 1],
+      [1, 1],
+    ],
+  },
+  Z: {
+    color: 'red',
+    cells: [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+      [2, 1],
+    ],
+  },
+}
+
+/**
+ * Scenarios = drop scripts. Easy to edit: append `{ shape, x }` steps.
+ * Gravity picks landY so a piece never falls through another.
+ */
+const SCENARIOS: Step[][] = [
+  // zipper — O bands + I rows
+  [
+    { shape: 'O', x: 0 },
+    { shape: 'O', x: 2 },
+    { shape: 'O', x: 4 },
+    { shape: 'O', x: 6 },
+    { shape: 'I_H', x: 0 },
+    { shape: 'I_H', x: 4 },
+    { shape: 'I_H', x: 0 },
+    { shape: 'I_H', x: 4 },
+    { shape: 'O', x: 0 },
+    { shape: 'O', x: 2 },
+    { shape: 'O', x: 4 },
+    { shape: 'O', x: 6 },
+    { shape: 'I_H', x: 0 },
+    { shape: 'I_H', x: 4 },
+    { shape: 'I_H', x: 0 },
+    { shape: 'I_H', x: 4 },
+  ],
+  // reverse zipper — I first, then O
+  [
+    { shape: 'I_H', x: 0 },
+    { shape: 'I_H', x: 4 },
+    { shape: 'I_H', x: 0 },
+    { shape: 'I_H', x: 4 },
+    { shape: 'O', x: 0 },
+    { shape: 'O', x: 2 },
+    { shape: 'O', x: 4 },
+    { shape: 'O', x: 6 },
+    { shape: 'I_H', x: 0 },
+    { shape: 'I_H', x: 4 },
+    { shape: 'I_H', x: 0 },
+    { shape: 'I_H', x: 4 },
+    { shape: 'O', x: 0 },
+    { shape: 'O', x: 2 },
+    { shape: 'O', x: 4 },
+    { shape: 'O', x: 6 },
+  ],
+  // boots — O pad, L/J feet, plug holes, cap with I
+  [
+    { shape: 'O', x: 0 },
+    { shape: 'O', x: 2 },
+    { shape: 'O', x: 4 },
+    { shape: 'O', x: 6 },
+    { shape: 'O', x: 0 },
+    { shape: 'O', x: 2 },
+    { shape: 'O', x: 4 },
+    { shape: 'O', x: 6 },
+    { shape: 'L', x: 0 },
+    { shape: 'J', x: 2 },
+    { shape: 'L', x: 4 },
+    { shape: 'J', x: 6 },
+    { shape: 'O', x: 1 },
+    { shape: 'O', x: 5 },
+    { shape: 'I_H', x: 0 },
+    { shape: 'I_H', x: 4 },
+  ],
+  // boots from the floor up
+  [
+    { shape: 'L', x: 0 },
+    { shape: 'J', x: 2 },
+    { shape: 'L', x: 4 },
+    { shape: 'J', x: 6 },
+    { shape: 'O', x: 1 },
+    { shape: 'O', x: 5 },
+    { shape: 'I_H', x: 0 },
+    { shape: 'I_H', x: 4 },
+    { shape: 'O', x: 0 },
+    { shape: 'O', x: 2 },
+    { shape: 'O', x: 4 },
+    { shape: 'O', x: 6 },
+    { shape: 'O', x: 0 },
+    { shape: 'O', x: 2 },
+    { shape: 'O', x: 4 },
+    { shape: 'O', x: 6 },
+  ],
+]
+
+function emptyOcc(): boolean[][] {
+  return Array.from({ length: TETRIS_ROWS }, () => Array.from({ length: TETRIS_COLS }, () => false))
+}
 
 function emptyGrid(): TetrisCell[][] {
   return Array.from({ length: TETRIS_ROWS }, () => Array.from({ length: TETRIS_COLS }, () => null))
 }
 
-/** Pre-packed mixed wells — never all-O or all-I. */
-const MIXED_WELLS: Raw[][] = [
-  [
-    { color: "red", x: 0, landY: 0, cells: [[0,0],[1,0],[1,1],[2,1]] },
-    { color: "red", x: 2, landY: 0, cells: [[0,0],[1,0],[1,1],[2,1]] },
-    { color: "purple", x: 4, landY: 0, cells: [[0,0],[1,0],[2,0],[1,1]] },
-    { color: "purple", x: 6, landY: 0, cells: [[1,0],[0,1],[1,1],[1,2]] },
-    { color: "purple", x: 0, landY: 1, cells: [[0,0],[0,1],[1,1],[0,2]] },
-    { color: "green", x: 1, landY: 2, cells: [[1,0],[2,0],[0,1],[1,1]] },
-    { color: "green", x: 3, landY: 2, cells: [[1,0],[2,0],[0,1],[1,1]] },
-    { color: "purple", x: 6, landY: 2, cells: [[0,0],[0,1],[1,1],[0,2]] },
-    { color: "orange", x: 5, landY: 3, cells: [[0,0],[0,1],[0,2],[1,2]] },
-    { color: "red", x: 0, landY: 4, cells: [[0,0],[1,0],[1,1],[2,1]] },
-    { color: "purple", x: 2, landY: 4, cells: [[0,0],[1,0],[2,0],[1,1]] },
-    { color: "blue", x: 6, landY: 4, cells: [[1,0],[1,1],[1,2],[0,2]] },
-    { color: "purple", x: 0, landY: 5, cells: [[0,0],[0,1],[1,1],[0,2]] },
-    { color: "purple", x: 3, landY: 5, cells: [[1,0],[0,1],[1,1],[2,1]] },
-    { color: "purple", x: 1, landY: 6, cells: [[1,0],[0,1],[1,1],[2,1]] },
-    { color: "cyan", x: 4, landY: 7, cells: [[0,0],[1,0],[2,0],[3,0]] },
-  ],
-  [
-    { color: "red", x: 0, landY: 0, cells: [[0,0],[1,0],[1,1],[2,1]] },
-    { color: "red", x: 2, landY: 0, cells: [[0,0],[1,0],[1,1],[2,1]] },
-    { color: "purple", x: 4, landY: 0, cells: [[0,0],[1,0],[2,0],[1,1]] },
-    { color: "purple", x: 6, landY: 0, cells: [[1,0],[0,1],[1,1],[1,2]] },
-    { color: "purple", x: 0, landY: 1, cells: [[0,0],[0,1],[1,1],[0,2]] },
-    { color: "purple", x: 1, landY: 2, cells: [[1,0],[0,1],[1,1],[1,2]] },
-    { color: "red", x: 3, landY: 2, cells: [[0,0],[1,0],[1,1],[2,1]] },
-    { color: "red", x: 5, landY: 2, cells: [[0,0],[1,0],[1,1],[2,1]] },
-    { color: "blue", x: 2, landY: 3, cells: [[1,0],[1,1],[1,2],[0,2]] },
-    { color: "cyan", x: 0, landY: 4, cells: [[0,0],[0,1],[0,2],[0,3]] },
-    { color: "orange", x: 1, landY: 4, cells: [[0,0],[0,1],[0,2],[1,2]] },
-    { color: "blue", x: 3, landY: 4, cells: [[1,0],[1,1],[1,2],[0,2]] },
-    { color: "purple", x: 5, landY: 4, cells: [[0,0],[1,0],[2,0],[1,1]] },
-    { color: "purple", x: 5, landY: 5, cells: [[0,0],[0,1],[1,1],[0,2]] },
-    { color: "blue", x: 6, landY: 5, cells: [[1,0],[1,1],[1,2],[0,2]] },
-    { color: "cyan", x: 1, landY: 7, cells: [[0,0],[1,0],[2,0],[3,0]] },
-  ],
-  [
-    { color: "purple", x: 0, landY: 0, cells: [[0,0],[1,0],[2,0],[1,1]] },
-    { color: "purple", x: 3, landY: 0, cells: [[0,0],[1,0],[2,0],[1,1]] },
-    { color: "green", x: 5, landY: 0, cells: [[1,0],[2,0],[0,1],[1,1]] },
-    { color: "orange", x: 0, landY: 1, cells: [[0,0],[0,1],[0,2],[1,2]] },
-    { color: "green", x: 1, landY: 1, cells: [[1,0],[2,0],[0,1],[1,1]] },
-    { color: "purple", x: 6, landY: 1, cells: [[1,0],[0,1],[1,1],[1,2]] },
-    { color: "purple", x: 3, landY: 2, cells: [[0,0],[1,0],[2,0],[1,1]] },
-    { color: "green", x: 1, landY: 3, cells: [[1,0],[2,0],[0,1],[1,1]] },
-    { color: "green", x: 4, landY: 3, cells: [[1,0],[2,0],[0,1],[1,1]] },
-    { color: "purple", x: 0, landY: 4, cells: [[0,0],[0,1],[1,1],[0,2]] },
-    { color: "purple", x: 2, landY: 4, cells: [[1,0],[0,1],[1,1],[1,2]] },
-    { color: "cyan", x: 6, landY: 4, cells: [[0,0],[0,1],[0,2],[0,3]] },
-    { color: "cyan", x: 7, landY: 4, cells: [[0,0],[0,1],[0,2],[0,3]] },
-    { color: "yellow", x: 4, landY: 5, cells: [[0,0],[1,0],[0,1],[1,1]] },
-    { color: "green", x: 0, landY: 6, cells: [[1,0],[2,0],[0,1],[1,1]] },
-    { color: "cyan", x: 2, landY: 7, cells: [[0,0],[1,0],[2,0],[3,0]] },
-  ],
-  [
-    { color: "purple", x: 0, landY: 0, cells: [[0,0],[0,1],[1,1],[0,2]] },
-    { color: "red", x: 1, landY: 0, cells: [[0,0],[1,0],[1,1],[2,1]] },
-    { color: "red", x: 3, landY: 0, cells: [[0,0],[1,0],[1,1],[2,1]] },
-    { color: "purple", x: 5, landY: 0, cells: [[0,0],[1,0],[2,0],[1,1]] },
-    { color: "blue", x: 6, landY: 1, cells: [[1,0],[1,1],[1,2],[0,2]] },
-    { color: "purple", x: 1, landY: 2, cells: [[0,0],[0,1],[1,1],[0,2]] },
-    { color: "red", x: 2, landY: 2, cells: [[0,0],[1,0],[1,1],[2,1]] },
-    { color: "purple", x: 4, landY: 2, cells: [[0,0],[1,0],[2,0],[1,1]] },
-    { color: "orange", x: 0, landY: 3, cells: [[0,0],[0,1],[0,2],[1,2]] },
-    { color: "purple", x: 2, landY: 4, cells: [[0,0],[0,1],[1,1],[0,2]] },
-    { color: "red", x: 3, landY: 4, cells: [[0,0],[1,0],[1,1],[2,1]] },
-    { color: "purple", x: 5, landY: 4, cells: [[0,0],[1,0],[2,0],[1,1]] },
-    { color: "blue", x: 6, landY: 5, cells: [[1,0],[1,1],[1,2],[0,2]] },
-    { color: "yellow", x: 0, landY: 6, cells: [[0,0],[1,0],[0,1],[1,1]] },
-    { color: "purple", x: 2, landY: 6, cells: [[1,0],[0,1],[1,1],[2,1]] },
-    { color: "purple", x: 4, landY: 6, cells: [[0,0],[1,0],[2,0],[1,1]] },
-  ],
-]
+function fits(occ: boolean[][], cells: [number, number][], x: number, y: number): boolean {
+  return cells.every(([dx, dy]) => {
+    const px = x + dx
+    const py = y + dy
+    if (px < 0 || px >= TETRIS_COLS || py >= TETRIS_ROWS) {
+      return false
+    }
+    if (py < 0) {
+      return true
+    }
+    return !occ[py]?.[px]
+  })
+}
 
-function coversExactly(raw: Raw[]): boolean {
-  if (raw.length !== 16) {
-    return false
+function onBoard(cells: [number, number][], y: number): boolean {
+  return cells.every(([, dy]) => y + dy >= 0)
+}
+
+/** Drop onto the current stack. Null if the piece cannot rest fully inside the well. */
+export function tetrisLandY(occ: boolean[][], cells: [number, number][], x: number): number | null {
+  let y = TETRIS_SPAWN_Y - 2
+  if (!fits(occ, cells, x, y)) {
+    return null
   }
-  const grid = emptyGrid()
-  for (const item of raw) {
-    for (const [dx, dy] of item.cells) {
-      const x = item.x + dx
-      const y = item.landY + dy
-      if (x < 0 || x >= TETRIS_COLS || y < 0 || y >= TETRIS_ROWS) {
-        return false
-      }
-      const row = grid[y]
-      if (!row || row[x] !== null) {
-        return false
-      }
-      row[x] = { color: item.color, kind: "npc" }
+  while (fits(occ, cells, x, y + 1)) {
+    y += 1
+  }
+  if (!onBoard(cells, y) || !fits(occ, cells, x, y)) {
+    return null
+  }
+  return y
+}
+
+function cover(occ: boolean[][], cells: [number, number][], x: number, y: number) {
+  for (const [dx, dy] of cells) {
+    const row = occ[y + dy]
+    if (row) {
+      row[x + dx] = true
     }
   }
-  return grid.every((row) => row.every((cell) => cell !== null))
 }
 
-function isVaried(raw: Raw[]): boolean {
-  const colors = new Set(raw.map((item) => item.color))
-  if (colors.size < 4) {
-    return false
+function buildScenario(steps: Step[]): TetrisPiece[] | null {
+  const occ = emptyOcc()
+  const plan: Omit<TetrisPiece, 'kind'>[] = []
+  for (const step of steps) {
+    const shape = SHAPES[step.shape]
+    const landY = tetrisLandY(occ, shape.cells, step.x)
+    if (landY === null) {
+      return null
+    }
+    cover(occ, shape.cells, step.x, landY)
+    plan.push({ cells: shape.cells, x: step.x, landY, color: shape.color })
   }
-  const cyan = raw.filter((item) => item.color === "cyan").length
-  const yellow = raw.filter((item) => item.color === "yellow").length
-  return cyan <= 4 && yellow <= 4
-}
-
-const SAFE_WELLS = MIXED_WELLS.filter(coversExactly).filter(isVaried)
-
-/** Instant pick among mixed wells — no search on the UI thread. */
-function pickWell(seed: string, txCount: number): Raw[] {
-  const random = seededRandom(`${seed}|${txCount}|tiles`)
-  if (SAFE_WELLS.length === 0) {
-    throw new Error('No mixed tetris wells available')
+  if (!occ.every((row) => row.every(Boolean))) {
+    return null
   }
-  return SAFE_WELLS[Math.floor(random() * SAFE_WELLS.length)]!
+  return plan.map((item) => ({ ...item, kind: 'npc' as const }))
 }
+
+const BUILT = SCENARIOS.map(buildScenario).filter((plan): plan is TetrisPiece[] => plan !== null)
 
 function stamp(
   grid: TetrisCell[][],
@@ -183,27 +297,37 @@ function stamp(
   }
 }
 
-/** Drop order: already in the right column, gravity only. Fills every cell. */
-export function tetrisPlan(seed: string, txCount: number, minePieces = 0): TetrisPiece[] {
-  const raw = [...pickWell(seed, txCount)].sort((left, right) => {
-    const deep =
-      Math.max(...right.cells.map(([, y]) => right.landY + y)) - Math.max(...left.cells.map(([, y]) => left.landY + y))
-    if (deep !== 0) {
-      return deep
+/** True if every intermediate drop pose sits only on empty cells (no ghosting). */
+export function tetrisPathClear(plan: TetrisPiece[], index: number): boolean {
+  const occ = emptyOcc()
+  for (const item of plan.slice(0, index)) {
+    cover(occ, item.cells, item.x, item.landY)
+  }
+  const current = plan[index]
+  if (!current) {
+    return false
+  }
+  for (let y = TETRIS_SPAWN_Y; y <= current.landY; y += 1) {
+    if (!fits(occ, current.cells, current.x, y)) {
+      return false
     }
-    return left.x - right.x
-  })
-  const mineFrom = Math.max(0, raw.length - Math.max(0, minePieces))
-  return raw.map((item, index) => ({
+  }
+  return true
+}
+
+export function tetrisPlan(seed: string, txCount: number, minePieces = 0): TetrisPiece[] {
+  if (BUILT.length === 0) {
+    throw new Error('No tetris scenarios available')
+  }
+  const random = seededRandom(`${seed}|${txCount}|scene`)
+  const base = BUILT[Math.floor(random() * BUILT.length)]!
+  const mineFrom = Math.max(0, base.length - Math.max(0, minePieces))
+  return base.map((item, index) => ({
     ...item,
     kind: index >= mineFrom ? 'mine' : 'npc',
   }))
 }
 
-/**
- * `progress` 0..1 over the block interval. A piece drops quickly, then waits.
- * No lateral move, no rotate.
- */
 export function tetrisSnapshot(plan: TetrisPiece[], progress: number): {
   landed: TetrisCell[][]
   falling: TetrisFalling | null
@@ -235,13 +359,14 @@ export function tetrisSnapshot(plan: TetrisPiece[], progress: number): {
   }
 
   const dropT = frac / TETRIS_DROP_SHARE
+  const travel = current.landY - TETRIS_SPAWN_Y
 
   return {
     landed: grid,
     falling: {
       cells: current.cells,
       x: current.x,
-      y: current.landY - TETRIS_DROP_GAP + dropT * TETRIS_DROP_GAP,
+      y: TETRIS_SPAWN_Y + dropT * travel,
       kind: current.kind,
       color: current.color,
     },
@@ -256,17 +381,20 @@ export function tetrisShapeKey(cells: [number, number][]): string {
   return [...cells.map(([x, y]) => `${x},${y}`)].sort().join(';')
 }
 
-export function tetrisCellFill(cell: TetrisCell | Pick<TetrisFalling, 'color' | 'kind'>, falling = false): string {
+export function tetrisCellFill(cell: TetrisCell | Pick<TetrisFalling, 'color' | 'kind'>): string {
   if (!cell || typeof cell !== 'object') {
     return 'transparent'
   }
   if ('kind' in cell && cell.kind === 'mine') {
     return TETRIS_PALETTE.mine
   }
-  const hex = TETRIS_PALETTE[cell.color]
-  return falling ? hex : hex
+  return TETRIS_PALETTE[cell.color]
 }
 
 export function tetrisWellsAreFull(): boolean {
-  return SAFE_WELLS.length > 0 && SAFE_WELLS.every(coversExactly)
+  return BUILT.length > 0 && BUILT.every((plan) => plan.length === 16)
+}
+
+export function tetrisScenarioCount(): number {
+  return BUILT.length
 }

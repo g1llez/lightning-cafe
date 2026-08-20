@@ -4,9 +4,9 @@ import {
   tetrisPlan,
   tetrisSnapshot,
   TETRIS_COLS,
-  TETRIS_DROP_GAP,
   TETRIS_DROP_SHARE,
   TETRIS_ROWS,
+  TETRIS_SPAWN_Y,
   type TetrisCell,
   type TetrisFalling,
   type TetrisPiece,
@@ -30,16 +30,15 @@ function cellStyle(cell: TetrisCell | Pick<TetrisFalling, 'color' | 'kind'>, fal
   return {
     className: falling ? 'brightness-125' : '',
     style: {
-      backgroundColor: tetrisCellFill(cell, falling),
+      backgroundColor: tetrisCellFill(cell),
       boxShadow: falling ? 'inset 0 0 0 1px rgba(255,255,255,0.45)' : undefined,
     },
   }
 }
 
 /**
- * Live packing: a smooth clock picks the piece index; each new piece gets a
- * full CSS drop from above the well (not a per-frame React top=). Confirmed
- * tiles pass interval=0 and render frozen.
+ * Live packing: clock picks the step; each piece CSS-falls from spawn onto its
+ * gravity seat (path stays clear of already-landed tiles).
  */
 export function BlockTetris({ seed, fill, txCount, minePieces, interval }: BlockTetrisProps) {
   const fillRef = useRef(fill)
@@ -99,7 +98,7 @@ function CssFallingPiece({ piece, dropMs }: { piece: TetrisPiece; dropMs: number
   const layerRef = useRef<HTMLDivElement>(null)
   const width = 100 / TETRIS_COLS
   const height = 100 / TETRIS_ROWS
-  const fromPercent = (-TETRIS_DROP_GAP / TETRIS_ROWS) * 100
+  const fromPercent = ((TETRIS_SPAWN_Y - piece.landY) / TETRIS_ROWS) * 100
   const look = cellStyle(piece, true)
 
   useEffect(() => {
