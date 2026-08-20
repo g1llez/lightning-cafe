@@ -174,6 +174,6 @@
   "footer": {
     "inspired": "Interface inspirée de mempool.space",
     "reset": "Réinitialiser le sandbox",
-    "resetConfirm": "Effacer les portefeuilles, les sats et la chaîne enregistrée dans ce navigateur ?"
+    "resetConfirm": "Effacer les portefeuilles, les sats et la chaîne enregistrée dans ce navigateur ? (Vider le cache du navigateur ne suffit pas — les données sont dans le stockage local.)"
   }
 }

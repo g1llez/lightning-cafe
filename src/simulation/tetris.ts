@@ -5,7 +5,7 @@ export const TETRIS_ROWS = 8
 /** Fall from this many rows above the well so every piece travels. */
 export const TETRIS_SPAWN_ROWS = 4
 /** First slice of each piece's time slot is the fall; the rest is a pause. */
-export const TETRIS_DROP_SHARE = 0.28
+export const TETRIS_DROP_SHARE = 0.55
 
 /** Classic tetromino palette (hex for inline styles). */
 export const TETRIS_PALETTE = {

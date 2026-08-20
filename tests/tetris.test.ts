@@ -43,7 +43,7 @@ describe('block tetris packing', () => {
     const slot = 1 / plan.length
     const during = tetrisSnapshot(plan, slot * TETRIS_DROP_SHARE * 0.4)
     const later = tetrisSnapshot(plan, slot * TETRIS_DROP_SHARE * 0.8)
-    const rest = tetrisSnapshot(plan, slot * 0.5)
+    const rest = tetrisSnapshot(plan, slot * 0.8)
     expect(during.falling?.x).toBe(plan[0]?.x)
     expect(later.falling?.x).toBe(plan[0]?.x)
     expect(later.falling?.y ?? 0).toBeGreaterThan(during.falling?.y ?? 0)

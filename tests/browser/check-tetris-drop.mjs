@@ -1,6 +1,6 @@
 /**
- * Smoke-check that the high-lane tetris piece actually moves down.
- * Run with a local preview: npm run build && npm run preview
+ * Smoke-check that the high-lane tetris piece actually moves down via CSS.
+ * Run: npm run build && npm run preview
  * Then: npm run test:browser:tetris
  */
 import { chromium } from 'playwright'
@@ -21,30 +21,40 @@ await page.goto(URL, { waitUntil: 'networkidle' })
 const falling = page.getByTestId('tetris-falling')
 await falling.waitFor({ state: 'visible', timeout: 8_000 })
 
+async function fallingTop() {
+  return falling.evaluate((node) => node.getBoundingClientRect().top)
+}
+
 const samples = []
-const deadline = Date.now() + 2_500
-while (Date.now() < deadline && samples.length < 50) {
+const deadline = Date.now() + 3_000
+while (Date.now() < deadline && samples.length < 40) {
   if ((await falling.count()) === 1) {
-    samples.push(Number(await falling.getAttribute('data-y')))
+    samples.push(await fallingTop())
   }
-  await page.waitForTimeout(40)
+  await page.waitForTimeout(50)
 }
 
 await page.screenshot({ path: `${SHOTS}/tetris-drop.png` })
 await browser.close()
 
-let rose = 0
+let downSteps = 0
 for (let index = 1; index < samples.length; index += 1) {
   const prev = samples[index - 1]
   const next = samples[index]
-  if (Number.isFinite(prev) && Number.isFinite(next) && next > prev + 0.2) {
-    rose += 1
+  // Screen Y grows downward; a falling piece's top increases.
+  if (Number.isFinite(prev) && Number.isFinite(next) && next > prev + 1) {
+    downSteps += 1
   }
 }
 
-console.log(`falling samples: ${samples.slice(0, 8).map((y) => y.toFixed(2)).join(' -> ')}... (${samples.length} total, ${rose} down-steps)`)
+console.log(
+  `falling top px: ${samples
+    .slice(0, 6)
+    .map((y) => Math.round(y))
+    .join(' -> ')}... (${samples.length} samples, ${downSteps} down-steps)`,
+)
 
-if (rose < 2) {
+if (downSteps < 2) {
   console.error('Tetris piece did not move down during the drop window')
   process.exitCode = 1
 }
