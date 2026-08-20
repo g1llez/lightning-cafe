@@ -129,12 +129,11 @@
     "exchangeSpreadTip": "Cut the exchange keeps on the conversion. It pays the miner fee.",
     "buySent": "Transaction sent to the mempool",
     "sellTitle": "Sell Bitcoin",
-    "sellBlurb": "The exchange does not pull sats from here. It gives you a deposit address. You send from your wallet, like in real life.",
     "sellDeposit": "Deposit address",
     "sellDepositCopied": "Exchange address copied",
     "sellConfirmations": "Official after {{count}} blocks",
     "sellConfirmationsTip": "The exchange only credits your $ after {{count}} confirmations. The first block can still be reorganized; waiting {{count}} blocks is the usual practice for a Bitcoin deposit. No extra cut from the exchange — you only pay the miner fee you pick when you send.",
-    "sellNext": "Copy the address, then Send from a wallet. Amount and sat/vB are chosen there."
+    "sellTip": "Exchange sats for $ via an exchange"
   },
   "layers": {
     "lightning": "Lightning (L2)",

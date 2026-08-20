@@ -24,8 +24,6 @@ export function SellModal({ onClose, onMessage }: SellModalProps) {
   return (
     <Modal title={t('services.sellTitle')} closeLabel={t('common.close')} onClose={onClose}>
       <div className="flex flex-col gap-4">
-        <p className="text-[12px] leading-relaxed text-text-primary">{t('services.sellBlurb')}</p>
-
         <div>
           <p className="mb-1.5 text-xs uppercase tracking-[0.14em] text-text-muted">
             {t('services.sellDeposit')}
@@ -46,8 +44,6 @@ export function SellModal({ onClose, onMessage }: SellModalProps) {
           {t('services.sellConfirmations', { count: EXCHANGE_CONFIRMATIONS })}
           <InfoMark text={t('services.sellConfirmationsTip', { count: EXCHANGE_CONFIRMATIONS })} />
         </p>
-
-        <p className="text-[12px] leading-relaxed text-text-muted">{t('services.sellNext')}</p>
       </div>
     </Modal>
   )

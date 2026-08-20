@@ -129,12 +129,11 @@
     "exchangeSpreadTip": "Coupe que l'échange garde sur la conversion. C'est lui qui paie le mineur.",
     "buySent": "Transaction envoyée au mempool",
     "sellTitle": "Vendre du Bitcoin",
-    "sellBlurb": "L'échange ne prend pas les sats d'ici. Il te donne une adresse de dépôt. Tu envoies depuis ton portefeuille, comme dans la vraie vie.",
     "sellDeposit": "Adresse de dépôt",
     "sellDepositCopied": "Adresse de l'échange copiée",
     "sellConfirmations": "Officiel après {{count}} blocs",
     "sellConfirmationsTip": "L'échange ne crédite tes $ qu'après {{count}} confirmations. Le premier bloc peut encore être réorganisé ; attendre {{count}} blocs est la pratique habituelle pour un dépôt Bitcoin. Pas de coupe de l'échange — tu paies seulement le frais mineur que tu choisis à l'envoi.",
-    "sellNext": "Copie l'adresse, puis Envoyer depuis un portefeuille. Le montant et le sat/vB se choisissent là."
+    "sellTip": "Échanger des sats pour de l'argent $ via un échange"
   },
   "layers": {
     "lightning": "Lightning (L2)",

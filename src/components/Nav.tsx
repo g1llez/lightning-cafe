@@ -64,13 +64,15 @@ export function Nav({ onGuideClick, onBuyClick, onSellClick }: NavProps) {
           {t('services.buy')}
         </button>
 
-        <button
-          type="button"
-          onClick={onSellClick}
-          className="rounded-md border border-border bg-bg-panel px-3 py-2 text-sm transition hover:border-accent/60"
-        >
-          {t('services.sell')}
-        </button>
+        <Tooltip text={t('services.sellTip')} side="bottom">
+          <button
+            type="button"
+            onClick={onSellClick}
+            className="rounded-md border border-border bg-bg-panel px-3 py-2 text-sm transition hover:border-accent/60"
+          >
+            {t('services.sell')}
+          </button>
+        </Tooltip>
 
         <button
           type="button"
