@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSimulation } from '../simulation/SimulationProvider'
+import { Tooltip } from './Tooltip'
 
 export function SessionMenu() {
   const { t } = useTranslation()
@@ -65,21 +66,23 @@ export function SessionMenu() {
 
   return (
     <div className="relative">
-      <button
-        type="button"
-        aria-expanded={open}
-        aria-haspopup="dialog"
-        onClick={() => setOpen((current) => !current)}
-        className={`relative z-30 rounded-md border px-3 py-2 text-sm transition ${
-          sessionStatus === 'error'
-            ? 'border-danger/70 bg-danger/10 text-danger'
-            : roomId
-              ? 'border-accent/70 bg-accent/10 text-accent'
-              : 'border-border bg-bg-panel hover:border-accent/60'
-        }`}
-      >
-        {t('session.button')}
-      </button>
+      <Tooltip text={t('session.tip')} side="bottom">
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-haspopup="dialog"
+          onClick={() => setOpen((current) => !current)}
+          className={`relative z-30 rounded-md border px-3 py-2 text-sm transition ${
+            sessionStatus === 'error'
+              ? 'border-danger/70 bg-danger/10 text-danger'
+              : roomId
+                ? 'border-accent/70 bg-accent/10 text-accent'
+                : 'border-border bg-bg-panel hover:border-accent/60'
+          }`}
+        >
+          {t('session.button')}
+        </button>
+      </Tooltip>
       {open && (
         <div
           className="fixed inset-0 z-20"

@@ -56,13 +56,15 @@ export function Nav({ onGuideClick, onBuyClick, onSellClick }: NavProps) {
           </Tooltip>
         </div>
 
-        <button
-          type="button"
-          onClick={onBuyClick}
-          className="rounded-md bg-accent px-3 py-2 text-sm font-semibold text-bg-primary transition hover:brightness-110"
-        >
-          {t('services.buy')}
-        </button>
+        <Tooltip text={t('services.buyTip')} side="bottom">
+          <button
+            type="button"
+            onClick={onBuyClick}
+            className="rounded-md bg-accent px-3 py-2 text-sm font-semibold text-bg-primary transition hover:brightness-110"
+          >
+            {t('services.buy')}
+          </button>
+        </Tooltip>
 
         <Tooltip text={t('services.sellTip')} side="bottom">
           <button

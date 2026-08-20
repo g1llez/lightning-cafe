@@ -15,6 +15,7 @@
   },
   "session": {
     "button": "Café",
+    "tip": "Apprendre avec un ami sur la même chaîne",
     "invite": "Tu peux apprendre avec un ami en lui envoyant un lien.",
     "create": "Nouvelle session",
     "join": "Rejoindre",
@@ -96,6 +97,7 @@
     "title": "Services",
     "price": "BTC {{price}} $",
     "buy": "Acheter",
+    "buyTip": "Échanger de l'argent $ pour des sats via un échange",
     "sell": "Vendre",
     "buyTitle": "Acheter du Bitcoin",
     "amount": "Montant",

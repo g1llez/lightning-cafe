@@ -15,6 +15,7 @@
   },
   "session": {
     "button": "Cafe",
+    "tip": "Learn with a friend on the same chain",
     "invite": "You can learn with a friend by sending them a link.",
     "create": "New session",
     "join": "Join",
@@ -96,6 +97,7 @@
     "title": "Services",
     "price": "BTC {{price}} $",
     "buy": "Buy",
+    "buyTip": "Exchange $ for sats via an exchange",
     "sell": "Sell",
     "buyTitle": "Buy Bitcoin",
     "amount": "Amount",
