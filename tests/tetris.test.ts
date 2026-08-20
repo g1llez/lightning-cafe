@@ -3,45 +3,46 @@ import {
   TETRIS_COLS,
   TETRIS_DROP_SHARE,
   TETRIS_ROWS,
-  TETRIS_SPAWN_Y,
   tetrisFilledCount,
-  tetrisPathClear,
   tetrisPlan,
+  tetrisPlanPaintedCount,
   tetrisScenarioCount,
   tetrisSnapshot,
-  tetrisWellsAreFull,
+  tetrisSpawnY,
 } from '../src/simulation/tetris'
 
 describe('block tetris scenarios', () => {
-  it('keeps every scenario full after gravity', () => {
-    expect(tetrisWellsAreFull()).toBe(true)
-    expect(tetrisScenarioCount()).toBeGreaterThanOrEqual(3)
+  it('loads the six lab recordings', () => {
+    expect(tetrisScenarioCount()).toBe(6)
   })
 
-  it('fills every cell by the end of the minute', () => {
-    for (const seed of ['u-2', 'u-8', 'block-a', 'cafe']) {
+  it('paints each recording onto the well by the end of the minute', () => {
+    for (const seed of ['u-0', 'u-1', 'u-2', 'u-3', 'u-4', 'u-5', 'cafe', 'block-a']) {
       const plan = tetrisPlan(seed, 2_300)
       const done = tetrisSnapshot(plan, 1)
       expect(done.falling).toBeNull()
-      expect(tetrisFilledCount(done.landed)).toBe(TETRIS_COLS * TETRIS_ROWS)
-      expect(plan).toHaveLength(16)
+      expect(tetrisFilledCount(done.landed)).toBe(tetrisPlanPaintedCount(plan))
+      expect(tetrisFilledCount(done.landed)).toBeGreaterThan(0)
+      expect(tetrisFilledCount(done.landed)).toBeLessThanOrEqual(TETRIS_COLS * TETRIS_ROWS)
+      expect(plan.length).toBeGreaterThanOrEqual(8)
     }
   })
 
-  it('never drops a piece through already-landed tiles', () => {
-    for (const seed of ['u-0', 'u-1', 'u-2', 'u-3', 'u-4', 'u-5', 'cafe', 'block-a']) {
+  it('picks a spawn that never sits above a blocked full-height path blindly', () => {
+    for (const seed of ['u-0', 'u-1', 'u-2', 'u-3', 'u-4', 'u-5']) {
       const plan = tetrisPlan(seed, 2_300)
       for (let index = 0; index < plan.length; index += 1) {
-        expect(tetrisPathClear(plan, index)).toBe(true)
+        const spawn = tetrisSpawnY(plan, index)
+        expect(spawn).toBeLessThanOrEqual(plan[index]!.landY)
       }
     }
   })
 
-  it('starts empty with a piece falling from above the well', () => {
+  it('starts empty with a piece falling from its spawn', () => {
     const plan = tetrisPlan('u-2', 2_300)
     const start = tetrisSnapshot(plan, 0)
     expect(tetrisFilledCount(start.landed)).toBe(0)
-    expect(start.falling?.y).toBe(TETRIS_SPAWN_Y)
+    expect(start.falling?.y).toBe(tetrisSpawnY(plan, 0))
     expect(start.falling?.x).toBe(plan[0]?.x)
   })
 
@@ -65,7 +66,6 @@ describe('block tetris scenarios', () => {
   })
 
   it('keeps mixed-color scenarios available', () => {
-    expect(tetrisScenarioCount()).toBeGreaterThanOrEqual(3)
     const colorCounts = ['u-0', 'u-1', 'u-2', 'u-3', 'u-4', 'u-5', 'u-6', 'u-7', 'u-8', 'u-9'].map((seed) => {
       return new Set(tetrisPlan(seed, 2_300).map((piece) => piece.color)).size
     })

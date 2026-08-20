@@ -7,10 +7,30 @@ import { LightningLayer } from './components/LightningLayer'
 import { Nav } from './components/Nav'
 import { SatsFlight } from './components/SatsFlight'
 import { SellModal } from './components/SellModal'
+import { TetrisLab } from './components/TetrisLab'
 import { Toast } from './components/Toast'
 import { SimulationProvider } from './simulation/SimulationProvider'
 
+function wantsTetrisLab(): boolean {
+  if (typeof window === 'undefined') {
+    return false
+  }
+  const params = new URLSearchParams(window.location.search)
+  if (params.get('tetris-lab') === '1' || params.get('lab') === '1') {
+    return true
+  }
+  if (window.location.hash.replace(/^#/, '') === 'tetris-lab') {
+    return true
+  }
+  const path = window.location.pathname.replace(/\/+$/, '')
+  return path.endsWith('/tetris-lab') || path.endsWith('tetris-lab')
+}
+
 export default function App() {
+  if (wantsTetrisLab()) {
+    return <TetrisLab />
+  }
+
   return (
     <SimulationProvider>
       <AppShell />

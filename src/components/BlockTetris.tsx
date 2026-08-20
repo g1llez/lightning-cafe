@@ -3,10 +3,10 @@ import {
   tetrisCellFill,
   tetrisPlan,
   tetrisSnapshot,
+  tetrisSpawnY,
   TETRIS_COLS,
   TETRIS_DROP_SHARE,
   TETRIS_ROWS,
-  TETRIS_SPAWN_Y,
   type TetrisCell,
   type TetrisFalling,
   type TetrisPiece,
@@ -38,7 +38,7 @@ function cellStyle(cell: TetrisCell | Pick<TetrisFalling, 'color' | 'kind'>, fal
 
 /**
  * Live packing: clock picks the step; each piece CSS-falls from spawn onto its
- * gravity seat (path stays clear of already-landed tiles).
+ * seat (short hop if the full path would ghost through landed tiles).
  */
 export function BlockTetris({ seed, fill, txCount, minePieces, interval }: BlockTetrisProps) {
   const fillRef = useRef(fill)
@@ -88,17 +88,30 @@ export function BlockTetris({ seed, fill, txCount, minePieces, interval }: Block
         )}
       </div>
       {!frozen && fallingPiece ? (
-        <CssFallingPiece key={`${seed}-${fallingIndex}`} piece={fallingPiece} dropMs={dropMs} />
+        <CssFallingPiece
+          key={`${seed}-${fallingIndex}`}
+          piece={fallingPiece}
+          spawnY={tetrisSpawnY(plan, fallingIndex)}
+          dropMs={dropMs}
+        />
       ) : null}
     </div>
   )
 }
 
-function CssFallingPiece({ piece, dropMs }: { piece: TetrisPiece; dropMs: number }) {
+function CssFallingPiece({
+  piece,
+  spawnY,
+  dropMs,
+}: {
+  piece: TetrisPiece
+  spawnY: number
+  dropMs: number
+}) {
   const layerRef = useRef<HTMLDivElement>(null)
   const width = 100 / TETRIS_COLS
   const height = 100 / TETRIS_ROWS
-  const fromPercent = ((TETRIS_SPAWN_Y - piece.landY) / TETRIS_ROWS) * 100
+  const fromPercent = ((spawnY - piece.landY) / TETRIS_ROWS) * 100
   const look = cellStyle(piece, true)
 
   useEffect(() => {
