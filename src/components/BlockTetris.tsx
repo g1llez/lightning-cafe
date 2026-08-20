@@ -54,12 +54,6 @@ export function BlockTetris({ seed, fill, txCount, minePieces, interval }: Block
       return
     }
 
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reduced) {
-      setProgress(fillRef.current)
-      return
-    }
-
     const started = performance.now() - fillRef.current * interval * 1000
     let frame = 0
     const tick = (now: number) => {
@@ -113,15 +107,10 @@ function CssFallingPiece({ piece, dropMs }: { piece: TetrisPiece; dropMs: number
     if (!layer) {
       return
     }
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      layer.style.transform = 'translateY(0)'
-      return
-    }
-
-    // Always play the full drop when this piece mounts — never seek mid-flight.
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const animation = layer.animate(
       [{ transform: `translateY(${fromPercent}%)` }, { transform: 'translateY(0)' }],
-      { duration: dropMs, easing: 'linear', fill: 'both' },
+      { duration: reduced ? 200 : dropMs, easing: 'linear', fill: 'both' },
     )
     return () => animation.cancel()
   }, [dropMs, fromPercent])
