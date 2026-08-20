@@ -149,8 +149,6 @@ const Z: Shape = {
   ],
 }
 
-const SHAPES: Shape[] = [O, I_H, I_V, T_U, T_D, T_L, T_R, L, J, S, Z]
-
 function emptyOcc(): boolean[][] {
   return Array.from({ length: TETRIS_ROWS }, () => Array.from({ length: TETRIS_COLS }, () => false))
 }
@@ -210,52 +208,81 @@ function toRaw(shape: Shape, originX: number, originY: number): Raw {
   }
 }
 
-/** Guaranteed full wells — used when the search fails. Never all-O alone. */
-function wellRows(): Raw[] {
-  const out: Raw[] = []
-  for (let y = 0; y < TETRIS_ROWS; y += 1) {
-    out.push(toRaw(I_H, 0, y))
-    out.push(toRaw(I_H, 4, y))
-  }
-  return out
-}
-
-function wellCols(): Raw[] {
-  const out: Raw[] = []
-  for (let x = 0; x < TETRIS_COLS; x += 1) {
-    out.push(toRaw(I_V, x, 0))
-    out.push(toRaw(I_V, x, 4))
-  }
-  return out
-}
-
-function wellZipper(): Raw[] {
-  const out: Raw[] = []
-  for (let band = 0; band < 4; band += 1) {
-    const y = band * 2
-    if (band % 2 === 0) {
-      for (let x = 0; x < TETRIS_COLS; x += 2) {
-        out.push(toRaw(O, x, y))
-      }
-    } else {
-      out.push(toRaw(I_H, 0, y))
-      out.push(toRaw(I_H, 4, y))
-      out.push(toRaw(I_H, 0, y + 1))
-      out.push(toRaw(I_H, 4, y + 1))
-    }
-  }
-  return out
-}
-
-function wellCorners(): Raw[] {
-  const out: Raw[] = []
-  out.push(toRaw(L, 0, 5), toRaw(J, 2, 5), toRaw(L, 4, 5), toRaw(J, 6, 5))
-  out.push(toRaw(S, 0, 4), toRaw(Z, 2, 4), toRaw(S, 4, 4), toRaw(Z, 6, 4))
-  out.push(toRaw(T_U, 0, 2), toRaw(T_U, 3, 2), toRaw(O, 6, 2))
-  out.push(toRaw(I_H, 0, 3), toRaw(I_H, 4, 3))
-  out.push(toRaw(O, 0, 0), toRaw(O, 2, 0), toRaw(I_H, 4, 0), toRaw(I_H, 4, 1))
-  return out
-}
+/** Pre-packed mixed wells — never all-O or all-I. */
+const MIXED_WELLS: Raw[][] = [
+  [
+    { color: "red", x: 0, landY: 0, cells: [[0,0],[1,0],[1,1],[2,1]] },
+    { color: "red", x: 2, landY: 0, cells: [[0,0],[1,0],[1,1],[2,1]] },
+    { color: "purple", x: 4, landY: 0, cells: [[0,0],[1,0],[2,0],[1,1]] },
+    { color: "purple", x: 6, landY: 0, cells: [[1,0],[0,1],[1,1],[1,2]] },
+    { color: "purple", x: 0, landY: 1, cells: [[0,0],[0,1],[1,1],[0,2]] },
+    { color: "green", x: 1, landY: 2, cells: [[1,0],[2,0],[0,1],[1,1]] },
+    { color: "green", x: 3, landY: 2, cells: [[1,0],[2,0],[0,1],[1,1]] },
+    { color: "purple", x: 6, landY: 2, cells: [[0,0],[0,1],[1,1],[0,2]] },
+    { color: "orange", x: 5, landY: 3, cells: [[0,0],[0,1],[0,2],[1,2]] },
+    { color: "red", x: 0, landY: 4, cells: [[0,0],[1,0],[1,1],[2,1]] },
+    { color: "purple", x: 2, landY: 4, cells: [[0,0],[1,0],[2,0],[1,1]] },
+    { color: "blue", x: 6, landY: 4, cells: [[1,0],[1,1],[1,2],[0,2]] },
+    { color: "purple", x: 0, landY: 5, cells: [[0,0],[0,1],[1,1],[0,2]] },
+    { color: "purple", x: 3, landY: 5, cells: [[1,0],[0,1],[1,1],[2,1]] },
+    { color: "purple", x: 1, landY: 6, cells: [[1,0],[0,1],[1,1],[2,1]] },
+    { color: "cyan", x: 4, landY: 7, cells: [[0,0],[1,0],[2,0],[3,0]] },
+  ],
+  [
+    { color: "red", x: 0, landY: 0, cells: [[0,0],[1,0],[1,1],[2,1]] },
+    { color: "red", x: 2, landY: 0, cells: [[0,0],[1,0],[1,1],[2,1]] },
+    { color: "purple", x: 4, landY: 0, cells: [[0,0],[1,0],[2,0],[1,1]] },
+    { color: "purple", x: 6, landY: 0, cells: [[1,0],[0,1],[1,1],[1,2]] },
+    { color: "purple", x: 0, landY: 1, cells: [[0,0],[0,1],[1,1],[0,2]] },
+    { color: "purple", x: 1, landY: 2, cells: [[1,0],[0,1],[1,1],[1,2]] },
+    { color: "red", x: 3, landY: 2, cells: [[0,0],[1,0],[1,1],[2,1]] },
+    { color: "red", x: 5, landY: 2, cells: [[0,0],[1,0],[1,1],[2,1]] },
+    { color: "blue", x: 2, landY: 3, cells: [[1,0],[1,1],[1,2],[0,2]] },
+    { color: "cyan", x: 0, landY: 4, cells: [[0,0],[0,1],[0,2],[0,3]] },
+    { color: "orange", x: 1, landY: 4, cells: [[0,0],[0,1],[0,2],[1,2]] },
+    { color: "blue", x: 3, landY: 4, cells: [[1,0],[1,1],[1,2],[0,2]] },
+    { color: "purple", x: 5, landY: 4, cells: [[0,0],[1,0],[2,0],[1,1]] },
+    { color: "purple", x: 5, landY: 5, cells: [[0,0],[0,1],[1,1],[0,2]] },
+    { color: "blue", x: 6, landY: 5, cells: [[1,0],[1,1],[1,2],[0,2]] },
+    { color: "cyan", x: 1, landY: 7, cells: [[0,0],[1,0],[2,0],[3,0]] },
+  ],
+  [
+    { color: "purple", x: 0, landY: 0, cells: [[0,0],[1,0],[2,0],[1,1]] },
+    { color: "purple", x: 3, landY: 0, cells: [[0,0],[1,0],[2,0],[1,1]] },
+    { color: "green", x: 5, landY: 0, cells: [[1,0],[2,0],[0,1],[1,1]] },
+    { color: "orange", x: 0, landY: 1, cells: [[0,0],[0,1],[0,2],[1,2]] },
+    { color: "green", x: 1, landY: 1, cells: [[1,0],[2,0],[0,1],[1,1]] },
+    { color: "purple", x: 6, landY: 1, cells: [[1,0],[0,1],[1,1],[1,2]] },
+    { color: "purple", x: 3, landY: 2, cells: [[0,0],[1,0],[2,0],[1,1]] },
+    { color: "green", x: 1, landY: 3, cells: [[1,0],[2,0],[0,1],[1,1]] },
+    { color: "green", x: 4, landY: 3, cells: [[1,0],[2,0],[0,1],[1,1]] },
+    { color: "purple", x: 0, landY: 4, cells: [[0,0],[0,1],[1,1],[0,2]] },
+    { color: "purple", x: 2, landY: 4, cells: [[1,0],[0,1],[1,1],[1,2]] },
+    { color: "cyan", x: 6, landY: 4, cells: [[0,0],[0,1],[0,2],[0,3]] },
+    { color: "cyan", x: 7, landY: 4, cells: [[0,0],[0,1],[0,2],[0,3]] },
+    { color: "yellow", x: 4, landY: 5, cells: [[0,0],[1,0],[0,1],[1,1]] },
+    { color: "green", x: 0, landY: 6, cells: [[1,0],[2,0],[0,1],[1,1]] },
+    { color: "cyan", x: 2, landY: 7, cells: [[0,0],[1,0],[2,0],[3,0]] },
+  ],
+  [
+    { color: "purple", x: 0, landY: 0, cells: [[0,0],[0,1],[1,1],[0,2]] },
+    { color: "red", x: 1, landY: 0, cells: [[0,0],[1,0],[1,1],[2,1]] },
+    { color: "red", x: 3, landY: 0, cells: [[0,0],[1,0],[1,1],[2,1]] },
+    { color: "purple", x: 5, landY: 0, cells: [[0,0],[1,0],[2,0],[1,1]] },
+    { color: "blue", x: 6, landY: 1, cells: [[1,0],[1,1],[1,2],[0,2]] },
+    { color: "purple", x: 1, landY: 2, cells: [[0,0],[0,1],[1,1],[0,2]] },
+    { color: "red", x: 2, landY: 2, cells: [[0,0],[1,0],[1,1],[2,1]] },
+    { color: "purple", x: 4, landY: 2, cells: [[0,0],[1,0],[2,0],[1,1]] },
+    { color: "orange", x: 0, landY: 3, cells: [[0,0],[0,1],[0,2],[1,2]] },
+    { color: "purple", x: 2, landY: 4, cells: [[0,0],[0,1],[1,1],[0,2]] },
+    { color: "red", x: 3, landY: 4, cells: [[0,0],[1,0],[1,1],[2,1]] },
+    { color: "purple", x: 5, landY: 4, cells: [[0,0],[1,0],[2,0],[1,1]] },
+    { color: "blue", x: 6, landY: 5, cells: [[1,0],[1,1],[1,2],[0,2]] },
+    { color: "yellow", x: 0, landY: 6, cells: [[0,0],[1,0],[0,1],[1,1]] },
+    { color: "purple", x: 2, landY: 6, cells: [[1,0],[0,1],[1,1],[2,1]] },
+    { color: "purple", x: 4, landY: 6, cells: [[0,0],[1,0],[2,0],[1,1]] },
+  ],
+]
 
 function coversExactly(raw: Raw[]): boolean {
   if (raw.length !== 16) {
@@ -273,16 +300,30 @@ function coversExactly(raw: Raw[]): boolean {
       if (!row || row[x] !== null) {
         return false
       }
-      row[x] = { color: item.color, kind: 'npc' }
+      row[x] = { color: item.color, kind: "npc" }
     }
   }
   return grid.every((row) => row.every((cell) => cell !== null))
 }
 
+function isVaried(raw: Raw[]): boolean {
+  const colors = new Set(raw.map((item) => item.color))
+  if (colors.size < 4) {
+    return false
+  }
+  const cyan = raw.filter((item) => item.color === "cyan").length
+  const yellow = raw.filter((item) => item.color === "yellow").length
+  return cyan <= 4 && yellow <= 4
+}
+
+const FANCY_SHAPES = [T_U, T_D, T_L, T_R, L, J, S, Z]
+const PLAIN_SHAPES = [O, I_H, I_V]
+
 function searchTile(random: () => number): Raw[] | null {
   const occ = emptyOcc()
   const placed: Raw[] = []
-  const bag = shuffle(SHAPES, random)
+  // Prefer T/L/J/S/Z so we do not collapse into only cubes or bars.
+  const bag = [...shuffle(FANCY_SHAPES, random), ...shuffle(PLAIN_SHAPES, random)]
   let steps = 0
 
   function solve(): boolean {
@@ -317,20 +358,17 @@ function searchTile(random: () => number): Raw[] | null {
   return solve() ? placed : null
 }
 
-const SAFE_WELLS = [wellZipper, wellRows, wellCols, wellCorners].map((build) => build()).filter(coversExactly)
+const SAFE_WELLS = MIXED_WELLS.filter(coversExactly).filter(isVaried)
 
 function pickWell(seed: string, txCount: number): Raw[] {
   const random = seededRandom(`${seed}|${txCount}|tiles`)
-  for (let attempt = 0; attempt < 24; attempt += 1) {
+  for (let attempt = 0; attempt < 32; attempt += 1) {
     const found = searchTile(() => random())
-    if (found && coversExactly(found)) {
-      const keys = new Set(found.map((item) => item.cells.map(([x, y]) => `${x},${y}`).sort().join(';')))
-      if (keys.size >= 3) {
-        return found
-      }
+    if (found && coversExactly(found) && isVaried(found)) {
+      return found
     }
   }
-  return SAFE_WELLS[Math.floor(random() * SAFE_WELLS.length)] ?? wellZipper()
+  return SAFE_WELLS[Math.floor(random() * SAFE_WELLS.length)] ?? SAFE_WELLS[0]!
 }
 
 function stamp(

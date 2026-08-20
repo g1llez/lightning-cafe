@@ -57,16 +57,21 @@ describe('block tetris packing', () => {
     expect(tetrisPlan('u-2', 2_300)).not.toEqual(tetrisPlan('u-8', 2_300))
   })
 
-  it('uses mixed tetrominoes, not only squares or long bars', () => {
+  it('uses mixed tetrominoes, never only squares or only bars', () => {
+    for (const seed of ['u-0', 'u-1', 'u-2', 'u-3', 'u-4', 'u-5', 'u-6', 'u-7', 'u-8', 'cafe', 'block-a']) {
+      const plan = tetrisPlan(seed, 2_300)
+      const colors = new Set(plan.map((piece) => piece.color))
+      expect(colors.size).toBeGreaterThanOrEqual(4)
+      expect(plan.filter((piece) => piece.color === 'cyan').length).toBeLessThanOrEqual(4)
+      expect(plan.filter((piece) => piece.color === 'yellow').length).toBeLessThanOrEqual(4)
+    }
     const keys = new Set<string>()
-    for (const seed of ['u-0', 'u-1', 'u-2', 'u-3', 'u-4', 'u-5', 'u-6', 'u-7']) {
+    for (const seed of ['u-0', 'u-1', 'u-2', 'u-3', 'u-4', 'u-5']) {
       for (const piece of tetrisPlan(seed, 2_300)) {
         keys.add(tetrisShapeKey(piece.cells))
       }
     }
     expect(keys.size).toBeGreaterThan(4)
-    const onlySquares = [...keys].every((key) => key === '0,0;0,1;1,0;1,1')
-    expect(onlySquares).toBe(false)
   })
 
   it('paints the last landed pieces as yours', () => {
