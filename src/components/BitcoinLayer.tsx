@@ -9,6 +9,10 @@ import {
   type ProjectedBlock,
 } from '../simulation/chain'
 import {
+  inspectConfirmedBlock,
+  inspectMempoolLane,
+} from '../simulation/inspect'
+import {
   ownPendingForZone,
   ownSettledInBlock,
   shortAddress,
@@ -16,8 +20,13 @@ import {
 } from '../simulation/player'
 import { useSimulation } from '../simulation/SimulationProvider'
 import { mempoolFlyId } from './SatsFlight'
+import { BlockInspectModal } from './TxInspect'
 import { Tooltip } from './Tooltip'
 import { WalletCard } from './WalletCard'
+
+type InspectTarget =
+  | { kind: 'mempool'; block: ProjectedBlock }
+  | { kind: 'confirmed'; block: ConfirmedBlock }
 
 type BlockTileProps = {
   label: string
@@ -30,6 +39,8 @@ type BlockTileProps = {
   myTxs?: number
   flyId?: string
   ghost?: boolean
+  testId?: string
+  onInspect?: () => void
 }
 
 function BlockTile({
@@ -43,13 +54,21 @@ function BlockTile({
   myTxs = 0,
   flyId,
   ghost = false,
+  testId,
+  onInspect,
 }: BlockTileProps) {
   const { t } = useTranslation()
 
   return (
     <div className="flex w-24 shrink-0 flex-col items-center gap-1 pt-2">
       <Tooltip text={blockTip} side="bottom">
-        <div className="relative cursor-default" data-fly={flyId}>
+        <button
+          type="button"
+          data-fly={flyId}
+          data-testid={testId}
+          onClick={onInspect}
+          className="relative"
+        >
           <div
             className={`h-16 w-16 rounded-md ${toneForFee(feeRate)} ${
               upcoming ? 'border border-dashed border-text-muted/50' : ''
@@ -62,7 +81,7 @@ function BlockTile({
               {myTxs}
             </span>
           )}
-        </div>
+        </button>
       </Tooltip>
       <span className="text-center text-xs font-medium text-text-primary">{label}</span>
       <span className="text-center text-[11px] text-text-muted">{t('layers.txCount', { txs: txCount.toLocaleString() })}</span>
@@ -157,6 +176,7 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
   const { chain, secondsLeft, player } = useSimulation()
   const lastMinedId = useRef(chain.confirmed[0]?.id)
   const [mining, setMining] = useState<ConfirmedBlock | null>(null)
+  const [inspect, setInspect] = useState<InspectTarget | null>(null)
 
   useEffect(() => {
     const head = chain.confirmed[0]
@@ -292,6 +312,8 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
                     highlight={myPending.length > 0}
                     flyId={mempoolFlyId(block.priority)}
                     myTxs={myPending.length}
+                    testId={`block-mempool-${block.priority}`}
+                    onInspect={() => setInspect({ kind: 'mempool', block })}
                     blockTip={mempoolTip(block, myPending)}
                   />
                 )
@@ -325,6 +347,8 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
                     myTxs={mine.length}
                     flyId={index === 0 ? 'confirmed-head' : undefined}
                     ghost={index === 0 && mining?.id === block.id}
+                    testId={`block-confirmed-${block.height}`}
+                    onInspect={() => setInspect({ kind: 'confirmed', block })}
                     blockTip={confirmedTip(block)}
                   />
                 )
@@ -334,6 +358,45 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
         </div>
       </div>
 
+      {inspect?.kind === 'mempool' && (
+        <BlockInspectModal
+          title={t('layers.inspectMempool', { priority: priorityLabel(inspect.block.priority) })}
+          subtitle={t('layers.upcomingBlockTip', {
+            priority: priorityLabel(inspect.block.priority),
+            txs: inspect.block.txCount.toLocaleString(),
+          })}
+          player={player}
+          inspect={inspectMempoolLane(
+            player,
+            chain.marketRate,
+            inspect.block.priority,
+            inspect.block.txCount,
+            inspect.block.id,
+            inspect.block.feeRate,
+          )}
+          onClose={() => setInspect(null)}
+        />
+      )}
+      {inspect?.kind === 'confirmed' && (
+        <BlockInspectModal
+          title={t('layers.inspectConfirmed', { height: inspect.block.height })}
+          subtitle={t('layers.confirmedBlockTip', {
+            height: inspect.block.height,
+            pool: inspect.block.pool,
+            fee: inspect.block.feeRate,
+            txs: inspect.block.txCount.toLocaleString(),
+          })}
+          player={player}
+          inspect={inspectConfirmedBlock(
+            player,
+            inspect.block.height,
+            inspect.block.txCount,
+            inspect.block.id,
+            inspect.block.feeRate,
+          )}
+          onClose={() => setInspect(null)}
+        />
+      )}
       <WalletCard onMessage={onMessage} onSatsSent={onSatsSent} />
       {mining && (
         <MineFlight

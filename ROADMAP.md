@@ -2,7 +2,7 @@
 
 Source of truth for what to build next. Do not replan after each task: take the first open item in the current version.
 
-**Now:** v0.2.3 done → next is **v0.2.4**
+**Now:** v0.2.4 done → next is **v0.2.5**
 
 | Version | Goal | Status |
 |---|---|---|
@@ -84,10 +84,11 @@ A wallet can receive, send, and watch its money move on the fake chain. Buying a
 - Restore from 12 words recovers keys (and sats only if those addresses still hold them)
 - Sim in `/tests/send.test.ts`
 
-### v0.2.4 — Inspect txs
+### v0.2.4 — Inspect txs ✅
 - Click a mempool or confirmed block to see txs inside
 - Player txs highlighted
 - Click a wallet to see its tx history
+- Sim in `/tests/inspect.test.ts`
 
 ### v0.2.5 — Sell BTC
 - Sell sats back to $ from the same nav service as Buy
@@ -144,7 +145,7 @@ Player node can open channels and pay, with the L1 contract visible.
 
 ## Later (not scheduled)
 
-Shared cafe session (first slice): **Café** in the nav creates or joins a room on `cafe-session.sarius.ca`. Solo stays on the local clock. In a room, ticks come from the server and buy/send are published as `tx`. CORS is GitHub Pages only — test on the deployed site, not `npm run dev`.
+Shared cafe session: **Café** in the nav creates or joins a room on `cafe-session.sarius.ca`. Solo stays on the local clock. In a room, ticks come from the server and buy/send are published as `tx`. CORS is GitHub Pages only — test on the deployed site, not `npm run dev`. Backend: https://github.com/g1llez/lightning-cafe-session.git (private).
 
 Guide / tips, LSP, rebalancing, watchtower, mempool.space link, extra languages.
 

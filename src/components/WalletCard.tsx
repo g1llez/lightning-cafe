@@ -9,12 +9,14 @@ import {
   walletSats,
   type Wallet,
 } from '../simulation/player'
+import { txsForWallet } from '../simulation/inspect'
 import { useSimulation } from '../simulation/SimulationProvider'
 import { LayerAssetCard } from './LayerAssetCard'
 import { Modal } from './Modal'
 import { ReceiveModal } from './ReceiveModal'
 import { SendModal } from './SendModal'
 import { InfoMark } from './Tooltip'
+import { KnownTxRow } from './TxInspect'
 
 type SeedStep = 'hidden' | 'warned' | 'shown'
 
@@ -105,6 +107,7 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
     const utxos = wallet.addresses.filter(
       (item) => item.sats > 0 || pendingSatsForAddress(player, item.value) > 0,
     )
+    const history = txsForWallet(player, wallet.id)
 
     return (
       <div
@@ -171,6 +174,26 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
                     </li>
                   )
                 })}
+              </ul>
+            )}
+          </section>
+
+          <section className="border-t border-border pt-2">
+            <div className="mb-1 flex items-center gap-1.5">
+              <span className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
+                {t('assets.history')}
+              </span>
+            </div>
+            {history.length === 0 ? (
+              <p className="text-[11px] text-text-muted">{t('assets.historyEmpty')}</p>
+            ) : (
+              <ul
+                data-testid={`wallet-history-${wallet.id}`}
+                className="flex max-h-40 flex-col gap-1.5 overflow-y-auto"
+              >
+                {history.map((tx) => (
+                  <KnownTxRow key={tx.id} player={player} tx={tx} testId={`wallet-tx-${tx.id}`} />
+                ))}
               </ul>
             )}
           </section>
