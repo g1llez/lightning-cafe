@@ -27,6 +27,7 @@ import {
   pendingSatsForAddress,
   receiveAddress,
   renameWallet,
+  parseSeed,
   restoreWallet,
   seedPhrase,
   settledInBlock,
@@ -242,5 +243,18 @@ describe('player wallets', () => {
     const restored = restoreWallet(createInitialPlayer(), 'Recovered', words)
     expect(restored.wallets[0].addresses[0]?.value).toBe(original.wallets[0].addresses[0]?.value)
     expect(walletSats(restored.wallets[0])).toBe(0)
+  })
+
+  it('restores the same keys when the paste still has 1. / 1- list numbers', () => {
+    const original = createWallet(createInitialPlayer(), 'Wallet 1', () => 0)
+    const seed = original.wallets[0].seed
+    const hyphen = seed.map((word, index) => `${index + 1}-${word}`).join(' ')
+    const dotted = seed.map((word, index) => `${index + 1}. ${word}`).join('\n')
+
+    expect(parseSeed(hyphen)).toEqual(seed)
+    expect(parseSeed(dotted)).toEqual(seed)
+
+    const restored = restoreWallet(createInitialPlayer(), 'Recovered', hyphen)
+    expect(restored.wallets[0].addresses[0]?.value).toBe(original.wallets[0].addresses[0]?.value)
   })
 })

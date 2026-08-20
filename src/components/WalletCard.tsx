@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ClipboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   findWalletBySeed,
@@ -6,6 +6,7 @@ import {
   pendingSats,
   pendingSatsForAddress,
   shortAddress,
+  tokenizeSeedInput,
   walletSats,
   type Wallet,
 } from '../simulation/player'
@@ -20,6 +21,10 @@ import { TxDetailTip } from './TxInspect'
 
 type SeedStep = 'hidden' | 'warned' | 'shown'
 
+function emptySeedWords(): string[] {
+  return Array.from({ length: 12 }, () => '')
+}
+
 type WalletCardProps = {
   onMessage: (message: string) => void
   onSatsSent: (label: string, target: string, from?: string) => void
@@ -33,7 +38,7 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
   const [sendWalletId, setSendWalletId] = useState('')
   const [receiveWalletId, setReceiveWalletId] = useState('')
   const [restoreOpen, setRestoreOpen] = useState(false)
-  const [restoreDraft, setRestoreDraft] = useState('')
+  const [restoreWords, setRestoreWords] = useState<string[]>(emptySeedWords)
   const [editingName, setEditingName] = useState('')
   const [renaming, setRenaming] = useState(false)
   const [seedStep, setSeedStep] = useState<SeedStep>('hidden')
@@ -85,22 +90,58 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
   }
 
   function handleRestore() {
+    const phrase = restoreWords.join(' ')
     try {
-      restoreWallet(t('assets.walletName', { number: player.nextWalletId }), restoreDraft)
+      restoreWallet(t('assets.walletName', { number: player.nextWalletId }), phrase)
       onMessage(t('assets.restoreCreated'))
       setRestoreOpen(false)
-      setRestoreDraft('')
+      setRestoreWords(emptySeedWords())
     } catch (error) {
       const code = error instanceof Error ? error.message : ''
       if (code === 'seed-exists') {
-        const existed = findWalletBySeed(player, parseSeed(restoreDraft))
+        const existed = findWalletBySeed(player, parseSeed(phrase))
         onMessage(t('assets.restoreExists', { wallet: existed?.name ?? '' }))
         setRestoreOpen(false)
-        setRestoreDraft('')
+        setRestoreWords(emptySeedWords())
         return
       }
       onMessage(t('assets.restoreInvalid'))
     }
+  }
+
+  function fillRestoreWords(index: number, tokens: string[]) {
+    setRestoreWords((current) => {
+      const next = [...current]
+      tokens.forEach((word, offset) => {
+        const at = index + offset
+        if (at < 12) {
+          next[at] = word
+        }
+      })
+      return next
+    })
+  }
+
+  function handleRestorePaste(index: number, event: ClipboardEvent<HTMLInputElement>) {
+    const tokens = tokenizeSeedInput(event.clipboardData.getData('text'))
+    if (tokens.length <= 1) {
+      return
+    }
+    event.preventDefault()
+    fillRestoreWords(index, tokens)
+  }
+
+  function handleRestoreWordChange(index: number, value: string) {
+    const tokens = tokenizeSeedInput(value)
+    if (tokens.length > 1) {
+      fillRestoreWords(index, tokens)
+      return
+    }
+    setRestoreWords((current) => {
+      const next = [...current]
+      next[index] = value.replace(/\s+/g, '')
+      return next
+    })
   }
 
   function renderExpand(wallet: Wallet) {
@@ -298,17 +339,35 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
           title={t('assets.restoreTitle')}
           subtitle={t('assets.restoreSubtitle')}
           closeLabel={t('common.close')}
-          onClose={() => setRestoreOpen(false)}
+          onClose={() => {
+            setRestoreOpen(false)
+            setRestoreWords(emptySeedWords())
+          }}
         >
           <div className="flex flex-col gap-3">
-            <textarea
-              value={restoreDraft}
-              onChange={(event) => setRestoreDraft(event.target.value)}
-              rows={3}
-              spellCheck={false}
-              placeholder={t('assets.restorePlaceholder')}
-              className="w-full resize-none rounded-md border border-border bg-bg-primary px-2 py-1.5 font-mono text-[11px] outline-none focus:border-accent"
-            />
+            <p className="text-[11px] leading-relaxed text-text-muted">{t('assets.restoreHint')}</p>
+            <div className="grid grid-cols-3 gap-1.5">
+              {restoreWords.map((word, index) => (
+                <label
+                  key={index}
+                  className="flex items-center gap-1 rounded border border-border bg-bg-primary px-1.5 py-1 focus-within:border-accent"
+                >
+                  <span className="w-3 shrink-0 text-right font-mono text-[10px] text-text-muted">
+                    {index + 1}
+                  </span>
+                  <input
+                    value={word}
+                    data-testid={`restore-word-${index}`}
+                    autoComplete="off"
+                    spellCheck={false}
+                    placeholder={t('assets.restorePlaceholder')}
+                    onChange={(event) => handleRestoreWordChange(index, event.target.value)}
+                    onPaste={(event) => handleRestorePaste(index, event)}
+                    className="min-w-0 flex-1 bg-transparent font-mono text-[11px] outline-none"
+                  />
+                </label>
+              ))}
+            </div>
             <button
               type="button"
               onClick={handleRestore}
@@ -350,7 +409,10 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
           <div className="flex items-center gap-1">
             <button
               type="button"
-              onClick={() => setRestoreOpen(true)}
+              onClick={() => {
+                setRestoreWords(emptySeedWords())
+                setRestoreOpen(true)
+              }}
               className="rounded-md border border-border px-2 py-1 text-[11px] text-text-muted transition hover:border-accent/60 hover:text-accent"
             >
               {t('assets.restore')}

@@ -272,7 +272,10 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
       addWallet: (name) => setPlayer((current) => createWallet(current, name)),
       renameWallet: (walletId, name) => setPlayer((current) => renameWallet(current, walletId, name)),
       newAddress: (walletId) => setPlayer((current) => createAddress(current, walletId)),
-      restoreWallet: (name, words) => setPlayer((current) => applyRestore(current, name, words)),
+      restoreWallet: (name, words) => {
+        const next = applyRestore(player, name, words)
+        setPlayer(next)
+      },
       buyBtc: (address, cadAmount) => {
         const next = buyBitcoin(
           player,

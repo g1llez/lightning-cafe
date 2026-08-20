@@ -84,6 +84,11 @@ A wallet can receive, send, and watch its money move on the fake chain. Buying a
 - Restore from 12 words recovers keys (and sats only if those addresses still hold them)
 - Sim in `/tests/send.test.ts`
 
+### v0.2.3b — Restore 12 boxes ✅
+- Restore uses 12 fields, like Sparrow
+- Paste still works if the backup copy kept `1.` / `1-` in front of each word
+- Invalid seed shows a toast; it no longer blanks the whole screen
+
 ### v0.2.4 — Inspect txs ✅
 - Click a mempool or confirmed block to see the `lc1q` addresses it pays (yours highlighted)
 - Hover an address for sats, miner fee, mempool vs block

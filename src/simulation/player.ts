@@ -217,8 +217,18 @@ function addWalletFromSeed(player: PlayerState, name: string, seed: string[]): P
   }
 }
 
+/** Strip list numbers people copy from the backup grid: `1. cafe`, `1-cafe`, `2) cafe`. */
+export function tokenizeSeedInput(value: string): string[] {
+  return value
+    .trim()
+    .toLowerCase()
+    .split(/[\s,;]+/)
+    .map((token) => token.replace(/^#?\d{1,2}[-.)]+/, ''))
+    .filter((token) => token.length > 0 && !/^\d+$/.test(token))
+}
+
 export function parseSeed(value: string): string[] {
-  const words = value.trim().toLowerCase().split(/\s+/).filter(Boolean)
+  const words = tokenizeSeedInput(value)
   if (words.length !== 12) {
     throw new Error('seed-invalid')
   }
