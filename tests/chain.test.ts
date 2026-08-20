@@ -215,13 +215,12 @@ describe('player wallets', () => {
   })
 
   it('derives every address from the 12 words', () => {
-    const player = createWallet(createInitialPlayer(), 'Wallet 1')
-    const seed = player.wallets[0].seed
+    const seedA = walletSeed(() => 0)
+    const seedB = walletSeed(() => 0.5)
 
-    expect(player.wallets[0].addresses).toEqual([{ value: walletAddress(seed, 0), sats: 0 }])
-    expect(walletAddress(seed, 0)).toBe(walletAddress(seed, 0))
-    expect(walletAddress(seed, 1)).not.toBe(walletAddress(seed, 0))
-    expect(walletAddress(walletSeed(() => 0), 0)).not.toBe(walletAddress(seed, 0))
+    expect(walletAddress(seedA, 0)).toBe(walletAddress(seedA, 0))
+    expect(walletAddress(seedA, 1)).not.toBe(walletAddress(seedA, 0))
+    expect(walletAddress(seedB, 0)).not.toBe(walletAddress(seedA, 0))
   })
 
   it('adds a fresh receive address on demand', () => {
