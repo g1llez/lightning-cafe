@@ -3,151 +3,166 @@ import { seededRandom } from './chain'
 export const TETRIS_COLS = 8
 export const TETRIS_ROWS = 8
 
-export type TetrisScenario = 'sparse' | 'classic' | 'packed'
+export type TetrisScenario = 'squares' | 'rows' | 'columns' | 'split'
 export type TetrisCell = 'empty' | 'npc' | 'mine'
+export type TetrisKind = 'npc' | 'mine'
 
-const SHAPES: [number, number][][] = [
-  [
-    [0, 0],
-    [1, 0],
-    [2, 0],
-    [3, 0],
-  ],
-  [
-    [0, 0],
-    [1, 0],
-    [0, 1],
-    [1, 1],
-  ],
-  [
-    [0, 0],
-    [1, 0],
-    [2, 0],
-    [1, 1],
-  ],
-  [
-    [0, 0],
-    [1, 0],
-    [1, 1],
-    [2, 1],
-  ],
-  [
-    [1, 0],
-    [2, 0],
-    [0, 1],
-    [1, 1],
-  ],
-  [
-    [0, 0],
-    [0, 1],
-    [0, 2],
-    [1, 2],
-  ],
-  [
-    [1, 0],
-    [1, 1],
-    [1, 2],
-    [0, 2],
-  ],
+export type TetrisPiece = {
+  cells: [number, number][]
+  x: number
+  landY: number
+  kind: TetrisKind
+}
+
+export type TetrisFalling = {
+  cells: [number, number][]
+  x: number
+  y: number
+  kind: TetrisKind
+}
+
+const O: [number, number][] = [
+  [0, 0],
+  [1, 0],
+  [0, 1],
+  [1, 1],
 ]
-
-const PIECES_FOR: Record<TetrisScenario, number> = {
-  sparse: 6,
-  classic: 10,
-  packed: 14,
-}
-
-function rotate(cells: [number, number][], turns: number): [number, number][] {
-  let next = cells
-  for (let step = 0; step < turns % 4; step += 1) {
-    next = next.map(([x, y]) => [y, -x] as [number, number])
-  }
-  const minX = Math.min(...next.map(([x]) => x))
-  const minY = Math.min(...next.map(([, y]) => y))
-  return next.map(([x, y]) => [x - minX, y - minY] as [number, number])
-}
+const I_ROW: [number, number][] = [
+  [0, 0],
+  [1, 0],
+  [2, 0],
+  [3, 0],
+]
+const I_COL: [number, number][] = [
+  [0, 0],
+  [0, 1],
+  [0, 2],
+  [0, 3],
+]
 
 function emptyGrid(): TetrisCell[][] {
   return Array.from({ length: TETRIS_ROWS }, () => Array.from({ length: TETRIS_COLS }, () => 'empty' as const))
 }
 
-function collides(grid: TetrisCell[][], cells: [number, number][], originX: number, originY: number): boolean {
-  return cells.some(([dx, dy]) => {
-    const x = originX + dx
-    const y = originY + dy
-    return x < 0 || x >= TETRIS_COLS || y < 0 || y >= TETRIS_ROWS || grid[y]?.[x] !== 'empty'
-  })
+function piece(cells: [number, number][], x: number, landY: number): Omit<TetrisPiece, 'kind'> {
+  return { cells, x, landY }
 }
 
-function dropY(grid: TetrisCell[][], cells: [number, number][], originX: number): number | null {
-  let y = 0
-  if (collides(grid, cells, originX, y)) {
-    return null
-  }
-  while (!collides(grid, cells, originX, y + 1)) {
-    y += 1
-  }
-  return y
+/** Four ways to tile the 8×8 well completely. No sliding, no rotating — only fall. */
+export function pickTetrisScenario(seed: string, txCount: number): TetrisScenario {
+  const names: TetrisScenario[] = ['squares', 'rows', 'columns', 'split']
+  const spin = txCount >= 2_800 ? 2 : txCount <= 1_800 ? 0 : 1
+  const pick = Math.floor(seededRandom(`${seed}|scene`)() * 4 + spin) % 4
+  return names[pick] ?? 'squares'
 }
 
-function stamp(grid: TetrisCell[][], cells: [number, number][], originX: number, originY: number, kind: 'npc' | 'mine') {
-  for (const [dx, dy] of cells) {
-    const row = grid[originY + dy]
-    if (row) {
-      row[originX + dx] = kind
+function tiling(scenario: TetrisScenario): Omit<TetrisPiece, 'kind'>[] {
+  if (scenario === 'squares') {
+    const placed: Omit<TetrisPiece, 'kind'>[] = []
+    for (let y = TETRIS_ROWS - 2; y >= 0; y -= 2) {
+      for (let x = 0; x < TETRIS_COLS; x += 2) {
+        placed.push(piece(O, x, y))
+      }
+    }
+    return placed
+  }
+
+  if (scenario === 'rows') {
+    const placed: Omit<TetrisPiece, 'kind'>[] = []
+    for (let y = TETRIS_ROWS - 1; y >= 0; y -= 1) {
+      placed.push(piece(I_ROW, 0, y), piece(I_ROW, 4, y))
+    }
+    return placed
+  }
+
+  if (scenario === 'columns') {
+    const placed: Omit<TetrisPiece, 'kind'>[] = []
+    for (let x = 0; x < TETRIS_COLS; x += 1) {
+      placed.push(piece(I_COL, x, TETRIS_ROWS - 4))
+    }
+    for (let x = 0; x < TETRIS_COLS; x += 1) {
+      placed.push(piece(I_COL, x, 0))
+    }
+    return placed
+  }
+
+  const placed: Omit<TetrisPiece, 'kind'>[] = []
+  for (let y = TETRIS_ROWS - 1; y >= 4; y -= 1) {
+    placed.push(piece(I_ROW, 0, y), piece(I_ROW, 4, y))
+  }
+  for (let x = 0; x < TETRIS_COLS; x += 1) {
+    placed.push(piece(I_COL, x, 0))
+  }
+  return placed
+}
+
+function stamp(grid: TetrisCell[][], item: { cells: [number, number][]; x: number; y: number; kind: TetrisKind }) {
+  for (const [dx, dy] of item.cells) {
+    const row = grid[Math.round(item.y) + dy]
+    const x = item.x + dx
+    if (row && x >= 0 && x < TETRIS_COLS) {
+      row[x] = item.kind
     }
   }
 }
 
-/** Quiet mempool → sparse; busy → packed; otherwise a seeded classic/sparse/packed mix. */
-export function pickTetrisScenario(seed: string, txCount: number): TetrisScenario {
-  if (txCount >= 2_800) {
-    return 'packed'
-  }
-  if (txCount <= 1_800) {
-    return 'sparse'
-  }
-  const pick = Math.floor(seededRandom(`${seed}|scene`)() * 3)
-  return (['sparse', 'classic', 'packed'] as const)[pick] ?? 'classic'
+/** Drop order for one block: already in the right column, gravity only. Fills every cell. */
+export function tetrisPlan(seed: string, txCount: number, minePieces = 0): TetrisPiece[] {
+  const plan = tiling(pickTetrisScenario(seed, txCount))
+  const mineFrom = Math.max(0, plan.length - Math.max(0, minePieces))
+  return plan.map((item, index) => ({
+    ...item,
+    kind: index >= mineFrom ? 'mine' : 'npc',
+  }))
 }
 
 /**
- * Pack tetrominoes into the current block template. No line clears:
- * Bitcoin fills a block, it does not delete rows. `fill` 0..1 is how far
- * the minute has gone. `minePieces` paints the last landed pieces as yours.
+ * `progress` 0..1 over the block interval. Landed pieces stay put; one piece
+ * falls from the top to its locked row (no lateral move, no rotate).
  */
-export function tetrisGrid(seed: string, fill: number, txCount: number, minePieces = 0): TetrisCell[][] {
-  const scenario = pickTetrisScenario(seed, txCount)
-  const random = seededRandom(`${seed}|${scenario}`)
+export function tetrisSnapshot(plan: TetrisPiece[], progress: number): {
+  landed: TetrisCell[][]
+  falling: TetrisFalling | null
+} {
+  const t = Math.min(1, Math.max(0, progress))
+  const n = t * plan.length
+  const landedCount = t >= 1 ? plan.length : Math.min(plan.length, Math.floor(n))
   const grid = emptyGrid()
-  const wanted = PIECES_FOR[scenario]
-  const placements: { cells: [number, number][]; x: number; y: number }[] = []
-
-  for (let index = 0; index < wanted * 2 && placements.length < wanted; index += 1) {
-    const shape = SHAPES[Math.floor(random() * SHAPES.length)]
-    if (!shape) {
-      continue
-    }
-    const cells = rotate(shape, Math.floor(random() * 4))
-    const width = Math.max(...cells.map(([x]) => x)) + 1
-    const originX = Math.floor(random() * Math.max(1, TETRIS_COLS - width + 1))
-    const originY = dropY(grid, cells, originX)
-    if (originY == null) {
-      continue
-    }
-    stamp(grid, cells, originX, originY, 'npc')
-    placements.push({ cells, x: originX, y: originY })
+  for (const item of plan.slice(0, landedCount)) {
+    stamp(grid, { ...item, y: item.landY })
   }
 
-  const shown = Math.round(Math.min(1, Math.max(0, fill)) * placements.length)
-  const visible = emptyGrid()
-  const mineFrom = Math.max(0, shown - Math.max(0, minePieces))
-  placements.slice(0, shown).forEach((piece, index) => {
-    stamp(visible, piece.cells, piece.x, piece.y, index >= mineFrom ? 'mine' : 'npc')
-  })
-  return visible
+  if (landedCount >= plan.length) {
+    return { landed: grid, falling: null }
+  }
+
+  const current = plan[landedCount]
+  if (!current) {
+    return { landed: grid, falling: null }
+  }
+
+  const frac = n - landedCount
+  return {
+    landed: grid,
+    falling: {
+      cells: current.cells,
+      x: current.x,
+      y: frac * current.landY,
+      kind: current.kind,
+    },
+  }
 }
 
 export function tetrisFilledCount(grid: TetrisCell[][]): number {
   return grid.reduce((sum, row) => sum + row.filter((cell) => cell !== 'empty').length, 0)
+}
+
+export function tetrisGrid(seed: string, fill: number, txCount: number, minePieces = 0): TetrisCell[][] {
+  const snap = tetrisSnapshot(tetrisPlan(seed, txCount, minePieces), fill)
+  if (!snap.falling) {
+    return snap.landed
+  }
+  const copy = snap.landed.map((row) => [...row])
+  stamp(copy, snap.falling)
+  return copy
 }

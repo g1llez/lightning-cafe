@@ -42,7 +42,7 @@ type BlockTileProps = {
   ghost?: boolean
   testId?: string
   onInspect?: () => void
-  packing?: { seed: string; fill: number; txCount: number; minePieces: number }
+  packing?: { seed: string; fill: number; txCount: number; minePieces: number; interval: number }
 }
 
 function BlockTile({
@@ -85,6 +85,7 @@ function BlockTile({
                 fill={packing.fill}
                 txCount={packing.txCount}
                 minePieces={packing.minePieces}
+                interval={packing.interval}
               />
             ) : null}
           </div>
@@ -311,6 +312,7 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
                             fill: packingFill,
                             txCount: block.txCount,
                             minePieces: myPending.length,
+                            interval,
                           }
                         : undefined
                     }
