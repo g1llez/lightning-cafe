@@ -146,6 +146,60 @@ export function parseRemoteTx(payload: unknown): RemoteTxPayload | null {
   }
 }
 
+export type NodeEventPayload = {
+  op: 'up' | 'down' | 'rename'
+  name?: string
+}
+
+export type CafePeerNode = {
+  id: string
+  name: string
+  peerId: string
+}
+
+export function peerNodeId(peerId: string): string {
+  return `peer-${peerId}`
+}
+
+export function parseNodeEvent(payload: unknown): NodeEventPayload | null {
+  if (!payload || typeof payload !== 'object') {
+    return null
+  }
+  const body = payload as Record<string, unknown>
+  if (body.op !== 'up' && body.op !== 'down' && body.op !== 'rename') {
+    return null
+  }
+  const name = typeof body.name === 'string' ? body.name.trim() : undefined
+  if ((body.op === 'up' || body.op === 'rename') && !name) {
+    return null
+  }
+  return name ? { op: body.op, name } : { op: body.op }
+}
+
+export function applyNodeEvent(
+  peers: CafePeerNode[],
+  eventPeerId: string,
+  payload: NodeEventPayload,
+  selfPeerId: string,
+): CafePeerNode[] {
+  if (!eventPeerId || eventPeerId === selfPeerId) {
+    return peers
+  }
+  const id = peerNodeId(eventPeerId)
+  if (payload.op === 'down') {
+    return peers.filter((node) => node.id !== id)
+  }
+  const name = payload.name?.trim()
+  if (!name) {
+    return peers
+  }
+  const existing = peers.find((node) => node.id === id)
+  if (existing) {
+    return peers.map((node) => (node.id === id ? { ...node, name } : node))
+  }
+  return [...peers, { id, name, peerId: eventPeerId }]
+}
+
 export function openRoomSocket(
   roomId: string,
   onEvent: (event: SessionEvent) => void,
@@ -169,7 +223,7 @@ export function openRoomSocket(
 export function sendSessionEvent(
   socket: WebSocket,
   peerId: string,
-  type: 'hello' | 'tx',
+  type: 'hello' | 'tx' | 'node',
   payload: Record<string, unknown>,
 ) {
   if (socket.readyState !== WebSocket.OPEN) {

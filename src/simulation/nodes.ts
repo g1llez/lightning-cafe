@@ -7,7 +7,7 @@
 import type { Priority } from './chain'
 import { edgeEnds, floodHops, GOSSIP_HOP_MS } from './livingGraph'
 
-export type NodeKind = 'public' | 'npc' | 'exchange' | 'own' | 'mempool'
+export type NodeKind = 'public' | 'npc' | 'exchange' | 'own' | 'mempool' | 'peer'
 
 export type NetworkNode = {
   id: string
@@ -191,25 +191,46 @@ export function availableBroadcastNodes(ownNode: OwnNode | null, tip: number): B
   return [...PUBLIC_NODES, { id: ownNode.id, name: ownNode.name, kind: 'own' }]
 }
 
-/** Visible nodes for the current player (exchange stays; own may appear). */
-export function visibleNetwork(ownNode: OwnNode | null): NetworkNode[] {
-  if (!ownNode) {
-    return BASE_NETWORK
-  }
-  return [
-    ...BASE_NETWORK,
-    {
+/** Visible nodes: base mesh, own node, and cafe-session peers. */
+export function visibleNetwork(
+  ownNode: OwnNode | null,
+  peerNodes: { id: string; name: string }[] = [],
+): NetworkNode[] {
+  const extra: NetworkNode[] = []
+  if (ownNode) {
+    extra.push({
       id: ownNode.id,
       name: ownNode.name,
       kind: 'own',
       x: 12,
       y: 82,
-    },
+    })
+  }
+  peerNodes.forEach((peer, index) => {
+    extra.push({
+      id: peer.id,
+      name: peer.name,
+      kind: 'peer',
+      x: 22 + (index % 3) * 14,
+      y: 68 - Math.floor(index / 3) * 14,
+    })
+  })
+  return extra.length === 0 ? BASE_NETWORK : [...BASE_NETWORK, ...extra]
+}
+
+export function playerNodeEdges(id: string): NetworkEdge[] {
+  return [
+    { a: id, b: 'pub-cafe-relay' },
+    { a: id, b: 'npc-harbor' },
+    { a: id, b: MEMPOOL_NODE_ID },
   ]
 }
 
 export function visibleEdges(nodeIds: Set<string>): NetworkEdge[] {
-  return NETWORK_EDGES.filter((edge) => nodeIds.has(edge.a) && nodeIds.has(edge.b))
+  const extra = [...nodeIds]
+    .filter((id) => id.startsWith('peer-'))
+    .flatMap((id) => playerNodeEdges(id))
+  return [...NETWORK_EDGES, ...extra].filter((edge) => nodeIds.has(edge.a) && nodeIds.has(edge.b))
 }
 
 /**

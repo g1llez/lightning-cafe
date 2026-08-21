@@ -134,6 +134,12 @@ describe('L1 peer graph', () => {
     expect(withOwn).toHaveLength(8)
     const ids = new Set(withOwn.map((node) => node.id))
     expect(visibleEdges(ids).some((edge) => edge.a === OWN_NODE_ID || edge.b === OWN_NODE_ID)).toBe(true)
+    const withPeer = visibleNetwork(null, [{ id: 'peer-pc-b', name: 'Cave' }])
+    expect(withPeer.some((node) => node.id === 'peer-pc-b' && node.kind === 'peer')).toBe(true)
+    const peerIds = new Set(withPeer.map((node) => node.id))
+    expect(visibleEdges(peerIds).some((edge) => edge.a === 'peer-pc-b' || edge.b === 'peer-pc-b')).toBe(
+      true,
+    )
   })
 
   it('propagates from origin until every peer is reached', () => {

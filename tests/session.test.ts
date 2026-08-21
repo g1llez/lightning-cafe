@@ -19,7 +19,13 @@ import {
   totalSats,
   walletSats,
 } from '../src/simulation/player'
-import { parseRemoteTx, parseRoomInput, parseTick } from '../src/simulation/sessionApi'
+import {
+  applyNodeEvent,
+  parseNodeEvent,
+  parseRemoteTx,
+  parseRoomInput,
+  parseTick,
+} from '../src/simulation/sessionApi'
 
 describe('shared cafe session', () => {
   it('applies a server tick without inventing a local pool walk', () => {
@@ -134,6 +140,21 @@ describe('shared cafe session', () => {
     })
     expect(parseRemoteTx({ kind: 'buy', address: 'lc1qaa', sats: 1 })).toBeNull()
     expect(parseRemoteTx({ kind: 'zap', address: 'lc1qaa', sats: 1, fee_rate: 2 })).toBeNull()
+  })
+
+  it('shows a remote cafe node and ignores our own node events', () => {
+    const up = parseNodeEvent({ op: 'up', name: 'Maison' })
+    expect(up).toEqual({ op: 'up', name: 'Maison' })
+    expect(parseNodeEvent({ op: 'up' })).toBeNull()
+
+    let peers = applyNodeEvent([], 'pc-b', up!, 'pc-a')
+    expect(peers).toEqual([{ id: 'peer-pc-b', name: 'Maison', peerId: 'pc-b' }])
+    peers = applyNodeEvent(peers, 'pc-b', { op: 'rename', name: 'Cave' }, 'pc-a')
+    expect(peers[0]?.name).toBe('Cave')
+    peers = applyNodeEvent(peers, 'pc-a', { op: 'up', name: 'Moi' }, 'pc-a')
+    expect(peers).toHaveLength(1)
+    peers = applyNodeEvent(peers, 'pc-b', { op: 'down' }, 'pc-a')
+    expect(peers).toHaveLength(0)
   })
 
   it('reads a room id out of a pasted cafe link', () => {

@@ -42,8 +42,10 @@ import {
 import {
   createRoom,
   fetchEvents,
+  applyNodeEvent,
   fetchRoom,
   openRoomSocket,
+  parseNodeEvent,
   parseRemoteTx,
   parseRoomInput,
   parseTick,
@@ -51,6 +53,7 @@ import {
   sendSessionEvent,
   sessionPeerId,
   writeRoomToLocation,
+  type CafePeerNode,
   type SessionEvent,
 } from './sessionApi'
 
@@ -63,6 +66,7 @@ type SimulationContextValue = {
   btcPriceCad: number
   roomId: string | null
   sessionStatus: SessionStatus
+  peerNodes: CafePeerNode[]
   networkPulse: NetworkPulse | null
   hiddenMempoolTxIds: string[]
   revealMempoolTx: (txId: string) => void
@@ -105,16 +109,20 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
   const [player, setPlayer] = useState(boot.player)
   const [roomId, setRoomId] = useState<string | null>(boot.roomId)
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>('off')
+  const [peerNodes, setPeerNodes] = useState<CafePeerNode[]>([])
   const [networkPulse, setNetworkPulse] = useState<NetworkPulse | null>(null)
   const [hiddenMempoolTxIds, setHiddenMempoolTxIds] = useState<string[]>([])
   const chainRef = useRef(chain)
+  const playerRef = useRef(player)
   const socketRef = useRef<WebSocket | null>(null)
   const seqRef = useRef(0)
   const peerIdRef = useRef('')
   const outboxRef = useRef<
     { kind: 'buy' | 'send'; address: string; sats: number; fee_rate: number; id: string }[]
   >([])
+  const nodeOutboxRef = useRef<{ op: 'up' | 'down' | 'rename'; name?: string }[]>([])
   chainRef.current = chain
+  playerRef.current = player
 
   useEffect(() => {
     writePersist(persistBlob(player, chain, secondsLeft))
@@ -147,6 +155,8 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
   useEffect(() => {
     if (!roomId) {
       setSessionStatus('off')
+      setPeerNodes([])
+      nodeOutboxRef.current = []
       return
     }
 
@@ -157,9 +167,18 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
     peerIdRef.current = peerId
     seqRef.current = 0
     setSessionStatus('connecting')
+    setPeerNodes([])
     setChain(createInitialChain())
     chainRef.current = createInitialChain()
     setSecondsLeft(60)
+
+    function applyNode(event: SessionEvent, current: CafePeerNode[]): CafePeerNode[] {
+      const payload = parseNodeEvent(event.payload)
+      if (!payload) {
+        return current
+      }
+      return applyNodeEvent(current, event.peer_id, payload, peerId)
+    }
 
     function applyEvent(event: SessionEvent) {
       if (event.seq <= seqRef.current) {
@@ -189,6 +208,11 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
         if (tx) {
           setPlayer((current) => ingestRemoteTx(current, tx))
         }
+        return
+      }
+
+      if (event.type === 'node') {
+        setPeerNodes((current) => applyNode(event, current))
       }
     }
 
@@ -205,6 +229,7 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
 
         if (after === 0) {
           let nextChain = createInitialChain()
+          let nextPeers: CafePeerNode[] = []
           setPlayer((currentPlayer) => {
             let nextPlayer = currentPlayer
             for (const event of events) {
@@ -214,19 +239,22 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
                 if (!tick) {
                   continue
                 }
-        nextPlayer = advanceBlock(nextPlayer, nextChain.marketRate, null, tick.height)
+                nextPlayer = advanceBlock(nextPlayer, nextChain.marketRate, null, tick.height)
                 nextChain = applyServerTick(nextChain, tick)
               } else if (event.type === 'tx') {
                 const tx = parseRemoteTx(event.payload)
                 if (tx) {
                   nextPlayer = ingestRemoteTx(nextPlayer, tx)
                 }
+              } else if (event.type === 'node') {
+                nextPeers = applyNode(event, nextPeers)
               }
             }
             chainRef.current = nextChain
             return nextPlayer
           })
           setChain(nextChain)
+          setPeerNodes(nextPeers)
         } else {
           for (const event of events) {
             applyEvent(event)
@@ -262,6 +290,16 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
             sendSessionEvent(socket, peerId, 'tx', payload)
           }
           outboxRef.current = []
+          const own = playerRef.current.ownNode
+          if (own) {
+            sendSessionEvent(socket, peerId, 'node', { op: 'up', name: own.name })
+            nodeOutboxRef.current = []
+          } else {
+            for (const payload of nodeOutboxRef.current) {
+              sendSessionEvent(socket, peerId, 'node', payload)
+            }
+            nodeOutboxRef.current = []
+          }
         })
       } catch {
         if (!cancelled) {
@@ -298,6 +336,18 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
     }
   }
 
+  function publishNode(op: 'up' | 'down' | 'rename', name?: string) {
+    const payload = name ? { op, name } : { op }
+    const socket = socketRef.current
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      sendSessionEvent(socket, peerIdRef.current, 'node', payload)
+      return
+    }
+    if (roomId) {
+      nodeOutboxRef.current = [...nodeOutboxRef.current, payload]
+    }
+  }
+
   function chainTip(): number {
     return chain.confirmed[0]?.height ?? chain.nextHeight - 1
   }
@@ -310,6 +360,7 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
       btcPriceCad: BTC_PRICE_CAD,
       roomId,
       sessionStatus,
+      peerNodes,
       networkPulse,
       hiddenMempoolTxIds,
       revealMempoolTx: (txId) =>
@@ -325,10 +376,18 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
         const next = applyDelete(player, walletId)
         setPlayer(next)
       },
-      addOwnNode: (name) =>
-        setPlayer((current) => createOwnNode(current, name, chainTip())),
-      removeOwnNode: () => setPlayer((current) => deleteOwnNode(current)),
-      renameOwnNode: (name) => setPlayer((current) => applyRenameOwnNode(current, name)),
+      addOwnNode: (name) => {
+        setPlayer((current) => createOwnNode(current, name, chainTip()))
+        publishNode('up', name.trim())
+      },
+      removeOwnNode: () => {
+        setPlayer((current) => deleteOwnNode(current))
+        publishNode('down')
+      },
+      renameOwnNode: (name) => {
+        setPlayer((current) => applyRenameOwnNode(current, name))
+        publishNode('rename', name.trim())
+      },
       chooseBroadcastNode: (nodeId) =>
         setPlayer((current) => selectBroadcastNode(current, nodeId, chainTip())),
       buyBtc: (address, cadAmount) => {
@@ -385,6 +444,8 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
       leaveCafe: () => {
         writeRoomToLocation(null)
         outboxRef.current = []
+        nodeOutboxRef.current = []
+        setPeerNodes([])
         setRoomId(null)
         setSessionStatus('off')
       },
@@ -392,8 +453,10 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
         clearPersist()
         writeRoomToLocation(null)
         outboxRef.current = []
+        nodeOutboxRef.current = []
         setRoomId(null)
         setSessionStatus('off')
+        setPeerNodes([])
         setPlayer(createInitialPlayer())
         setChain(createInitialChain())
         setSecondsLeft(blockInterval)
@@ -401,7 +464,17 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
         setHiddenMempoolTxIds([])
       },
     }),
-    [chain, player, secondsLeft, roomId, sessionStatus, blockInterval, networkPulse, hiddenMempoolTxIds],
+    [
+      chain,
+      player,
+      secondsLeft,
+      roomId,
+      sessionStatus,
+      peerNodes,
+      blockInterval,
+      networkPulse,
+      hiddenMempoolTxIds,
+    ],
   )
 
   return <SimulationContext.Provider value={value}>{children}</SimulationContext.Provider>

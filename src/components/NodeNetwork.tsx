@@ -28,7 +28,7 @@ type NodeNetworkProps = {
 
 export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
   const { t } = useTranslation()
-  const { player, chain, secondsLeft, networkPulse, revealMempoolTx } = useSimulation()
+  const { player, chain, secondsLeft, networkPulse, revealMempoolTx, peerNodes } = useSimulation()
   const onSatsSentRef = useRef(onSatsSent)
   onSatsSentRef.current = onSatsSent
   const revealRef = useRef(revealMempoolTx)
@@ -43,7 +43,10 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
 
   const tip = chain.confirmed[0]?.height ?? chain.nextHeight - 1
   const blockFill = 1 - secondsLeft / sandboxBlockInterval()
-  const catalog = useMemo(() => visibleNetwork(player.ownNode), [player.ownNode])
+  const catalog = useMemo(
+    () => visibleNetwork(player.ownNode, peerNodes),
+    [player.ownNode, peerNodes],
+  )
   const nodeIds = useMemo(() => catalog.map((node) => node.id), [catalog])
   const edges = useMemo(() => visibleEdges(new Set(nodeIds)), [nodeIds])
   const byMeta = useMemo(() => new Map(catalog.map((node) => [node.id, node])), [catalog])
@@ -178,9 +181,13 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
                 ? t('layers.nodeMempoolTip')
                 : node.kind === 'public'
                   ? t('layers.nodePublicTip')
-                  : node.kind === 'npc'
-                    ? t('layers.nodeNpcTip')
-                    : null
+                  : node.kind === 'own'
+                    ? t('layers.nodeOwnTip')
+                    : node.kind === 'peer'
+                      ? t('layers.nodePeerTip')
+                      : node.kind === 'npc'
+                        ? t('layers.nodeNpcTip')
+                        : null
 
           const icon = (
             <span data-fly={nodeFlyId(node.id)} className="inline-flex">
