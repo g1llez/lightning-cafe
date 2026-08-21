@@ -166,6 +166,8 @@
     "nodeOwnTip": "Ta node — historique local, envois plus confidentiels.",
     "nodeSyncingTip": "La node télécharge et valide toutes les transactions de la blockchain.",
     "nodePublicTip": "Relay public — pratique, mais voit ton trafic.",
+    "nodePublicSeenTip": "Cette node a vu ton IP et tes transactions.",
+    "nodeExchangeSeenTip": "L’échange a vu tes achats et ton IP.",
     "nodeNpcTip": "Peer plein nœud du sandbox.",
     "nodePeerTip": "Node d’un autre visiteur du café.",
     "nodeMempoolTip": "Le mempool collecte les transactions non confirmées et les met dans le bloc en cours de minage.",

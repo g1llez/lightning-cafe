@@ -1,17 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import { estimateFeeSats, INITIAL_MARKET_RATE, marketQuotes } from '../src/simulation/chain'
+import { DEFAULT_PUBLIC_NODE_ID, EXCHANGE_NODE_ID, OWN_NODE_ID, OWN_NODE_SYNC_BLOCKS } from '../src/simulation/nodes'
 import {
   advanceBlock,
   buyBitcoin,
   cadToSats,
   createAddress,
   createInitialPlayer,
+  createOwnNode,
   findWalletByAddress,
+  nodeSawUs,
   pendingSats,
   pendingSatsForAddress,
   planSend,
   receiveAddress,
   restoreWallet,
+  selectBroadcastNode,
   sendBitcoin,
   totalSats,
   walletAddress,
@@ -252,5 +256,24 @@ describe('send on-chain', () => {
 
     player = advanceBlock(player, 1, () => 1)
     expect(walletSats(player.wallets[1])).toBe(sent)
+  })
+
+  it('marks the public relay that broadcast a send, not our own node', () => {
+    let { player, to } = twoWallets()
+    expect(nodeSawUs(player, EXCHANGE_NODE_ID)).toBe(true)
+    expect(nodeSawUs(player, DEFAULT_PUBLIC_NODE_ID)).toBe(false)
+
+    player = sendBitcoin(player, 'w-1', to, 10_000, quotes.high, DEFAULT_PUBLIC_NODE_ID)
+    expect(nodeSawUs(player, DEFAULT_PUBLIC_NODE_ID)).toBe(true)
+    player = advanceBlock(player, INITIAL_MARKET_RATE)
+
+    player = createOwnNode(player, 'Maison', 912_004)
+    for (let height = 912_005; height <= 912_004 + OWN_NODE_SYNC_BLOCKS; height += 1) {
+      player = advanceBlock(player, INITIAL_MARKET_RATE, null, height)
+    }
+    player = selectBroadcastNode(player, OWN_NODE_ID, 912_008)
+    player = sendBitcoin(player, 'w-1', to, 5_000, quotes.high, OWN_NODE_ID)
+    expect(nodeSawUs(player, OWN_NODE_ID)).toBe(false)
+    expect(player.seenByNodeIds).toEqual([EXCHANGE_NODE_ID, DEFAULT_PUBLIC_NODE_ID])
   })
 })

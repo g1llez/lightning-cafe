@@ -26,6 +26,8 @@ import {
   createOwnNode,
   createWallet,
   deleteOwnNode,
+  noteNodeSawUs,
+  nodeSawUs,
   renameOwnNode,
   selectBroadcastNode,
   advanceBlock,
@@ -111,6 +113,20 @@ describe('bitcoin broadcast nodes', () => {
     const hydrated = hydrateSandbox(JSON.stringify(blob), null, sandboxBlockInterval())
     expect(hydrated.player.ownNode?.syncStartHeight).toBe(912_000)
     expect(hydrated.player.ownNode?.syncedBlocks).toBe(0)
+  })
+
+  it('persists which public nodes already saw our traffic', () => {
+    let player = noteNodeSawUs(createInitialPlayer(), DEFAULT_PUBLIC_NODE_ID)
+    player = noteNodeSawUs(player, DEFAULT_PUBLIC_NODE_ID)
+    player = noteNodeSawUs(player, OWN_NODE_ID)
+    expect(player.seenByNodeIds).toEqual([DEFAULT_PUBLIC_NODE_ID])
+    const hydrated = hydrateSandbox(
+      JSON.stringify(persistBlob(player, createInitialChain(), 40)),
+      null,
+      sandboxBlockInterval(),
+    )
+    expect(nodeSawUs(hydrated.player, DEFAULT_PUBLIC_NODE_ID)).toBe(true)
+    expect(hydrated.player.seenByNodeIds).toEqual([DEFAULT_PUBLIC_NODE_ID])
   })
 
   it('keeps IBD progress when a cafe reload rewinds the chain', () => {

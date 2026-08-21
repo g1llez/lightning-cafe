@@ -80,7 +80,7 @@ type SimulationContextValue = {
   renameOwnNode: (name: string) => void
   chooseBroadcastNode: (nodeId: string) => void
   buyBtc: (address: string, cadAmount: number) => void
-  sendBtc: (fromWalletId: string, toAddress: string, sats: number, feeRate: number) => void
+  sendBtc: (fromWalletId: string, toAddress: string, sats: number, feeRate: number, viaNodeId?: string) => void
   createCafe: () => Promise<void>
   joinCafe: (roomId: string) => Promise<void>
   leaveCafe: () => void
@@ -419,8 +419,9 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
           })
         }
       },
-      sendBtc: (fromWalletId, toAddress, sats, feeRate) => {
-        const next = sendBitcoin(player, fromWalletId, toAddress, sats, feeRate)
+      sendBtc: (fromWalletId, toAddress, sats, feeRate, viaNodeId) => {
+        const nodeId = viaNodeId ?? player.selectedNodeId
+        const next = sendBitcoin(player, fromWalletId, toAddress, sats, feeRate, nodeId)
         setPlayer(next)
         const tx = next.pending[next.pending.length - 1]
         if (tx) {
@@ -429,7 +430,7 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
           setNetworkPulse({
             id: `tx-${tx.id}`,
             kind: 'tx',
-            originId: player.selectedNodeId,
+            originId: nodeId,
             txId: tx.id,
             lane: feeZone(tx.feeRate, chain.marketRate),
             sats: tx.sats,

@@ -1,6 +1,7 @@
 import { createInitialChain, type ChainState, type ConfirmedBlock, type Priority, type ProjectedBlock } from './chain'
 import {
   DEFAULT_PUBLIC_NODE_ID,
+  EXCHANGE_NODE_ID,
   OWN_NODE_SYNC_BLOCKS,
   clampSyncedBlocks,
   type OwnNode,
@@ -140,6 +141,27 @@ function parseIdList(value: unknown): string[] | null {
   return ids
 }
 
+function parseSeenNodeIds(value: unknown): string[] {
+  if (value == null) {
+    return []
+  }
+  if (!Array.isArray(value)) {
+    return []
+  }
+  const ids: string[] = []
+  for (const item of value) {
+    if (typeof item !== 'string' || !item || item.length > 64) {
+      continue
+    }
+    if (item.startsWith('pub-') || item === EXCHANGE_NODE_ID) {
+      if (!ids.includes(item)) {
+        ids.push(item)
+      }
+    }
+  }
+  return ids
+}
+
 function parsePlayer(value: unknown): PlayerState | null {
   if (!isRecord(value) || !isNonNegNumber(value.cad) || !isNonNegInt(value.nextWalletId) || !isNonNegInt(value.nextTxId)) {
     return null
@@ -185,6 +207,7 @@ function parsePlayer(value: unknown): PlayerState | null {
     paidSellIds,
     ownNode: parseOwnNode(value.ownNode),
     selectedNodeId: parseSelectedNodeId(value.selectedNodeId, parseOwnNode(value.ownNode)),
+    seenByNodeIds: parseSeenNodeIds(value.seenByNodeIds),
   }
 }
 

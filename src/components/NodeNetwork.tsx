@@ -13,6 +13,7 @@ import {
   visibleNetwork,
 } from '../simulation/nodes'
 import { gossipLearn, type GraphPacket, type PacketKind } from '../simulation/livingGraph'
+import { nodeSawUs } from '../simulation/player'
 import { useSimulation } from '../simulation/SimulationProvider'
 import { BitcoinNodeIcon } from './BitcoinNodeIcon'
 import { MiniBlockChip } from './BlockTetris'
@@ -21,6 +22,7 @@ import { mempoolFlyId, nodeFlyId } from './SatsFlight'
 import { Tooltip } from './Tooltip'
 
 const TX_ORIGIN_HOLD_MS = 480
+const SEEN_RING = '#f5c518'
 
 type NodeNetworkProps = {
   onSatsSent: (label: string, target: string, from?: string) => void
@@ -174,20 +176,25 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
             return null
           }
           const syncing = node.kind === 'own' && own && !ownReady
+          const watched = nodeSawUs(player, node.id)
           const tipText =
-            node.kind === 'exchange'
-              ? t('layers.nodeExchangeTip')
-              : node.kind === 'mempool'
-                ? t('layers.nodeMempoolTip')
-                : node.kind === 'public'
-                  ? t('layers.nodePublicTip')
-                  : node.kind === 'own'
-                    ? t('layers.nodeOwnTip')
-                    : node.kind === 'peer'
-                      ? t('layers.nodePeerTip')
-                      : node.kind === 'npc'
-                        ? t('layers.nodeNpcTip')
-                        : null
+            watched && node.kind === 'exchange'
+              ? t('layers.nodeExchangeSeenTip')
+              : watched && node.kind === 'public'
+                ? t('layers.nodePublicSeenTip')
+                : node.kind === 'exchange'
+                  ? t('layers.nodeExchangeTip')
+                  : node.kind === 'mempool'
+                    ? t('layers.nodeMempoolTip')
+                    : node.kind === 'public'
+                      ? t('layers.nodePublicTip')
+                      : node.kind === 'own'
+                        ? t('layers.nodeOwnTip')
+                        : node.kind === 'peer'
+                          ? t('layers.nodePeerTip')
+                          : node.kind === 'npc'
+                            ? t('layers.nodeNpcTip')
+                            : null
 
           const icon = (
             <span data-fly={nodeFlyId(node.id)} className="inline-flex">
@@ -203,6 +210,17 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
                     className="pointer-events-none absolute -inset-1 rounded-full"
                     style={{
                       background: `conic-gradient(var(--color-accent, #f7931a) ${syncProgress * 360}deg, transparent 0)`,
+                      mask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px))',
+                      WebkitMask:
+                        'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px))',
+                    }}
+                  />
+                )}
+                {!syncing && watched && (
+                  <span
+                    className="pointer-events-none absolute -inset-1 rounded-full"
+                    style={{
+                      background: `conic-gradient(${SEEN_RING} 360deg, transparent 0)`,
                       mask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px))',
                       WebkitMask:
                         'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px))',

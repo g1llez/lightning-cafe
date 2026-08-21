@@ -76,7 +76,7 @@ export function SendModal({ walletId, onClose, onMessage, onSatsSent }: SendModa
 
     chooseBroadcastNode(selected.id)
     const feeRate = feeRateFor(chain.marketRate, priority)
-    sendBtc(walletId, addressDraft, safeAmount, feeRate)
+    sendBtc(walletId, addressDraft, safeAmount, feeRate, selected.id)
     onSatsSent(t('services.flyingSats', { sats: safeAmount.toLocaleString() }), nodeFlyId(selected.id))
     onMessage(t('assets.sendSent'))
     onClose()

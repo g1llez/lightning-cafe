@@ -9,6 +9,7 @@ import {
 } from './chain'
 import {
   DEFAULT_PUBLIC_NODE_ID,
+  EXCHANGE_NODE_ID,
   OWN_NODE_ID,
   isOwnNodeReady,
   tickOwnNodeSync,
@@ -106,6 +107,8 @@ export type PlayerState = {
   ownNode: OwnNode | null
   /** Last broadcast endpoint used on Send (public id or own node id). */
   selectedNodeId: string
+  /** Public / exchange nodes that already saw our IP and a tx (localStorage). */
+  seenByNodeIds: string[]
 }
 
 export function createInitialPlayer(): PlayerState {
@@ -119,6 +122,7 @@ export function createInitialPlayer(): PlayerState {
     paidSellIds: [],
     ownNode: null,
     selectedNodeId: DEFAULT_PUBLIC_NODE_ID,
+    seenByNodeIds: [],
   }
 }
 
@@ -294,6 +298,22 @@ export function selectBroadcastNode(
     throw new Error('own-node-syncing')
   }
   return { ...player, selectedNodeId: nodeId }
+}
+
+export function nodeCanRememberUs(nodeId: string): boolean {
+  return nodeId.startsWith('pub-') || nodeId === EXCHANGE_NODE_ID
+}
+
+/** Remember a relay that handled our traffic. Own node is skipped — that is the point. */
+export function noteNodeSawUs(player: PlayerState, nodeId: string): PlayerState {
+  if (!nodeCanRememberUs(nodeId) || player.seenByNodeIds.includes(nodeId)) {
+    return player
+  }
+  return { ...player, seenByNodeIds: [...player.seenByNodeIds, nodeId] }
+}
+
+export function nodeSawUs(player: PlayerState, nodeId: string): boolean {
+  return player.seenByNodeIds.includes(nodeId)
 }
 
 /** Strip list numbers people copy from the backup grid: `1. cafe`, `1-cafe`, `2) cafe`. */
@@ -690,12 +710,15 @@ export function buyBitcoin(
     changeSats: 0,
   }
 
-  return {
-    ...player,
-    cad: player.cad - totalCad,
-    pending: [...player.pending, tx],
-    nextTxId: player.nextTxId + 1,
-  }
+  return noteNodeSawUs(
+    {
+      ...player,
+      cad: player.cad - totalCad,
+      pending: [...player.pending, tx],
+      nextTxId: player.nextTxId + 1,
+    },
+    EXCHANGE_NODE_ID,
+  )
 }
 
 /** Called once per mined block, against the market that was on screen. */
@@ -754,6 +777,7 @@ export function sendBitcoin(
   toAddress: string,
   sats: number,
   feeRate: number,
+  viaNodeId = player.selectedNodeId,
 ): PlayerState {
   if (!Number.isFinite(sats) || sats <= 0) {
     throw new Error('amount-invalid')
@@ -796,14 +820,18 @@ export function sendBitcoin(
     changeSats: plan.change,
   }
 
-  return {
-    ...player,
-    pending: [...player.pending, tx],
-    nextTxId: player.nextTxId + 1,
-    wallets: player.wallets.map((wallet) =>
-      wallet.id === fromWalletId ? { ...wallet, addresses } : wallet,
-    ),
-  }
+  return noteNodeSawUs(
+    {
+      ...player,
+      selectedNodeId: viaNodeId,
+      pending: [...player.pending, tx],
+      nextTxId: player.nextTxId + 1,
+      wallets: player.wallets.map((wallet) =>
+        wallet.id === fromWalletId ? { ...wallet, addresses } : wallet,
+      ),
+    },
+    viaNodeId,
+  )
 }
 
 /** Words that are not in the wallet list, so a restore cannot steal the cashier. */
