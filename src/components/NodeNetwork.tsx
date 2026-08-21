@@ -9,11 +9,10 @@ import {
   isOwnNodeReady,
   ownNodeProgress,
   ownNodeProgressPercent,
-  propagationHops,
   visibleEdges,
   visibleNetwork,
 } from '../simulation/nodes'
-import type { GraphPacket } from '../simulation/livingGraph'
+import { fanoutFrom, type GraphPacket } from '../simulation/livingGraph'
 import { useSimulation } from '../simulation/SimulationProvider'
 import { BitcoinNodeIcon } from './BitcoinNodeIcon'
 import { NetworkCanvas } from './NetworkCanvas'
@@ -39,6 +38,7 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
   const pulseKey = useRef<string | null>(null)
   const pulseRef = useRef(networkPulse)
   pulseRef.current = networkPulse
+  const announced = useRef(new Set<string>())
 
   const tip = chain.confirmed[0]?.height ?? chain.nextHeight - 1
   const blockFill = 1 - secondsLeft / sandboxBlockInterval()
@@ -46,8 +46,42 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
   const nodeIds = useMemo(() => catalog.map((node) => node.id), [catalog])
   const edges = useMemo(() => visibleEdges(new Set(nodeIds)), [nodeIds])
   const byMeta = useMemo(() => new Map(catalog.map((node) => [node.id, node])), [catalog])
+  const edgesRef = useRef(edges)
+  edgesRef.current = edges
 
   const [packets, setPackets] = useState<GraphPacket[]>([])
+
+  function announceFrom(
+    fromId: string,
+    exceptId: string | null,
+    group: string,
+    tag: string | undefined,
+    bornAt: number,
+  ) {
+    const key = `${group}:${fromId}`
+    if (announced.current.has(key)) {
+      return
+    }
+    announced.current.add(key)
+    const hops = fanoutFrom(fromId, edgesRef.current).filter((hop) => hop.toId !== exceptId)
+    if (hops.length === 0) {
+      return
+    }
+    const wave: GraphPacket[] = hops.map((hop) => ({
+      id: `${group}-${fromId}-${hop.toId}-${bornAt}`,
+      fromId,
+      toId: hop.toId,
+      kind: 'tx',
+      bornAt,
+      duration: PROPAGATION_HOP_MS,
+      tag,
+      group,
+    }))
+    setPackets((current) => {
+      const stamp = Date.now()
+      return [...current.filter((packet) => stamp < packet.bornAt + packet.duration), ...wave]
+    })
+  }
 
   useEffect(() => {
     if (!networkPulse || networkPulse.id === pulseKey.current) {
@@ -59,33 +93,23 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
 
     const pulse = networkPulse
     pulseKey.current = pulse.id
+    if (pulse.kind !== 'tx') {
+      return
+    }
+
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const hold = pulse.kind === 'tx' && !reduced ? TX_ORIGIN_HOLD_MS : 0
-    const hops = propagationHops(pulse.originId, edges)
-    const born = Date.now()
-    const kind = pulse.kind === 'block' ? 'block' : 'tx'
-
-    setPackets(
-      hops.map((hop, index) => ({
-        id: `${pulse.id}-${index}`,
-        fromId: hop.fromId,
-        toId: hop.toId,
-        kind,
-        bornAt: born + hold + hop.delayMs - PROPAGATION_HOP_MS,
-        duration: PROPAGATION_HOP_MS,
-        tag: pulse.txId,
-      })),
-    )
-
-    if (reduced && pulse.kind === 'tx' && pulse.txId) {
+    if (reduced && pulse.txId) {
       revealRef.current(pulse.txId)
       onSatsSentRef.current(
         tRef.current('services.flyingSats', { sats: (pulse.sats ?? 0).toLocaleString() }),
         mempoolFlyId(pulse.lane ?? 'high'),
         nodeFlyId(MEMPOOL_NODE_ID),
       )
+      return
     }
-  }, [networkPulse, nodeIds, edges])
+
+    announceFrom(pulse.originId, null, pulse.id, pulse.txId, Date.now() + TX_ORIGIN_HOLD_MS)
+  }, [networkPulse, nodeIds])
 
   const own = player.ownNode
   const ownReady = own ? isOwnNodeReady(own, tip) : false
@@ -93,6 +117,9 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
   const syncProgress = own ? ownNodeProgress(own, tip, ownReady ? 0 : blockFill) : 1
 
   function handleArrive(packet: GraphPacket) {
+    if (packet.kind === 'tx' && packet.group) {
+      announceFrom(packet.toId, packet.fromId, packet.group, packet.tag, Date.now())
+    }
     if (packet.kind !== 'tx' || packet.toId !== MEMPOOL_NODE_ID || !packet.tag) {
       return
     }
@@ -178,15 +205,10 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
                     text={ownReady ? t('layers.nodeOwnTip') : t('layers.nodeSyncingTip')}
                     side="top"
                   >
-                    <span className="flex cursor-help flex-col items-center font-mono text-[11px] leading-tight text-text-muted">
-                      {ownReady ? (
-                        t('assets.nodeReady')
-                      ) : (
-                        <>
-                          <span>{t('assets.nodeSyncing', { percent: syncPercent })}</span>
-                          <span>{t('assets.nodeValidating')}</span>
-                        </>
-                      )}
+                    <span className="cursor-help whitespace-nowrap font-mono text-[11px] text-text-muted">
+                      {ownReady
+                        ? t('assets.nodeReady')
+                        : t('assets.nodeSyncing', { percent: syncPercent })}
                     </span>
                   </Tooltip>
                 )}

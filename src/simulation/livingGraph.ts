@@ -74,6 +74,8 @@ export type GraphPacket = {
   duration: number
   /** Optional app tag (e.g. pending tx id). */
   tag?: string
+  /** Pulse id so a node rebroadcasts at most once per flood. */
+  group?: string
 }
 
 export function scatterBodies(

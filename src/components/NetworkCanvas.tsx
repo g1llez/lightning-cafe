@@ -276,7 +276,7 @@ export function NetworkCanvas({
           if (!from || !to) {
             return null
           }
-          const extra = packet.kind === 'tx' ? PACKET_RIM_PAD : packet.kind === 'block' ? 1.2 : 0.55
+          const extra = packet.kind === 'tx' ? PACKET_RIM_PAD : 0.55
           const pos = packetXY(packet, from, to, now, pad + extra)
           if (!pos) {
             return null
@@ -321,8 +321,8 @@ function PacketDot({
   y: number
 }) {
   const own = packet.kind === 'tx'
-  const radius = own ? 1.35 : packet.kind === 'block' ? 1.15 : 0.62
-  const fill = own ? '#fbbf24' : packet.kind === 'block' ? '#f7931a' : '#f8fafc'
+  const radius = own ? 1.35 : 0.62
+  const fill = own ? '#fbbf24' : '#f8fafc'
   return <circle cx={x} cy={y} r={radius} fill={fill} opacity={own ? 0.95 : 0.8} />
 }
 
