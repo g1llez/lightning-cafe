@@ -123,7 +123,13 @@ A wallet can receive, send, and watch its money move on the fake chain. Buying a
 - On mine / buy / send: packet flood (~500 ms/hop) from a random peer, the exchange, or the chosen relay
 - Sim in `/tests/nodes.test.ts` (sync + propagation)
 
-**v0.2 done when:** you can create two wallets, buy, wait for a block, send between them with a fee choice, see the tx in a block, sell, refresh the page and still have the same state. **v0.2.7–0.2.8** add the broadcast-node + peer-graph step before closing into v0.3.
+### v0.2.9 — Living peer graph ✅
+- Reusable force layout (`livingGraph` + `NetworkCanvas`) — square canvas so SVG links and HTML nodes share coordinates
+- Nodes scatter then settle; idle drift; own node flies from the Nodes table and the mesh reflows
+- Ambient gossip (small white hops); player txs are larger yellow hops; a node “eats” (scale 1.2) on arrival
+- Sim in `/tests/livingGraph.test.ts`
+
+**v0.2 done when:** you can create two wallets, buy, wait for a block, send between them with a fee choice, see the tx in a block, sell, refresh the page and still have the same state. **v0.2.7–0.2.9** add the broadcast-node + living graph before closing into v0.3.
 
 ---
 

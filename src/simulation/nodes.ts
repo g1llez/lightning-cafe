@@ -5,6 +5,7 @@
  */
 
 import type { Priority } from './chain'
+import { edgeEnds } from './livingGraph'
 
 export type NodeKind = 'public' | 'npc' | 'exchange' | 'own' | 'mempool'
 
@@ -162,20 +163,7 @@ export function edgeEndpoints(
   y2: number,
   pad = NODE_DISC_RADIUS,
 ): { x1: number; y1: number; x2: number; y2: number } {
-  const dx = x2 - x1
-  const dy = y2 - y1
-  const len = Math.hypot(dx, dy) || 1
-  if (len <= pad * 2) {
-    return { x1, y1, x2, y2 }
-  }
-  const ux = dx / len
-  const uy = dy / len
-  return {
-    x1: x1 + ux * pad,
-    y1: y1 + uy * pad,
-    x2: x2 - ux * pad,
-    y2: y2 - uy * pad,
-  }
+  return edgeEnds(x1, y1, x2, y2, pad)
 }
 
 export function resolveBroadcastNode(

@@ -651,6 +651,7 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
           )}
         </LayerAssetCard>
 
+        <div data-fly="node-table">
         <LayerAssetCard
           title={t('assets.nodes')}
           action={
@@ -732,6 +733,7 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
             </div>
           )}
         </LayerAssetCard>
+        </div>
       </div>
     </>
   )
