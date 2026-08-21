@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { toneForFee } from '../simulation/chain'
 import {
   tetrisCellFill,
   tetrisPlan,
@@ -112,6 +113,41 @@ export function BlockTetris({ seed, fill, txCount, minePieces, interval, pace = 
           })}
         </div>
       ) : null}
+    </div>
+  )
+}
+
+/** Frozen 20px replica of a confirmed block — used on the gossip graph. */
+export function MiniBlockChip({
+  seed,
+  txCount,
+  feeRate,
+}: {
+  seed: string
+  txCount: number
+  feeRate: number
+}) {
+  const tape = useMemo(() => tetrisPlan(seed, txCount), [seed, txCount])
+  const snap = useMemo(() => tetrisSnapshot(tape, 1, 0), [tape])
+  return (
+    <div
+      className={`h-5 w-5 overflow-hidden rounded-[3px] shadow-md ${toneForFee(feeRate)}`}
+      aria-hidden="true"
+    >
+      <div
+        className="grid h-full w-full gap-px p-px"
+        style={{
+          gridTemplateColumns: `repeat(${TETRIS_COLS}, minmax(0, 1fr))`,
+          gridTemplateRows: `repeat(${TETRIS_ROWS}, minmax(0, 1fr))`,
+        }}
+      >
+        {snap.landed.flatMap((row, y) =>
+          row.map((cell, x) => {
+            const look = cellStyle(cell)
+            return <span key={`${x}-${y}`} className={look.className} style={look.style} />
+          }),
+        )}
+      </div>
     </div>
   )
 }

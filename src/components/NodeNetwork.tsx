@@ -12,9 +12,10 @@ import {
   visibleEdges,
   visibleNetwork,
 } from '../simulation/nodes'
-import { fanoutFrom, type GraphPacket } from '../simulation/livingGraph'
+import { fanoutFrom, type GraphPacket, type PacketKind } from '../simulation/livingGraph'
 import { useSimulation } from '../simulation/SimulationProvider'
 import { BitcoinNodeIcon } from './BitcoinNodeIcon'
+import { MiniBlockChip } from './BlockTetris'
 import { NetworkCanvas } from './NetworkCanvas'
 import { mempoolFlyId, nodeFlyId } from './SatsFlight'
 import { Tooltip } from './Tooltip'
@@ -55,6 +56,7 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
     fromId: string,
     exceptId: string | null,
     group: string,
+    kind: PacketKind,
     tag: string | undefined,
     bornAt: number,
   ) {
@@ -71,7 +73,7 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
       id: `${group}-${fromId}-${hop.toId}-${bornAt}`,
       fromId,
       toId: hop.toId,
-      kind: 'tx',
+      kind,
       bornAt,
       duration: PROPAGATION_HOP_MS,
       tag,
@@ -93,12 +95,8 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
 
     const pulse = networkPulse
     pulseKey.current = pulse.id
-    if (pulse.kind !== 'tx') {
-      return
-    }
-
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reduced && pulse.txId) {
+    if (pulse.kind === 'tx' && reduced && pulse.txId) {
       revealRef.current(pulse.txId)
       onSatsSentRef.current(
         tRef.current('services.flyingSats', { sats: (pulse.sats ?? 0).toLocaleString() }),
@@ -107,9 +105,14 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
       )
       return
     }
+    if (reduced) {
+      return
+    }
 
-    announceFrom(pulse.originId, null, pulse.id, pulse.txId, Date.now() + TX_ORIGIN_HOLD_MS)
-  }, [networkPulse, nodeIds])
+    const hold = pulse.kind === 'tx' ? TX_ORIGIN_HOLD_MS : 0
+    const tag = pulse.kind === 'block' ? chain.confirmed[0]?.id : pulse.txId
+    announceFrom(pulse.originId, null, pulse.id, pulse.kind, tag, Date.now() + hold)
+  }, [networkPulse, nodeIds, chain.confirmed])
 
   const own = player.ownNode
   const ownReady = own ? isOwnNodeReady(own, tip) : false
@@ -117,8 +120,8 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
   const syncProgress = own ? ownNodeProgress(own, tip, ownReady ? 0 : blockFill) : 1
 
   function handleArrive(packet: GraphPacket) {
-    if (packet.kind === 'tx' && packet.group) {
-      announceFrom(packet.toId, packet.fromId, packet.group, packet.tag, Date.now())
+    if ((packet.kind === 'tx' || packet.kind === 'block') && packet.group) {
+      announceFrom(packet.toId, packet.fromId, packet.group, packet.kind, packet.tag, Date.now())
     }
     if (packet.kind !== 'tx' || packet.toId !== MEMPOOL_NODE_ID || !packet.tag) {
       return
@@ -151,6 +154,17 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
         spawnFrom='[data-fly="node-table"]'
         extraPackets={packets}
         onPacketArrive={handleArrive}
+        renderPacket={(packet) => {
+          if (packet.kind !== 'block' || !packet.tag) {
+            return null
+          }
+          const block =
+            chain.confirmed.find((item) => item.id === packet.tag) ?? chain.confirmed[0]
+          if (!block) {
+            return null
+          }
+          return <MiniBlockChip seed={block.id} txCount={block.txCount} feeRate={block.feeRate} />
+        }}
         renderNode={(id) => {
           const node = byMeta.get(id)
           if (!node) {

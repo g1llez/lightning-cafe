@@ -45,6 +45,7 @@ export type NetworkCanvasProps = {
   extraPackets?: GraphPacket[]
   ambient?: boolean
   onPacketArrive?: (packet: GraphPacket) => void
+  renderPacket?: (packet: GraphPacket) => ReactNode
 }
 
 export function NetworkCanvas({
@@ -57,6 +58,7 @@ export function NetworkCanvas({
   extraPackets = [],
   ambient = true,
   onPacketArrive,
+  renderPacket,
 }: NetworkCanvasProps) {
   const boxRef = useRef<HTMLDivElement>(null)
   const bodiesRef = useRef<GraphBody[]>([])
@@ -276,14 +278,47 @@ export function NetworkCanvas({
           if (!from || !to) {
             return null
           }
-          const extra = packet.kind === 'tx' ? PACKET_RIM_PAD : 0.55
+          const extra =
+            packet.kind === 'tx' ? PACKET_RIM_PAD : packet.kind === 'block' ? 1.15 : 0.55
           const pos = packetXY(packet, from, to, now, pad + extra)
           if (!pos) {
+            return null
+          }
+          if (packet.kind === 'block') {
             return null
           }
           return <PacketDot key={packet.id} packet={packet} x={pos.x} y={pos.y} />
         })}
       </svg>
+
+      {packets.map((packet) => {
+        if (packet.kind !== 'block') {
+          return null
+        }
+        const from = byId.get(packet.fromId)
+        const to = byId.get(packet.toId)
+        if (!from || !to) {
+          return null
+        }
+        const pos = packetXY(packet, from, to, now, pad + 1.15)
+        if (!pos) {
+          return null
+        }
+        const face = renderPacket?.(packet)
+        if (!face) {
+          return null
+        }
+        const pct = htmlPercent(pos, graph)
+        return (
+          <div
+            key={packet.id}
+            className="pointer-events-none absolute z-[2]"
+            style={{ left: `${pct.left}%`, top: `${pct.top}%` }}
+          >
+            <div className="-translate-x-1/2 -translate-y-1/2">{face}</div>
+          </div>
+        )
+      })}
 
       {nodeIds.map((id) => {
         const pos = byId.get(id)
@@ -321,7 +356,7 @@ function PacketDot({
   y: number
 }) {
   const own = packet.kind === 'tx'
-  const radius = own ? 1.35 : 0.62
+  const radius = own ? 1.7 : 0.62
   const fill = own ? '#fbbf24' : '#f8fafc'
   return <circle cx={x} cy={y} r={radius} fill={fill} opacity={own ? 0.95 : 0.8} />
 }
