@@ -401,7 +401,7 @@ function PacketDot({
 }) {
   const own = packet.kind === 'tx'
   const radius = own ? 1.35 : 0.62
-  const fill = own ? '#fbbf24' : '#f8fafc'
+  const fill = own ? '#f7931a' : '#f8fafc'
   return <circle cx={x} cy={y} r={radius} fill={fill} opacity={own ? 0.95 : 0.8} />
 }
 
