@@ -133,7 +133,7 @@ export function NetworkCanvas({
 
     let next: GraphBody[]
     if (known.size === 0) {
-      next = settleBodies(scatterBodies(ids, Math.random, box), edgesRef.current, 18, undefined, box)
+      next = scatterBodies(ids, Math.random, box)
     } else {
       next = dropBodyMany(bodiesRef.current, removed)
       for (const id of added) {

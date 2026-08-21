@@ -61,6 +61,7 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
   const [justCreatedId, setJustCreatedId] = useState('')
   const [sendWalletId, setSendWalletId] = useState('')
   const [renamingNode, setRenamingNode] = useState(false)
+  const [confirmDeleteNode, setConfirmDeleteNode] = useState(false)
   const [editingNodeName, setEditingNodeName] = useState('')
   const [receiveWalletId, setReceiveWalletId] = useState('')
   const [restoreOpen, setRestoreOpen] = useState(false)
@@ -109,6 +110,7 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
   function handleDeleteNode() {
     removeOwnNode()
     setRenamingNode(false)
+    setConfirmDeleteNode(false)
     onMessage(t('assets.nodeDeleted'))
   }
 
@@ -679,56 +681,79 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
           {!player.ownNode ? (
             <p className="px-2 py-2 text-sm text-text-muted">{t('assets.noNodes')}</p>
           ) : (
-            <div className="flex items-center border-t border-border first:border-t-0">
-              <div className="min-w-0 flex-1 px-2 py-2">
-                {renamingNode ? (
-                  <input
-                    autoFocus
-                    value={editingNodeName}
-                    onChange={(event) => setEditingNodeName(event.target.value)}
-                    onBlur={commitRenameNode}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') {
-                        event.currentTarget.blur()
-                      }
-                      if (event.key === 'Escape') {
-                        setRenamingNode(false)
-                      }
-                    }}
-                    className="w-full rounded border border-accent bg-bg-primary px-2 py-1 text-sm outline-none"
-                  />
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingNodeName(player.ownNode!.name)
-                      setRenamingNode(true)
-                    }}
-                    title={t('assets.rename')}
-                    className="block w-full truncate text-left text-sm font-medium hover:text-accent"
-                  >
-                    {player.ownNode.name}
-                  </button>
+            <div className="border-t border-border first:border-t-0">
+              <div className="min-w-0 px-2 py-2">
+                <div className="truncate text-sm font-medium">{player.ownNode.name}</div>
+                {!ownReady && (
+                  <Tooltip text={t('layers.nodeSyncingTip')} side="top">
+                    <span className="mt-0.5 inline-block cursor-help font-mono text-[10px] text-text-muted">
+                      {t('assets.nodeSyncing', { percent: syncPercent })}
+                    </span>
+                  </Tooltip>
                 )}
-                <Tooltip
-                  text={ownReady ? t('layers.nodeOwnTip') : t('layers.nodeSyncingTip')}
-                  side="top"
-                >
-                  <span className="mt-0.5 inline-block cursor-help font-mono text-[10px] text-text-muted">
-                    {ownReady
-                      ? t('assets.nodeReady')
-                      : t('assets.nodeSyncing', { percent: syncPercent })}
-                  </span>
-                </Tooltip>
-              </div>
-              <div className="whitespace-nowrap pr-1">
-                <button
-                  type="button"
-                  onClick={handleDeleteNode}
-                  className="rounded-md border border-border px-2 py-1 text-[11px] text-text-muted transition hover:border-danger/60 hover:text-danger"
-                >
-                  {t('assets.deleteNode')}
-                </button>
+                <div className="mt-2 flex flex-col gap-2.5">
+                  {renamingNode ? (
+                    <input
+                      autoFocus
+                      value={editingNodeName}
+                      onChange={(event) => setEditingNodeName(event.target.value)}
+                      onBlur={commitRenameNode}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.currentTarget.blur()
+                        }
+                        if (event.key === 'Escape') {
+                          setRenamingNode(false)
+                        }
+                      }}
+                      className="w-full rounded border border-accent bg-bg-primary px-2 py-1 text-sm outline-none"
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingNodeName(player.ownNode!.name)
+                        setRenamingNode(true)
+                      }}
+                      title={t('assets.rename')}
+                      aria-label={t('assets.rename')}
+                      className="self-start px-0.5 text-[11px] text-text-muted transition hover:text-accent"
+                    >
+                      ✎ {t('assets.rename')}
+                    </button>
+                  )}
+                  {confirmDeleteNode ? (
+                    <div className="rounded-md border border-danger/60 bg-danger/10 px-2.5 py-2">
+                      <p className="text-[11px] leading-relaxed text-text-primary">
+                        {t('assets.deleteNodeConfirm')}
+                      </p>
+                      <div className="mt-1.5 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleDeleteNode}
+                          className="rounded-md border border-danger/60 px-2 py-1 text-[11px] text-text-primary transition hover:bg-danger/20"
+                        >
+                          {t('assets.deleteConfirmYes')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteNode(false)}
+                          className="px-1 text-[11px] text-text-muted transition hover:text-text-primary"
+                        >
+                          {t('common.cancel')}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteNode(true)}
+                      className="self-start px-0.5 text-[11px] text-text-muted transition hover:text-danger"
+                    >
+                      {t('assets.deleteNode')}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           )}

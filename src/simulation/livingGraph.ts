@@ -88,17 +88,25 @@ export function scatterBodies(
   const cx = box.width / 2
   const cy = box.height / 2
   const n = Math.max(ids.length, 1)
-  const rx = Math.min(box.width * 0.28, 28)
-  const ry = Math.min(box.height * 0.34, rx)
+  const rx = Math.min(box.width * 0.32, 34)
+  const ry = Math.min(box.height * 0.36, rx)
+  const start = random() * Math.PI * 2
+  const slots = ids.map((_, index) => index)
+  for (let i = slots.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(random() * (i + 1))
+    const swap = slots[i]!
+    slots[i] = slots[j]!
+    slots[j] = swap
+  }
   return ids.map((id, index) => {
-    const angle = (index / n) * Math.PI * 2 + random() * 0.35
-    const jitter = 0.75 + random() * 0.25
+    const angle = start + (slots[index]! / n) * Math.PI * 2 + (random() - 0.5) * 0.9
+    const jitter = 0.5 + random() * 0.85
     return {
       id,
       x: cx + Math.cos(angle) * rx * jitter,
       y: cy + Math.sin(angle) * ry * jitter,
-      vx: (random() - 0.5) * 0.2,
-      vy: (random() - 0.5) * 0.2,
+      vx: (random() - 0.5) * 0.55,
+      vy: (random() - 0.5) * 0.55,
     }
   })
 }
@@ -254,19 +262,16 @@ export function idleOffset(id: string, nowMs: number): { x: number; y: number } 
   }
   const phase = (hash % 1000) / 1000
   return {
-    x: Math.sin(nowMs * 0.00055 + phase * 6.2) * 1.15,
-    y: Math.cos(nowMs * 0.0007 + phase * 4.1) * 1.15,
+    x: Math.sin(nowMs * 0.00038 + phase * 6.2) * 2.4,
+    y: Math.cos(nowMs * 0.00047 + phase * 4.1) * 2.15,
   }
 }
 
 export function displayedPosition(
   body: GraphBody,
   nowMs: number,
-  idle: boolean,
+  _idle = true,
 ): { x: number; y: number } {
-  if (!idle) {
-    return { x: body.x, y: body.y }
-  }
   const offset = idleOffset(body.id, nowMs)
   return { x: body.x + offset.x, y: body.y + offset.y }
 }

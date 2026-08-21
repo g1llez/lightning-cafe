@@ -214,15 +214,10 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
                 <span className="max-w-[6.5rem] truncate text-center text-xs font-medium text-text-primary md:text-[13px]">
                   {node.name}
                 </span>
-                {node.kind === 'own' && own && (
-                  <Tooltip
-                    text={ownReady ? t('layers.nodeOwnTip') : t('layers.nodeSyncingTip')}
-                    side="top"
-                  >
+                {node.kind === 'own' && own && !ownReady && (
+                  <Tooltip text={t('layers.nodeSyncingTip')} side="top">
                     <span className="cursor-help whitespace-nowrap font-mono text-[11px] text-text-muted">
-                      {ownReady
-                        ? t('assets.nodeReady')
-                        : t('assets.nodeSyncing', { percent: syncPercent })}
+                      {t('assets.nodeSyncing', { percent: syncPercent })}
                     </span>
                   </Tooltip>
                 )}
