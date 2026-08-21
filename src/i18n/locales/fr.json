@@ -49,7 +49,7 @@
     "nodeDeleted": "Node Bitcoin retirée",
     "nodeExists": "Tu as déjà une node dans ce navigateur",
     "broadcastNode": "Diffuser via",
-    "broadcastPublicHint": "Une node publique voit ton IP et les adresses que tu interroges ou broadcast. OK en sandbox ; en mainnet c’est un choix de confiance et de confidentialité.",
+    "broadcastPublicHint": "Une node publique voit ton IP et les adresses que tu interroges ou broadcast. Pour plus de confidentialité, utilise ta propre node.",
     "broadcastOwnHint": "Ta node — tu vois la chaîne toi-même. Ici c’est encore un sandbox, mais le réflexe est le bon.",
     "broadcastRequired": "Choisis une node pour diffuser cet envoi",
     "soon": "Bientôt disponible",

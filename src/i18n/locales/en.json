@@ -49,7 +49,7 @@
     "nodeDeleted": "Bitcoin node removed",
     "nodeExists": "You already have a node in this browser",
     "broadcastNode": "Broadcast via",
-    "broadcastPublicHint": "A public node sees your IP and the addresses you query or broadcast. Fine for a sandbox; on mainnet it is a privacy and trust trade-off.",
+    "broadcastPublicHint": "A public node sees your IP and the addresses you query or broadcast. For more privacy, use your own node.",
     "broadcastOwnHint": "Your node — you see the chain yourself. Still a sandbox here, but the habit matches real Bitcoin.",
     "broadcastRequired": "Pick a node to broadcast this send",
     "soon": "Coming soon",
