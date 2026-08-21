@@ -166,6 +166,7 @@
     "nodeSyncingTip": "La node télécharge et valide toutes les transactions de la blockchain.",
     "nodePublicTip": "Relay public — pratique, mais voit ton trafic.",
     "nodeNpcTip": "Peer plein nœud du sandbox.",
+    "nodeMempoolTip": "Le mempool collecte les transactions non confirmées et les met dans le bloc en cours de minage.",
     "now": "Maintenant",
     "confirmed": "Confirmés",
     "nextBlockIn": "Prochain bloc estimé dans {{time}}",

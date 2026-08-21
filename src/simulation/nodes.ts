@@ -1,9 +1,12 @@
 /**
  * L1 peer graph for the sandbox: public relays, NPC full nodes, the exchange,
- * and optionally the player's own node (syncs over OWN_NODE_SYNC_BLOCKS).
+ * a mempool collector, and optionally the player's own node
+ * (syncs over OWN_NODE_SYNC_BLOCKS).
  */
 
-export type NodeKind = 'public' | 'npc' | 'exchange' | 'own'
+import type { Priority } from './chain'
+
+export type NodeKind = 'public' | 'npc' | 'exchange' | 'own' | 'mempool'
 
 export type NetworkNode = {
   id: string
@@ -40,19 +43,22 @@ export const PUBLIC_NODES: BroadcastNode[] = [
 
 export const DEFAULT_PUBLIC_NODE_ID = PUBLIC_NODES[0]!.id
 export const EXCHANGE_NODE_ID = 'ex-cafe-desk'
+export const MEMPOOL_NODE_ID = 'net-mempool'
 export const OWN_NODE_ID = 'own-node'
 export const OWN_NODE_SYNC_BLOCKS = 4
 export const PROPAGATION_HOP_MS = 500
+/** Radius of the orange disc in the 100×100 layout (lines stop at the rim). */
+export const NODE_DISC_RADIUS = 5.4
 
 /** Always-on peers (no player node). Max 7; own makes 8. Exchange sits on the edge, not the hub. */
 export const BASE_NETWORK: NetworkNode[] = [
-  { id: 'pub-cafe-relay', name: 'Café Relay', kind: 'public', x: 20, y: 30 },
-  { id: 'pub-clearnet', name: 'Clearnet', kind: 'public', x: 50, y: 14 },
-  { id: 'pub-fast-spy', name: 'Spyglass', kind: 'public', x: 80, y: 30 },
-  { id: 'npc-harbor', name: 'Harbor Peer', kind: 'npc', x: 16, y: 58 },
-  { id: 'npc-northwind', name: 'Northwind Full', kind: 'npc', x: 84, y: 58 },
-  { id: 'npc-mesa', name: 'Mesa Archive', kind: 'npc', x: 38, y: 84 },
-  { id: EXCHANGE_NODE_ID, name: 'Café Exchange', kind: 'exchange', x: 78, y: 84 },
+  { id: 'pub-cafe-relay', name: 'Café Relay', kind: 'public', x: 20, y: 26 },
+  { id: 'pub-clearnet', name: 'Clearnet', kind: 'public', x: 50, y: 12 },
+  { id: 'pub-fast-spy', name: 'Spyglass', kind: 'public', x: 80, y: 26 },
+  { id: 'npc-harbor', name: 'Harbor Peer', kind: 'npc', x: 16, y: 52 },
+  { id: 'npc-northwind', name: 'Northwind Full', kind: 'npc', x: 84, y: 52 },
+  { id: EXCHANGE_NODE_ID, name: 'Café Exchange', kind: 'exchange', x: 78, y: 80 },
+  { id: MEMPOOL_NODE_ID, name: 'Mempool', kind: 'mempool', x: 50, y: 72 },
 ]
 
 /** Undirected mesh — sparse enough to read hops. */
@@ -64,16 +70,17 @@ export const NETWORK_EDGES: NetworkEdge[] = [
   { a: 'pub-fast-spy', b: 'npc-northwind' },
   { a: 'pub-clearnet', b: 'npc-harbor' },
   { a: 'pub-clearnet', b: 'npc-northwind' },
-  { a: 'npc-harbor', b: 'npc-mesa' },
-  { a: 'npc-northwind', b: 'npc-mesa' },
   { a: 'npc-harbor', b: 'npc-northwind' },
-  { a: EXCHANGE_NODE_ID, b: 'npc-mesa' },
   { a: EXCHANGE_NODE_ID, b: 'npc-northwind' },
   { a: EXCHANGE_NODE_ID, b: 'pub-fast-spy' },
+  { a: MEMPOOL_NODE_ID, b: 'npc-harbor' },
+  { a: MEMPOOL_NODE_ID, b: 'npc-northwind' },
+  { a: MEMPOOL_NODE_ID, b: 'pub-clearnet' },
+  { a: MEMPOOL_NODE_ID, b: EXCHANGE_NODE_ID },
   /** Own node plugs into the mesh when present. */
   { a: OWN_NODE_ID, b: 'pub-cafe-relay' },
   { a: OWN_NODE_ID, b: 'npc-harbor' },
-  { a: OWN_NODE_ID, b: 'npc-mesa' },
+  { a: OWN_NODE_ID, b: MEMPOOL_NODE_ID },
 ]
 
 export type OwnNode = {
@@ -112,13 +119,13 @@ export function ownNodeProgressPercent(own: OwnNode, tip: number, blockFill = 0)
   return Math.round(ownNodeProgress(own, tip, blockFill) * 100)
 }
 
-/** Pull line ends inward so strokes stop short of the node discs. */
+/** Pull line ends inward so strokes meet the rim of the node discs. */
 export function edgeEndpoints(
   x1: number,
   y1: number,
   x2: number,
   y2: number,
-  pad = 8,
+  pad = NODE_DISC_RADIUS,
 ): { x1: number; y1: number; x2: number; y2: number } {
   const dx = x2 - x1
   const dy = y2 - y1
@@ -172,8 +179,8 @@ export function visibleNetwork(ownNode: OwnNode | null): NetworkNode[] {
       id: ownNode.id,
       name: ownNode.name,
       kind: 'own',
-      x: 10,
-      y: 84,
+      x: 12,
+      y: 82,
     },
   ]
 }
@@ -223,9 +230,9 @@ export function propagationHops(
   return hops
 }
 
-/** Pick a random always-on node as the first to announce a new block. */
+/** Pick a random always-on full node as the first to announce a new block. */
 export function pickBlockOrigin(random = Math.random): string {
-  const pool = BASE_NETWORK.map((node) => node.id)
+  const pool = BASE_NETWORK.filter((node) => node.kind !== 'mempool').map((node) => node.id)
   const index = Math.floor(random() * pool.length)
   return pool[index] ?? EXCHANGE_NODE_ID
 }
@@ -234,4 +241,7 @@ export type NetworkPulse = {
   id: string
   kind: 'block' | 'tx'
   originId: string
+  txId?: string
+  lane?: Priority
+  sats?: number
 }

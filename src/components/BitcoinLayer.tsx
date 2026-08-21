@@ -206,7 +206,8 @@ type BitcoinLayerProps = {
 
 export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps) {
   const { t } = useTranslation()
-  const { chain, secondsLeft, player } = useSimulation()
+  const { chain, secondsLeft, player, hiddenMempoolTxIds } = useSimulation()
+  const hiddenMempool = new Set(hiddenMempoolTxIds)
   const interval = sandboxBlockInterval()
   const packingFill = 1 - secondsLeft / interval
   const highFee =
@@ -300,7 +301,7 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
 
       <div className="flex min-h-0 flex-1 flex-col justify-between gap-3 px-4 pb-4 md:pl-[23rem]">
         <div className="flex min-h-0 flex-1 items-center justify-center">
-          <NodeNetwork />
+          <NodeNetwork onSatsSent={onSatsSent} />
         </div>
 
         <div className="flex w-full max-w-5xl flex-col items-stretch gap-4 self-center md:flex-row md:items-start md:justify-center">
@@ -310,7 +311,9 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
             </p>
             <div className="flex items-center justify-center gap-3">
               {chain.upcoming.map((block: ProjectedBlock) => {
-                const myPending = ownPendingForZone(player, chain.marketRate, block.priority)
+                const myPending = ownPendingForZone(player, chain.marketRate, block.priority).filter(
+                  (tx) => !hiddenMempool.has(tx.id),
+                )
                 return (
                   <BlockTile
                     key={block.id}

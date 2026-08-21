@@ -13,6 +13,10 @@ export function mempoolFlyId(priority: Priority): string {
   return `mempool-${priority}`
 }
 
+export function nodeFlyId(nodeId: string): string {
+  return `node-${nodeId}`
+}
+
 function centerOf(element: Element): { x: number; y: number } {
   const rect = element.getBoundingClientRect()
   if (rect.width === 0) {

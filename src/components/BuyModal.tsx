@@ -7,10 +7,11 @@ import {
   formatCad,
   satsToCad,
 } from '../simulation/player'
+import { EXCHANGE_NODE_ID } from '../simulation/nodes'
 import { useSimulation } from '../simulation/SimulationProvider'
 import { AmountSats, SAT_PRESETS } from './AmountSats'
 import { Modal } from './Modal'
-import { mempoolFlyId } from './SatsFlight'
+import { nodeFlyId } from './SatsFlight'
 import { InfoMark } from './Tooltip'
 
 type BuyModalProps = {
@@ -49,7 +50,7 @@ export function BuyModal({ onClose, onMessage, onSatsSent }: BuyModalProps) {
     }
 
     buyBtc(addressDraft, cadCost)
-    onSatsSent(t('services.flyingSats', { sats: received.toLocaleString() }), mempoolFlyId('high'))
+    onSatsSent(t('services.flyingSats', { sats: received.toLocaleString() }), nodeFlyId(EXCHANGE_NODE_ID))
     onMessage(t('services.buySent'))
     onClose()
   }

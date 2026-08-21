@@ -3,6 +3,8 @@ import {
   BASE_NETWORK,
   DEFAULT_PUBLIC_NODE_ID,
   EXCHANGE_NODE_ID,
+  MEMPOOL_NODE_ID,
+  NODE_DISC_RADIUS,
   OWN_NODE_ID,
   OWN_NODE_SYNC_BLOCKS,
   PUBLIC_NODES,
@@ -11,6 +13,7 @@ import {
   isOwnNodeReady,
   ownNodeBlocksSynced,
   ownNodeProgressPercent,
+  pickBlockOrigin,
   propagationHops,
   resolveBroadcastNode,
   visibleEdges,
@@ -108,10 +111,10 @@ describe('bitcoin broadcast nodes', () => {
     expect(ownNodeProgressPercent(own, 104, 0)).toBe(100)
   })
 
-  it('shortens edges away from node centers', () => {
-    const ends = edgeEndpoints(0, 0, 100, 0, 10)
-    expect(ends.x1).toBeCloseTo(10)
-    expect(ends.x2).toBeCloseTo(90)
+  it('shortens edges to the disc rim', () => {
+    const ends = edgeEndpoints(0, 0, 100, 0, NODE_DISC_RADIUS)
+    expect(ends.x1).toBeCloseTo(NODE_DISC_RADIUS)
+    expect(ends.x2).toBeCloseTo(100 - NODE_DISC_RADIUS)
     expect(ends.y1).toBe(0)
     expect(ends.y2).toBe(0)
   })
@@ -120,7 +123,8 @@ describe('bitcoin broadcast nodes', () => {
 describe('L1 peer graph', () => {
   it('keeps base peers under the 8-node cap and adds own', () => {
     expect(BASE_NETWORK).toHaveLength(7)
-    expect(BASE_NETWORK.some((node) => node.id === EXCHANGE_NODE_ID)).toBe(true)
+    expect(BASE_NETWORK.some((node) => node.id === MEMPOOL_NODE_ID)).toBe(true)
+    expect(pickBlockOrigin(() => 0)).not.toBe(MEMPOOL_NODE_ID)
     const exchange = BASE_NETWORK.find((node) => node.id === EXCHANGE_NODE_ID)!
     expect(exchange.x).not.toBe(50)
     expect(exchange.y).toBeGreaterThan(50)
@@ -143,5 +147,6 @@ describe('L1 peer graph', () => {
     expect(reached.size).toBe(nodes.length)
     expect(hops.every((hop) => hop.delayMs % 500 === 0)).toBe(true)
     expect(hops[0]?.delayMs).toBe(500)
+    expect(hops.some((hop) => hop.toId === MEMPOOL_NODE_ID)).toBe(true)
   })
 })

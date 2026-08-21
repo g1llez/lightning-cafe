@@ -17,7 +17,7 @@ import { useSimulation } from '../simulation/SimulationProvider'
 import { AmountSats, SEND_PRESETS } from './AmountSats'
 import { FeePicker, feeRateFor } from './FeePicker'
 import { Modal } from './Modal'
-import { mempoolFlyId } from './SatsFlight'
+import { nodeFlyId } from './SatsFlight'
 import { InfoMark } from './Tooltip'
 
 type SendModalProps = {
@@ -77,7 +77,7 @@ export function SendModal({ walletId, onClose, onMessage, onSatsSent }: SendModa
     chooseBroadcastNode(selected.id)
     const feeRate = feeRateFor(chain.marketRate, priority)
     sendBtc(walletId, addressDraft, safeAmount, feeRate)
-    onSatsSent(t('services.flyingSats', { sats: safeAmount.toLocaleString() }), mempoolFlyId(priority))
+    onSatsSent(t('services.flyingSats', { sats: safeAmount.toLocaleString() }), nodeFlyId(selected.id))
     onMessage(t('assets.sendSent'))
     onClose()
   }

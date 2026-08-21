@@ -166,6 +166,7 @@
     "nodeSyncingTip": "The node downloads and validates every transaction on the blockchain.",
     "nodePublicTip": "Public relay — convenient, but it sees your traffic.",
     "nodeNpcTip": "Sandbox full-node peer.",
+    "nodeMempoolTip": "The mempool collects unconfirmed transactions and places them in the block being mined.",
     "now": "Now",
     "confirmed": "Confirmed",
     "nextBlockIn": "Next block estimated in {{time}}",

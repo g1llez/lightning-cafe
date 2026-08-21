@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, type R
 import {
   applyServerTick,
   createInitialChain,
+  feeZone,
   marketQuotes,
   mineBlock,
   pickPool,
@@ -63,6 +64,8 @@ type SimulationContextValue = {
   roomId: string | null
   sessionStatus: SessionStatus
   networkPulse: NetworkPulse | null
+  hiddenMempoolTxIds: string[]
+  revealMempoolTx: (txId: string) => void
   addWallet: (name: string) => void
   renameWallet: (walletId: string, name: string) => void
   newAddress: (walletId: string) => void
@@ -103,6 +106,7 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
   const [roomId, setRoomId] = useState<string | null>(boot.roomId)
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>('off')
   const [networkPulse, setNetworkPulse] = useState<NetworkPulse | null>(null)
+  const [hiddenMempoolTxIds, setHiddenMempoolTxIds] = useState<string[]>([])
   const chainRef = useRef(chain)
   const socketRef = useRef<WebSocket | null>(null)
   const seqRef = useRef(0)
@@ -307,6 +311,9 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
       roomId,
       sessionStatus,
       networkPulse,
+      hiddenMempoolTxIds,
+      revealMempoolTx: (txId) =>
+        setHiddenMempoolTxIds((current) => current.filter((id) => id !== txId)),
       addWallet: (name) => setPlayer((current) => createWallet(current, name)),
       renameWallet: (walletId, name) => setPlayer((current) => renameWallet(current, walletId, name)),
       newAddress: (walletId) => setPlayer((current) => createAddress(current, walletId)),
@@ -336,7 +343,15 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
         const tx = next.pending[next.pending.length - 1]
         if (tx) {
           publishTx('buy', tx.address, tx.sats, tx.feeRate, tx.id)
-          setNetworkPulse({ id: `tx-${tx.id}`, kind: 'tx', originId: EXCHANGE_NODE_ID })
+          setHiddenMempoolTxIds((current) => [...current, tx.id])
+          setNetworkPulse({
+            id: `tx-${tx.id}`,
+            kind: 'tx',
+            originId: EXCHANGE_NODE_ID,
+            txId: tx.id,
+            lane: 'high',
+            sats: tx.sats,
+          })
         }
       },
       sendBtc: (fromWalletId, toAddress, sats, feeRate) => {
@@ -345,10 +360,14 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
         const tx = next.pending[next.pending.length - 1]
         if (tx) {
           publishTx('send', tx.address, tx.sats, tx.feeRate, tx.id)
+          setHiddenMempoolTxIds((current) => [...current, tx.id])
           setNetworkPulse({
             id: `tx-${tx.id}`,
             kind: 'tx',
             originId: player.selectedNodeId,
+            txId: tx.id,
+            lane: feeZone(tx.feeRate, chain.marketRate),
+            sats: tx.sats,
           })
         }
       },
@@ -379,9 +398,10 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
         setChain(createInitialChain())
         setSecondsLeft(blockInterval)
         setNetworkPulse(null)
+        setHiddenMempoolTxIds([])
       },
     }),
-    [chain, player, secondsLeft, roomId, sessionStatus, blockInterval, networkPulse],
+    [chain, player, secondsLeft, roomId, sessionStatus, blockInterval, networkPulse, hiddenMempoolTxIds],
   )
 
   return <SimulationContext.Provider value={value}>{children}</SimulationContext.Provider>
