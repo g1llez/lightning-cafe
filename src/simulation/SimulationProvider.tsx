@@ -18,6 +18,7 @@ import {
   ingestRemoteTx,
   renameWallet,
   deleteOwnNode,
+  renameOwnNode as applyRenameOwnNode,
   deleteWallet as applyDelete,
   restoreWallet as applyRestore,
   selectBroadcastNode,
@@ -69,6 +70,7 @@ type SimulationContextValue = {
   deleteWallet: (walletId: string) => void
   addOwnNode: (name: string) => void
   removeOwnNode: () => void
+  renameOwnNode: (name: string) => void
   chooseBroadcastNode: (nodeId: string) => void
   buyBtc: (address: string, cadAmount: number) => void
   sendBtc: (fromWalletId: string, toAddress: string, sats: number, feeRate: number) => void
@@ -319,6 +321,7 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
       addOwnNode: (name) =>
         setPlayer((current) => createOwnNode(current, name, chainTip())),
       removeOwnNode: () => setPlayer((current) => deleteOwnNode(current)),
+      renameOwnNode: (name) => setPlayer((current) => applyRenameOwnNode(current, name)),
       chooseBroadcastNode: (nodeId) =>
         setPlayer((current) => selectBroadcastNode(current, nodeId, chainTip())),
       buyBtc: (address, cadAmount) => {

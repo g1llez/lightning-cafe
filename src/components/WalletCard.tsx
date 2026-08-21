@@ -12,10 +12,10 @@ import {
   type Wallet,
 } from '../simulation/player'
 import { txsForAddress } from '../simulation/inspect'
+import { sandboxBlockInterval } from '../simulation/chain'
 import {
-  OWN_NODE_SYNC_BLOCKS,
+  ownNodeProgressPercent,
   isOwnNodeReady,
-  ownNodeBlocksSynced,
 } from '../simulation/nodes'
 import { useSimulation } from '../simulation/SimulationProvider'
 import { LayerAssetCard } from './LayerAssetCard'
@@ -41,6 +41,7 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
   const {
     player,
     chain,
+    secondsLeft,
     addWallet,
     renameWallet,
     newAddress,
@@ -48,11 +49,19 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
     deleteWallet,
     addOwnNode,
     removeOwnNode,
+    renameOwnNode,
   } = useSimulation()
   const tip = chain.confirmed[0]?.height ?? chain.nextHeight - 1
+  const blockFill = 1 - secondsLeft / sandboxBlockInterval()
+  const ownReady = player.ownNode ? isOwnNodeReady(player.ownNode, tip) : false
+  const syncPercent = player.ownNode
+    ? ownNodeProgressPercent(player.ownNode, tip, ownReady ? 0 : blockFill)
+    : 0
   const [openWalletId, setOpenWalletId] = useState('')
   const [justCreatedId, setJustCreatedId] = useState('')
   const [sendWalletId, setSendWalletId] = useState('')
+  const [renamingNode, setRenamingNode] = useState(false)
+  const [editingNodeName, setEditingNodeName] = useState('')
   const [receiveWalletId, setReceiveWalletId] = useState('')
   const [restoreOpen, setRestoreOpen] = useState(false)
   const [restoreWords, setRestoreWords] = useState<string[]>(emptySeedWords)
@@ -99,7 +108,18 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
 
   function handleDeleteNode() {
     removeOwnNode()
+    setRenamingNode(false)
     onMessage(t('assets.nodeDeleted'))
+  }
+
+  function commitRenameNode() {
+    try {
+      renameOwnNode(editingNodeName)
+      onMessage(t('assets.nodeRenamed'))
+    } catch {
+      onMessage(t('assets.nodeRenameFailed'))
+    }
+    setRenamingNode(false)
   }
 
   function commitRename(walletId: string) {
@@ -659,16 +679,46 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
             <p className="px-2 py-2 text-sm text-text-muted">{t('assets.noNodes')}</p>
           ) : (
             <div className="flex items-center border-t border-border first:border-t-0">
-              <div className="min-w-0 flex-1 truncate px-2 py-2 text-sm font-medium">
-                {player.ownNode.name}
-                <span className="mt-0.5 block font-mono text-[10px] text-text-muted">
-                  {isOwnNodeReady(player.ownNode, tip)
-                    ? t('assets.nodeReady')
-                    : t('assets.nodeSyncing', {
-                        done: ownNodeBlocksSynced(player.ownNode, tip),
-                        total: OWN_NODE_SYNC_BLOCKS,
-                      })}
-                </span>
+              <div className="min-w-0 flex-1 px-2 py-2">
+                {renamingNode ? (
+                  <input
+                    autoFocus
+                    value={editingNodeName}
+                    onChange={(event) => setEditingNodeName(event.target.value)}
+                    onBlur={commitRenameNode}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.currentTarget.blur()
+                      }
+                      if (event.key === 'Escape') {
+                        setRenamingNode(false)
+                      }
+                    }}
+                    className="w-full rounded border border-accent bg-bg-primary px-2 py-1 text-sm outline-none"
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingNodeName(player.ownNode!.name)
+                      setRenamingNode(true)
+                    }}
+                    title={t('assets.rename')}
+                    className="block w-full truncate text-left text-sm font-medium hover:text-accent"
+                  >
+                    {player.ownNode.name}
+                  </button>
+                )}
+                <Tooltip
+                  text={ownReady ? t('layers.nodeOwnTip') : t('layers.nodeSyncingTip')}
+                  side="top"
+                >
+                  <span className="mt-0.5 inline-block cursor-help font-mono text-[10px] text-text-muted">
+                    {ownReady
+                      ? t('assets.nodeReady')
+                      : t('assets.nodeSyncing', { percent: syncPercent })}
+                  </span>
+                </Tooltip>
               </div>
               <div className="whitespace-nowrap pr-1">
                 <button

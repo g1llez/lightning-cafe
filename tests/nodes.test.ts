@@ -7,8 +7,10 @@ import {
   OWN_NODE_SYNC_BLOCKS,
   PUBLIC_NODES,
   availableBroadcastNodes,
+  edgeEndpoints,
   isOwnNodeReady,
   ownNodeBlocksSynced,
+  ownNodeProgressPercent,
   propagationHops,
   resolveBroadcastNode,
   visibleEdges,
@@ -19,6 +21,7 @@ import {
   createOwnNode,
   createWallet,
   deleteOwnNode,
+  renameOwnNode,
   selectBroadcastNode,
 } from '../src/simulation/player'
 import {
@@ -90,12 +93,37 @@ describe('bitcoin broadcast nodes', () => {
     const hydrated = hydrateSandbox(JSON.stringify(blob), null, sandboxBlockInterval())
     expect(hydrated.player.ownNode?.syncStartHeight).toBe(912_000)
   })
+  it('renames the own node', () => {
+    let player = createOwnNode(createInitialPlayer(), 'Maison', 100)
+    player = renameOwnNode(player, '  Cave  ')
+    expect(player.ownNode?.name).toBe('Cave')
+    expect(() => renameOwnNode(player, '   ')).toThrow('own-node-name')
+  })
+
+  it('reports sync as a percent while keeping a 4-block window', () => {
+    const own = { id: OWN_NODE_ID, name: 'Maison', syncStartHeight: 100 }
+    expect(ownNodeProgressPercent(own, 100, 0)).toBe(0)
+    expect(ownNodeProgressPercent(own, 100, 0.5)).toBe(13)
+    expect(ownNodeProgressPercent(own, 102, 0)).toBe(50)
+    expect(ownNodeProgressPercent(own, 104, 0)).toBe(100)
+  })
+
+  it('shortens edges away from node centers', () => {
+    const ends = edgeEndpoints(0, 0, 100, 0, 10)
+    expect(ends.x1).toBeCloseTo(10)
+    expect(ends.x2).toBeCloseTo(90)
+    expect(ends.y1).toBe(0)
+    expect(ends.y2).toBe(0)
+  })
 })
 
 describe('L1 peer graph', () => {
   it('keeps base peers under the 8-node cap and adds own', () => {
     expect(BASE_NETWORK).toHaveLength(7)
     expect(BASE_NETWORK.some((node) => node.id === EXCHANGE_NODE_ID)).toBe(true)
+    const exchange = BASE_NETWORK.find((node) => node.id === EXCHANGE_NODE_ID)!
+    expect(exchange.x).not.toBe(50)
+    expect(exchange.y).toBeGreaterThan(50)
     const withOwn = visibleNetwork({ id: OWN_NODE_ID, name: 'Maison', syncStartHeight: 1 })
     expect(withOwn).toHaveLength(8)
     const ids = new Set(withOwn.map((node) => node.id))

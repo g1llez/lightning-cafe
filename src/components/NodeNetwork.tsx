@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { sandboxBlockInterval } from '../simulation/chain'
 import {
-  EXCHANGE_NODE_ID,
-  OWN_NODE_SYNC_BLOCKS,
   PROPAGATION_HOP_MS,
+  edgeEndpoints,
   isOwnNodeReady,
-  ownNodeBlocksSynced,
   ownNodeProgress,
+  ownNodeProgressPercent,
   propagationHops,
   visibleEdges,
   visibleNetwork,
@@ -18,17 +18,24 @@ import { BitcoinNodeIcon } from './BitcoinNodeIcon'
 import { Tooltip } from './Tooltip'
 
 const PACKET_MS = 420
+/** Keep strokes clear of the larger node discs (viewBox units). */
+const EDGE_PAD = 9
 
 type ActivePacket = PropagationHop & {
   key: string
   pulseId: string
   kind: NetworkPulse['kind']
+  x1: number
+  y1: number
+  x2: number
+  y2: number
 }
 
 export function NodeNetwork() {
   const { t } = useTranslation()
-  const { player, chain, networkPulse } = useSimulation()
+  const { player, chain, secondsLeft, networkPulse } = useSimulation()
   const tip = chain.confirmed[0]?.height ?? chain.nextHeight - 1
+  const blockFill = 1 - secondsLeft / sandboxBlockInterval()
   const nodes = useMemo(() => visibleNetwork(player.ownNode), [player.ownNode])
   const idSet = useMemo(() => new Set(nodes.map((node) => node.id)), [nodes])
   const edges = useMemo(() => visibleEdges(idSet), [idSet])
@@ -59,12 +66,21 @@ export function NodeNetwork() {
 
     const timers: number[] = []
     setPackets(
-      hops.map((hop, index) => ({
-        ...hop,
-        key: `${networkPulse.id}-${index}`,
-        pulseId: networkPulse.id,
-        kind: networkPulse.kind,
-      })),
+      hops.map((hop, index) => {
+        const from = byId.get(hop.fromId)
+        const to = byId.get(hop.toId)
+        const ends =
+          from && to
+            ? edgeEndpoints(from.x, from.y, to.x, to.y, EDGE_PAD)
+            : { x1: 0, y1: 0, x2: 0, y2: 0 }
+        return {
+          ...hop,
+          ...ends,
+          key: `${networkPulse.id}-${index}`,
+          pulseId: networkPulse.id,
+          kind: networkPulse.kind,
+        }
+      }),
     )
 
     for (const hop of hops) {
@@ -92,18 +108,19 @@ export function NodeNetwork() {
         window.clearTimeout(timer)
       }
     }
-  }, [networkPulse, pulseKey, edges, idSet])
+  }, [networkPulse, pulseKey, edges, idSet, byId])
 
   const own = player.ownNode
   const ownReady = own ? isOwnNodeReady(own, tip) : false
-  const ownSynced = own ? ownNodeBlocksSynced(own, tip) : 0
+  const syncPercent = own ? ownNodeProgressPercent(own, tip, ownReady ? 0 : blockFill) : 0
+  const syncProgress = own ? ownNodeProgress(own, tip, ownReady ? 0 : blockFill) : 1
 
   return (
-    <div className="mx-auto w-full max-w-xl px-2">
-      <p className="mb-1 text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">
+    <div className="mx-auto w-full max-w-2xl px-2">
+      <p className="mb-2 text-center text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">
         {t('layers.network')}
       </p>
-      <div className="relative mx-auto aspect-square w-full max-h-[min(42vh,22rem)]">
+      <div className="relative mx-auto aspect-square w-full max-h-[min(52vh,28rem)]">
         <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full" aria-hidden="true">
           {edges.map((edge) => {
             const a = byId.get(edge.a)
@@ -111,62 +128,90 @@ export function NodeNetwork() {
             if (!a || !b) {
               return null
             }
+            const ends = edgeEndpoints(a.x, a.y, b.x, b.y, EDGE_PAD)
             const lit = informed.has(edge.a) && informed.has(edge.b) && informed.size > 0
             return (
               <line
                 key={`${edge.a}-${edge.b}`}
-                x1={a.x}
-                y1={a.y}
-                x2={b.x}
-                y2={b.y}
+                x1={ends.x1}
+                y1={ends.y1}
+                x2={ends.x2}
+                y2={ends.y2}
                 className={lit ? 'stroke-accent/70' : 'stroke-border/80'}
-                strokeWidth={lit ? 0.9 : 0.55}
+                strokeWidth={lit ? 1 : 0.65}
               />
             )
           })}
-          {packets.map((packet) => {
-            const from = byId.get(packet.fromId)
-            const to = byId.get(packet.toId)
-            if (!from || !to) {
-              return null
-            }
-            return (
-              <PacketDot
-                key={packet.key}
-                x1={from.x}
-                y1={from.y}
-                x2={to.x}
-                y2={to.y}
-                delayMs={packet.delayMs}
-                kind={packet.kind}
-              />
-            )
-          })}
+          {packets.map((packet) => (
+            <PacketDot
+              key={packet.key}
+              x1={packet.x1}
+              y1={packet.y1}
+              x2={packet.x2}
+              y2={packet.y2}
+              delayMs={packet.delayMs}
+              kind={packet.kind}
+            />
+          ))}
         </svg>
 
         {nodes.map((node) => {
           const syncing = node.kind === 'own' && own && !ownReady
           const hot = informed.has(node.id)
-          const progress = node.kind === 'own' && own ? ownNodeProgress(own, tip) : 1
-          const short =
-            node.id === EXCHANGE_NODE_ID
-              ? t('layers.nodeExchangeShort')
-              : node.kind === 'own'
-                ? t('layers.nodeOwnShort')
-                : node.name.split(' ')[0]
+          const body = (
+            <div
+              className={`relative flex flex-col items-center gap-1 ${
+                hot ? 'scale-105' : ''
+              } transition`}
+            >
+              {syncing && (
+                <span
+                  className="absolute -inset-1.5 rounded-full border-2 border-accent/35"
+                  style={{
+                    background: `conic-gradient(var(--color-accent, #f7931a) ${syncProgress * 360}deg, transparent 0)`,
+                    mask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px))',
+                    WebkitMask:
+                      'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px))',
+                  }}
+                />
+              )}
+              <span
+                className={`rounded-full p-0.5 ${
+                  node.kind === 'own'
+                    ? 'ring-2 ring-accent'
+                    : node.kind === 'exchange'
+                      ? 'ring-2 ring-amber-400/80'
+                      : ''
+                } ${hot ? 'ring-offset-1 ring-offset-bg-secondary' : ''}`}
+              >
+                <BitcoinNodeIcon className="h-9 w-9 md:h-11 md:w-11" title={node.name} />
+              </span>
+              <span className="max-w-[6.5rem] truncate text-center text-xs font-medium text-text-primary md:text-[13px]">
+                {node.name}
+              </span>
+              {node.kind === 'own' && own && (
+                <Tooltip
+                  text={ownReady ? t('layers.nodeOwnTip') : t('layers.nodeSyncingTip')}
+                  side="top"
+                >
+                  <span className="cursor-help font-mono text-[11px] text-text-muted">
+                    {ownReady
+                      ? t('assets.nodeReady')
+                      : t('assets.nodeSyncing', { percent: syncPercent })}
+                  </span>
+                </Tooltip>
+              )}
+            </div>
+          )
+
           const tipText =
             node.kind === 'exchange'
               ? t('layers.nodeExchangeTip')
-              : node.kind === 'own' && syncing
-                ? t('layers.nodeSyncingTip', {
-                    done: ownSynced,
-                    total: OWN_NODE_SYNC_BLOCKS,
-                  })
-                : node.kind === 'own'
-                  ? t('layers.nodeOwnTip')
-                  : node.kind === 'public'
-                    ? t('layers.nodePublicTip')
-                    : t('layers.nodeNpcTip')
+              : node.kind === 'public'
+                ? t('layers.nodePublicTip')
+                : node.kind === 'npc'
+                  ? t('layers.nodeNpcTip')
+                  : null
 
           return (
             <div
@@ -174,42 +219,13 @@ export function NodeNetwork() {
               className="absolute -translate-x-1/2 -translate-y-1/2"
               style={{ left: `${node.x}%`, top: `${node.y}%` }}
             >
-              <Tooltip text={tipText} side="bottom">
-                <div
-                  className={`relative flex flex-col items-center gap-0.5 ${
-                    hot ? 'scale-105' : ''
-                  } transition`}
-                >
-                  {syncing && (
-                    <span
-                      className="absolute -inset-1 rounded-full border-2 border-accent/35"
-                      style={{
-                        background: `conic-gradient(var(--color-accent, #f7931a) ${progress * 360}deg, transparent 0)`,
-                        mask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px))',
-                        WebkitMask:
-                          'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px))',
-                      }}
-                    />
-                  )}
-                  <span
-                    className={`rounded-full p-0.5 ring-2 ${
-                      node.kind === 'own'
-                        ? 'ring-accent'
-                        : node.kind === 'exchange'
-                          ? 'ring-amber-400/80'
-                          : node.kind === 'public'
-                            ? 'ring-sky-400/70'
-                            : 'ring-border'
-                    } ${hot ? 'ring-offset-1 ring-offset-bg-secondary' : ''}`}
-                  >
-                    <BitcoinNodeIcon className="h-7 w-7 md:h-8 md:w-8" title={node.name} />
-                  </span>
-                  <span className="max-w-[4.5rem] truncate text-center text-[10px] text-text-muted">
-                    {short}
-                    {syncing ? ` ${ownSynced}/${OWN_NODE_SYNC_BLOCKS}` : ''}
-                  </span>
-                </div>
-              </Tooltip>
+              {tipText ? (
+                <Tooltip text={tipText} side="top">
+                  {body}
+                </Tooltip>
+              ) : (
+                body
+              )}
             </div>
           )
         })}
@@ -235,7 +251,7 @@ function PacketDot({
 }) {
   return (
     <circle
-      r={kind === 'block' ? 1.35 : 1.1}
+      r={kind === 'block' ? 1.5 : 1.25}
       className={kind === 'block' ? 'fill-accent' : 'fill-amber-300'}
     >
       <animate

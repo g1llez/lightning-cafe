@@ -44,34 +44,35 @@ export const OWN_NODE_ID = 'own-node'
 export const OWN_NODE_SYNC_BLOCKS = 4
 export const PROPAGATION_HOP_MS = 500
 
-/** Always-on peers (no player node). Max 7; own makes 8. */
+/** Always-on peers (no player node). Max 7; own makes 8. Exchange sits on the edge, not the hub. */
 export const BASE_NETWORK: NetworkNode[] = [
-  { id: 'pub-cafe-relay', name: 'Café Relay', kind: 'public', x: 22, y: 28 },
+  { id: 'pub-cafe-relay', name: 'Café Relay', kind: 'public', x: 20, y: 30 },
   { id: 'pub-clearnet', name: 'Clearnet', kind: 'public', x: 50, y: 14 },
-  { id: 'pub-fast-spy', name: 'Spyglass', kind: 'public', x: 78, y: 28 },
-  { id: EXCHANGE_NODE_ID, name: 'Café Exchange', kind: 'exchange', x: 50, y: 48 },
-  { id: 'npc-harbor', name: 'Harbor Peer', kind: 'npc', x: 18, y: 62 },
-  { id: 'npc-northwind', name: 'Northwind Full', kind: 'npc', x: 82, y: 62 },
-  { id: 'npc-mesa', name: 'Mesa Archive', kind: 'npc', x: 50, y: 78 },
+  { id: 'pub-fast-spy', name: 'Spyglass', kind: 'public', x: 80, y: 30 },
+  { id: 'npc-harbor', name: 'Harbor Peer', kind: 'npc', x: 16, y: 58 },
+  { id: 'npc-northwind', name: 'Northwind Full', kind: 'npc', x: 84, y: 58 },
+  { id: 'npc-mesa', name: 'Mesa Archive', kind: 'npc', x: 38, y: 84 },
+  { id: EXCHANGE_NODE_ID, name: 'Café Exchange', kind: 'exchange', x: 78, y: 84 },
 ]
 
 /** Undirected mesh — sparse enough to read hops. */
 export const NETWORK_EDGES: NetworkEdge[] = [
   { a: 'pub-cafe-relay', b: 'pub-clearnet' },
   { a: 'pub-clearnet', b: 'pub-fast-spy' },
-  { a: 'pub-cafe-relay', b: EXCHANGE_NODE_ID },
-  { a: 'pub-fast-spy', b: EXCHANGE_NODE_ID },
-  { a: 'pub-clearnet', b: EXCHANGE_NODE_ID },
+  { a: 'pub-cafe-relay', b: 'pub-fast-spy' },
   { a: 'pub-cafe-relay', b: 'npc-harbor' },
-  { a: EXCHANGE_NODE_ID, b: 'npc-harbor' },
-  { a: EXCHANGE_NODE_ID, b: 'npc-northwind' },
   { a: 'pub-fast-spy', b: 'npc-northwind' },
+  { a: 'pub-clearnet', b: 'npc-harbor' },
+  { a: 'pub-clearnet', b: 'npc-northwind' },
   { a: 'npc-harbor', b: 'npc-mesa' },
   { a: 'npc-northwind', b: 'npc-mesa' },
+  { a: 'npc-harbor', b: 'npc-northwind' },
   { a: EXCHANGE_NODE_ID, b: 'npc-mesa' },
+  { a: EXCHANGE_NODE_ID, b: 'npc-northwind' },
+  { a: EXCHANGE_NODE_ID, b: 'pub-fast-spy' },
   /** Own node plugs into the mesh when present. */
-  { a: OWN_NODE_ID, b: EXCHANGE_NODE_ID },
   { a: OWN_NODE_ID, b: 'pub-cafe-relay' },
+  { a: OWN_NODE_ID, b: 'npc-harbor' },
   { a: OWN_NODE_ID, b: 'npc-mesa' },
 ]
 
@@ -98,8 +99,41 @@ export function isOwnNodeReady(own: OwnNode, tip: number): boolean {
   return ownNodeBlocksSynced(own, tip) >= OWN_NODE_SYNC_BLOCKS
 }
 
-export function ownNodeProgress(own: OwnNode, tip: number): number {
-  return ownNodeBlocksSynced(own, tip) / OWN_NODE_SYNC_BLOCKS
+export function ownNodeProgress(own: OwnNode, tip: number, blockFill = 0): number {
+  const done = ownNodeBlocksSynced(own, tip)
+  if (done >= OWN_NODE_SYNC_BLOCKS) {
+    return 1
+  }
+  const partial = Math.min(1, Math.max(0, blockFill))
+  return Math.min(1, (done + partial) / OWN_NODE_SYNC_BLOCKS)
+}
+
+export function ownNodeProgressPercent(own: OwnNode, tip: number, blockFill = 0): number {
+  return Math.round(ownNodeProgress(own, tip, blockFill) * 100)
+}
+
+/** Pull line ends inward so strokes stop short of the node discs. */
+export function edgeEndpoints(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  pad = 8,
+): { x1: number; y1: number; x2: number; y2: number } {
+  const dx = x2 - x1
+  const dy = y2 - y1
+  const len = Math.hypot(dx, dy) || 1
+  if (len <= pad * 2) {
+    return { x1, y1, x2, y2 }
+  }
+  const ux = dx / len
+  const uy = dy / len
+  return {
+    x1: x1 + ux * pad,
+    y1: y1 + uy * pad,
+    x2: x2 - ux * pad,
+    y2: y2 - uy * pad,
+  }
 }
 
 export function resolveBroadcastNode(
@@ -138,8 +172,8 @@ export function visibleNetwork(ownNode: OwnNode | null): NetworkNode[] {
       id: ownNode.id,
       name: ownNode.name,
       kind: 'own',
-      x: 8,
-      y: 44,
+      x: 10,
+      y: 84,
     },
   ]
 }

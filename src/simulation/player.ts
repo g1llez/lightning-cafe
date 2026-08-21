@@ -265,6 +265,20 @@ export function deleteOwnNode(player: PlayerState): PlayerState {
   }
 }
 
+export function renameOwnNode(player: PlayerState, name: string): PlayerState {
+  if (!player.ownNode) {
+    throw new Error('own-node-missing')
+  }
+  const trimmed = name.trim()
+  if (!trimmed) {
+    throw new Error('own-node-name')
+  }
+  return {
+    ...player,
+    ownNode: { ...player.ownNode, name: trimmed },
+  }
+}
+
 export function selectBroadcastNode(
   player: PlayerState,
   nodeId: string,
