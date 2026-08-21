@@ -46,7 +46,7 @@ export function BlockTetris({ seed, fill, txCount, minePieces, interval }: Block
 
   useEffect(() => {
     if (frozen) {
-      setProgress(1)
+      setProgress(fill)
       return
     }
 
@@ -58,9 +58,9 @@ export function BlockTetris({ seed, fill, txCount, minePieces, interval }: Block
     }
     frame = window.requestAnimationFrame(tick)
     return () => window.cancelAnimationFrame(frame)
-  }, [seed, interval, frozen])
+  }, [seed, interval, frozen, fill])
 
-  const snap = tetrisSnapshot(tape, frozen ? 1 : progress, minePieces)
+  const snap = tetrisSnapshot(tape, frozen ? fill : progress, minePieces)
   const width = 100 / TETRIS_COLS
   const height = 100 / TETRIS_ROWS
 

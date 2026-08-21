@@ -163,6 +163,20 @@ export function tetrisPlanPaintedCount(tape: TetrisTape): number {
   return tetrisFilledCount(tetrisSnapshot(tape, 1).landed)
 }
 
+/** Progress (0..1) after N locks — for static low/medium mosaics (~5–6 pieces in). */
+export function tetrisProgressAfterLocks(tape: TetrisTape, locks: number): number {
+  if (tape.events.length === 0 || locks <= 0) {
+    return 0
+  }
+  for (let count = 1; count <= tape.events.length; count += 1) {
+    const state = labSimulateTape(tape, count)
+    if (state.lockedCount >= locks) {
+      return count / tape.events.length
+    }
+  }
+  return 1
+}
+
 /** @deprecated Pose-path helpers — action tapes replay steps instead. */
 export function tetrisPathClear(_plan: unknown, _index: number): boolean {
   return true

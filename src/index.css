@@ -8,10 +8,10 @@
   --color-text-primary: #e8eaed;
   --color-text-muted: #9aa0b5;
   --color-accent: #f7931a;
-  --color-block-low: #0a0a0a;
-  --color-block-mid: #111111;
-  --color-block-high: #171717;
-  --color-block-hot: #1c1c1c;
+  --color-block-low: #11131f;
+  --color-block-mid: #15172a;
+  --color-block-high: #11131f;
+  --color-block-hot: #181a2e;
   --color-danger: #e5484d;
   --font-mono: "Consolas", "Monaco", "Courier New", monospace;
 }

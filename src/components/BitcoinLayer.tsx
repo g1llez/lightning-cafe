@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import {
   formatCountdown,
   sandboxBlockInterval,
+  seededRandom,
   toneForFee,
   type ConfirmedBlock,
   type Priority,
@@ -19,11 +20,19 @@ import {
   shortAddress,
 } from '../simulation/player'
 import { useSimulation } from '../simulation/SimulationProvider'
+import { tetrisPlan, tetrisProgressAfterLocks } from '../simulation/tetris'
 import { mempoolFlyId } from './SatsFlight'
 import { BlockTetris } from './BlockTetris'
 import { BlockInspectModal } from './TxInspect'
 import { Tooltip } from './Tooltip'
 import { WalletCard } from './WalletCard'
+
+/** Static mid-pack mosaic for low/medium (not mined). ~5–6 pieces locked. */
+function frozenLaneFill(seed: string, txCount: number): number {
+  const random = seededRandom(`${seed}|lane-mosaic`)
+  const locks = 5 + Math.floor(random() * 2)
+  return tetrisProgressAfterLocks(tetrisPlan(seed, txCount), locks)
+}
 
 type InspectTarget =
   | { kind: 'mempool'; block: ProjectedBlock }
@@ -311,7 +320,13 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
                             minePieces: myPending.length,
                             interval,
                           }
-                        : undefined
+                        : {
+                            seed: block.id,
+                            fill: frozenLaneFill(block.id, block.txCount),
+                            txCount: block.txCount,
+                            minePieces: myPending.length,
+                            interval: 0,
+                          }
                     }
                     onInspect={() => setInspect({ kind: 'mempool', block })}
                     blockTip={mempoolTip(block)}
