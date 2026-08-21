@@ -42,24 +42,26 @@ export function LightningLayer({ open, onToggle, onMessage }: LightningLayerProp
         <p className="text-sm text-text-muted">{t('layers.lightningPlaceholder')}</p>
       </div>
 
-      <LayerAssetCard
-        title={t('assets.nodes')}
-        action={
-          <PlusMenu
-            open={plusOpen}
-            onToggle={() => setPlusOpen((value) => !value)}
-            label={t('assets.addNode')}
-            items={[
-              {
-                label: t('assets.addNode'),
-                onClick: () => onMessage(t('assets.soon')),
-              },
-            ]}
-          />
-        }
-      >
-        <p className="px-2 py-2 text-sm text-text-muted">{t('assets.noNodes')}</p>
-      </LayerAssetCard>
+      <div className="absolute top-16 left-4 z-10 w-[min(20rem,calc(100%-2rem))] md:top-20 md:left-6">
+        <LayerAssetCard
+          title={t('assets.nodes')}
+          action={
+            <PlusMenu
+              open={plusOpen}
+              onToggle={() => setPlusOpen((value) => !value)}
+              label={t('assets.addNode')}
+              items={[
+                {
+                  label: t('assets.addNode'),
+                  onClick: () => onMessage(t('assets.soon')),
+                },
+              ]}
+            />
+          }
+        >
+          <p className="px-2 py-2 text-sm text-text-muted">{t('assets.noNodes')}</p>
+        </LayerAssetCard>
+      </div>
     </section>
   )
 }

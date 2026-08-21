@@ -513,148 +513,153 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
           }}
         />
       )}
-      <LayerAssetCard
-        title={t('assets.wallets')}
-        action={
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => {
-                setRestoreWords(emptySeedWords())
-                setRestoreOpen(true)
-              }}
-              className="rounded-md border border-border px-2 py-1 text-[11px] text-text-muted transition hover:border-accent/60 hover:text-accent"
-            >
-              {t('assets.restore')}
-            </button>
-            <button
-              type="button"
-              onClick={handleAddWallet}
-              aria-label={t('assets.addWallet')}
-              title={t('assets.addWallet')}
-              className="flex h-7 w-7 items-center justify-center rounded-md border border-accent/70 bg-bg-panel text-accent transition hover:bg-accent/10"
-            >
-              <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden="true">
-                <path
-                  d="M8 2.5v11M2.5 8h11"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
-          </div>
-        }
+      <div
+        data-fly="wallet"
+        className="absolute top-16 left-4 z-10 flex w-[min(20rem,calc(100%-2rem))] flex-col gap-3 md:top-20 md:left-6"
       >
-        {player.wallets.length === 0 ? (
-          <p className="px-2 py-2 text-sm text-text-muted">{t('assets.noWallets')}</p>
-        ) : (
-          <div>
-            {player.wallets.map((wallet) => {
-              const waiting = pendingSats(player, wallet.id)
-              const open = openWalletId === wallet.id
-              return (
-                <div key={wallet.id} className="border-t border-border first:border-t-0">
-                  <div
-                    data-testid={`wallet-row-${wallet.id}`}
-                    onClick={() => toggleDetail(wallet.id)}
-                    className="flex cursor-pointer items-center hover:bg-bg-primary/40"
-                  >
-                    <div className="min-w-0 flex-1 truncate px-2 py-2 text-sm font-medium">
-                      {wallet.name}
-                    </div>
-                    <div className="whitespace-nowrap px-1 py-2 text-right font-mono text-xs">
-                      <span data-testid={`wallet-sats-${wallet.id}`}>
-                        {walletSats(wallet).toLocaleString()} sats
-                      </span>
-                      {waiting > 0 && (
-                        <span
-                          data-testid={`wallet-pending-${wallet.id}`}
-                          className="block text-[10px] text-text-muted"
-                        >
-                          {t('assets.pending', { sats: waiting.toLocaleString() })}
-                        </span>
-                      )}
-                    </div>
-                    <div className="whitespace-nowrap pr-1">
-                      <button
-                        type="button"
-                        data-testid={`receive-${wallet.id}`}
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          setReceiveWalletId(wallet.id)
-                        }}
-                        className="rounded-md border border-border px-2 py-1 text-[11px] text-text-muted transition hover:border-accent/60 hover:text-accent"
-                      >
-                        {t('assets.receive')}
-                      </button>
-                    </div>
-                    <div className="whitespace-nowrap pr-1">
-                      <button
-                        type="button"
-                        data-testid={`send-${wallet.id}`}
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          setSendWalletId(wallet.id)
-                        }}
-                        className="rounded-md border border-accent/70 px-2 py-1 text-[11px] font-semibold text-accent transition hover:bg-accent/10"
-                      >
-                        {t('assets.send')}
-                      </button>
-                    </div>
-                  </div>
-                  {open && renderExpand(wallet)}
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        <div className="mt-3 border-t border-border pt-3">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <div className="min-w-0">
-              <p className="text-xs uppercase tracking-[0.14em] text-text-muted">{t('assets.nodes')}</p>
-              <p className="mt-0.5 text-[11px] leading-relaxed text-text-muted">{t('assets.ownNodeHint')}</p>
-            </div>
-            <button
-              type="button"
-              onClick={handleAddNode}
-              disabled={Boolean(player.ownNode)}
-              aria-label={t('assets.addNode')}
-              title={t('assets.addNode')}
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-accent/70 bg-bg-panel text-accent transition hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden="true">
-                <path
-                  d="M8 2.5v11M2.5 8h11"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
-          </div>
-          {!player.ownNode ? (
-            <p className="px-2 py-1 text-sm text-text-muted">{t('assets.noOwnNode')}</p>
-          ) : (
-            <div className="flex items-center gap-2 rounded-md border border-border px-2 py-2">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{player.ownNode.name}</p>
-                <p className="font-mono text-[10px] text-accent">own</p>
-              </div>
+        <LayerAssetCard
+          title={t('assets.wallets')}
+          action={
+            <div className="flex items-center gap-1">
               <button
                 type="button"
-                onClick={handleDeleteNode}
-                className="rounded-md border border-border px-2 py-1 text-[11px] text-text-muted transition hover:border-danger/60 hover:text-danger"
+                onClick={() => {
+                  setRestoreWords(emptySeedWords())
+                  setRestoreOpen(true)
+                }}
+                className="rounded-md border border-border px-2 py-1 text-[11px] text-text-muted transition hover:border-accent/60 hover:text-accent"
               >
-                {t('assets.deleteNode')}
+                {t('assets.restore')}
+              </button>
+              <button
+                type="button"
+                onClick={handleAddWallet}
+                aria-label={t('assets.addWallet')}
+                title={t('assets.addWallet')}
+                className="flex h-7 w-7 items-center justify-center rounded-md border border-accent/70 bg-bg-panel text-accent transition hover:bg-accent/10"
+              >
+                <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden="true">
+                  <path
+                    d="M8 2.5v11M2.5 8h11"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  />
+                </svg>
               </button>
             </div>
+          }
+        >
+          {player.wallets.length === 0 ? (
+            <p className="px-2 py-2 text-sm text-text-muted">{t('assets.noWallets')}</p>
+          ) : (
+            <div>
+              {player.wallets.map((wallet) => {
+                const waiting = pendingSats(player, wallet.id)
+                const open = openWalletId === wallet.id
+                return (
+                  <div key={wallet.id} className="border-t border-border first:border-t-0">
+                    <div
+                      data-testid={`wallet-row-${wallet.id}`}
+                      onClick={() => toggleDetail(wallet.id)}
+                      className="flex cursor-pointer items-center hover:bg-bg-primary/40"
+                    >
+                      <div className="min-w-0 flex-1 truncate px-2 py-2 text-sm font-medium">
+                        {wallet.name}
+                      </div>
+                      <div className="whitespace-nowrap px-1 py-2 text-right font-mono text-xs">
+                        <span data-testid={`wallet-sats-${wallet.id}`}>
+                          {walletSats(wallet).toLocaleString()} sats
+                        </span>
+                        {waiting > 0 && (
+                          <span
+                            data-testid={`wallet-pending-${wallet.id}`}
+                            className="block text-[10px] text-text-muted"
+                          >
+                            {t('assets.pending', { sats: waiting.toLocaleString() })}
+                          </span>
+                        )}
+                      </div>
+                      <div className="whitespace-nowrap pr-1">
+                        <button
+                          type="button"
+                          data-testid={`receive-${wallet.id}`}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            setReceiveWalletId(wallet.id)
+                          }}
+                          className="rounded-md border border-border px-2 py-1 text-[11px] text-text-muted transition hover:border-accent/60 hover:text-accent"
+                        >
+                          {t('assets.receive')}
+                        </button>
+                      </div>
+                      <div className="whitespace-nowrap pr-1">
+                        <button
+                          type="button"
+                          data-testid={`send-${wallet.id}`}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            setSendWalletId(wallet.id)
+                          }}
+                          className="rounded-md border border-accent/70 px-2 py-1 text-[11px] font-semibold text-accent transition hover:bg-accent/10"
+                        >
+                          {t('assets.send')}
+                        </button>
+                      </div>
+                    </div>
+                    {open && renderExpand(wallet)}
+                  </div>
+                )
+              })}
+            </div>
           )}
-        </div>
-      </LayerAssetCard>
+        </LayerAssetCard>
+
+        <LayerAssetCard
+          title={t('assets.nodes')}
+          action={
+            <Tooltip text={t('assets.addNodeTip')} side="bottom">
+              <button
+                type="button"
+                onClick={handleAddNode}
+                disabled={Boolean(player.ownNode)}
+                aria-label={t('assets.addNode')}
+                className="flex h-7 w-7 items-center justify-center rounded-md border border-accent/70 bg-bg-panel text-accent transition hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden="true">
+                  <path
+                    d="M8 2.5v11M2.5 8h11"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </button>
+            </Tooltip>
+          }
+        >
+          {!player.ownNode ? (
+            <p className="px-2 py-2 text-sm text-text-muted">{t('assets.noNodes')}</p>
+          ) : (
+            <div className="flex items-center border-t border-border first:border-t-0">
+              <div className="min-w-0 flex-1 truncate px-2 py-2 text-sm font-medium">
+                {player.ownNode.name}
+              </div>
+              <div className="whitespace-nowrap pr-1">
+                <button
+                  type="button"
+                  onClick={handleDeleteNode}
+                  className="rounded-md border border-border px-2 py-1 text-[11px] text-text-muted transition hover:border-danger/60 hover:text-danger"
+                >
+                  {t('assets.deleteNode')}
+                </button>
+              </div>
+            </div>
+          )}
+        </LayerAssetCard>
+      </div>
     </>
   )
 }
