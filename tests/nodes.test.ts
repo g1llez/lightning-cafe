@@ -17,6 +17,7 @@ import {
   ownNodeProgressPercent,
   pickBlockOrigin,
   propagationHops,
+  randomNodeName,
   resolveBroadcastNode,
   visibleEdges,
   visibleNetwork,
@@ -68,6 +69,15 @@ describe('bitcoin broadcast nodes', () => {
     player = advanceBlock(player, INITIAL_MARKET_RATE, null, 912_008)
     expect(isOwnNodeReady(player.ownNode!)).toBe(true)
     expect(() => createOwnNode(player, 'Autre', 912_008)).toThrow('own-node-exists')
+  })
+
+  it('assigns a 4-character alphanumeric name by default', () => {
+    const zero = randomNodeName(() => 0)
+    const last = randomNodeName(() => 0.999)
+    expect(zero).toBe('aaaa')
+    expect(last).toBe('9999')
+    expect(zero).toMatch(/^[a-z0-9]{4}$/)
+    expect(randomNodeName(() => 0.5)).not.toBe(zero)
   })
 
   it('refuses selecting own node while syncing', () => {

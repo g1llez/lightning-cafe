@@ -16,6 +16,7 @@ import { sandboxBlockInterval } from '../simulation/chain'
 import {
   ownNodeProgressPercent,
   isOwnNodeReady,
+  randomNodeName,
 } from '../simulation/nodes'
 import { useSimulation } from '../simulation/SimulationProvider'
 import { LayerAssetCard } from './LayerAssetCard'
@@ -101,7 +102,7 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
 
   function handleAddNode() {
     try {
-      addOwnNode(t('assets.nodeName'))
+      addOwnNode(randomNodeName())
       setOpenNode(true)
       setRenamingNode(false)
       setConfirmDeleteNode(false)

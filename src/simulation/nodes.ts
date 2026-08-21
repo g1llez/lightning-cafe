@@ -47,6 +47,17 @@ export const EXCHANGE_NODE_ID = 'ex-cafe-desk'
 export const MEMPOOL_NODE_ID = 'net-mempool'
 export const OWN_NODE_ID = 'own-node'
 export const OWN_NODE_SYNC_BLOCKS = 4
+export const NODE_NAME_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789'
+export const NODE_NAME_LENGTH = 4
+
+export function randomNodeName(random = Math.random): string {
+  let name = ''
+  for (let index = 0; index < NODE_NAME_LENGTH; index += 1) {
+    const pick = Math.floor(random() * NODE_NAME_ALPHABET.length) % NODE_NAME_ALPHABET.length
+    name += NODE_NAME_ALPHABET[pick]
+  }
+  return name
+}
 export const PROPAGATION_HOP_MS = GOSSIP_HOP_MS
 /** Desktop graph square (`max-h` 28rem) and the orange SVG (`md:h-11`). */
 export const GRAPH_DESKTOP_PX = 448
