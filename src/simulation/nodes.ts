@@ -5,7 +5,7 @@
  */
 
 import type { Priority } from './chain'
-import { edgeEnds } from './livingGraph'
+import { edgeEnds, floodHops } from './livingGraph'
 
 export type NodeKind = 'public' | 'npc' | 'exchange' | 'own' | 'mempool'
 
@@ -47,7 +47,7 @@ export const EXCHANGE_NODE_ID = 'ex-cafe-desk'
 export const MEMPOOL_NODE_ID = 'net-mempool'
 export const OWN_NODE_ID = 'own-node'
 export const OWN_NODE_SYNC_BLOCKS = 4
-export const PROPAGATION_HOP_MS = 500
+export const PROPAGATION_HOP_MS = 1400
 /** Desktop graph square (`max-h` 28rem) and the orange SVG (`md:h-11`). */
 export const GRAPH_DESKTOP_PX = 448
 export const NODE_ICON_PX = 44
@@ -212,45 +212,16 @@ export function visibleEdges(nodeIds: Set<string>): NetworkEdge[] {
   return NETWORK_EDGES.filter((edge) => nodeIds.has(edge.a) && nodeIds.has(edge.b))
 }
 
-function neighbors(id: string, edges: NetworkEdge[]): string[] {
-  const out: string[] = []
-  for (const edge of edges) {
-    if (edge.a === id) {
-      out.push(edge.b)
-    } else if (edge.b === id) {
-      out.push(edge.a)
-    }
-  }
-  return out
-}
-
 /**
- * BFS flood from origin. Each hop starts PROPAGATION_HOP_MS after the parent
- * was informed (origin at 0).
+ * Gossip flood from origin. A node sends to every neighbor that does not
+ * already have the info, all at the same delayMs (one visual wave).
  */
 export function propagationHops(
   originId: string,
   edges: NetworkEdge[],
   hopMs = PROPAGATION_HOP_MS,
 ): PropagationHop[] {
-  const hops: PropagationHop[] = []
-  const informed = new Set<string>([originId])
-  const queue: { id: string; atMs: number }[] = [{ id: originId, atMs: 0 }]
-
-  while (queue.length > 0) {
-    const current = queue.shift()!
-    for (const next of neighbors(current.id, edges)) {
-      if (informed.has(next)) {
-        continue
-      }
-      informed.add(next)
-      const delayMs = current.atMs + hopMs
-      hops.push({ fromId: current.id, toId: next, delayMs })
-      queue.push({ id: next, atMs: delayMs })
-    }
-  }
-
-  return hops
+  return floodHops(originId, edges, hopMs)
 }
 
 /** Pick a random always-on full node as the first to announce a new block. */

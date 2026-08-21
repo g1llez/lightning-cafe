@@ -1,9 +1,31 @@
 /**
  * Living graph: force layout + packets. No Bitcoin/Lightning specifics.
- * Positions live in a 0–100 box so SVG and HTML % stay aligned on a square.
+ * x/y live in a {width × height} box (width is always 100). HTML % and SVG
+ * viewBox must use the same box so a wide canvas stays aligned.
  */
 
 export const GRAPH_SIZE = 100
+
+export type GraphBox = {
+  width: number
+  height: number
+}
+
+export const DEFAULT_BOX: GraphBox = { width: GRAPH_SIZE, height: GRAPH_SIZE }
+
+export function boxFromElement(widthPx: number, heightPx: number): GraphBox {
+  if (widthPx <= 0 || heightPx <= 0) {
+    return DEFAULT_BOX
+  }
+  return { width: GRAPH_SIZE, height: (heightPx / widthPx) * GRAPH_SIZE }
+}
+
+export function discRadiusFor(widthPx: number, iconPx: number, box: GraphBox = DEFAULT_BOX): number {
+  if (widthPx <= 0) {
+    return 5
+  }
+  return (iconPx / 2 / widthPx) * box.width
+}
 
 export type GraphBody = {
   id: string
@@ -28,13 +50,17 @@ export type LayoutTuning = {
 }
 
 export const DEFAULT_LAYOUT: LayoutTuning = {
-  repulsion: 380,
-  spring: 0.05,
-  restLength: 30,
-  gravity: 0.018,
-  damping: 0.86,
-  padding: 14,
+  repulsion: 240,
+  spring: 0.016,
+  restLength: 24,
+  gravity: 0.006,
+  damping: 0.93,
+  padding: 11,
 }
+
+/** ~2.5s to settle at 60fps with dt 0.38. */
+export const LAYOUT_DT = 0.38
+export const PACKET_HIDE_T = 0.84
 
 export type PacketKind = 'ambient' | 'tx' | 'block'
 
@@ -53,15 +79,16 @@ export type GraphPacket = {
 export function scatterBodies(
   ids: string[],
   random: () => number = Math.random,
-  around = { x: 50, y: 50 },
-  spread = 8,
+  box: GraphBox = DEFAULT_BOX,
+  spread = 4,
 ): GraphBody[] {
+  const around = { x: box.width / 2, y: box.height / 2 }
   return ids.map((id) => ({
     id,
     x: around.x + (random() - 0.5) * spread * 2,
     y: around.y + (random() - 0.5) * spread * 2,
-    vx: (random() - 0.5) * 1.4,
-    vy: (random() - 0.5) * 1.4,
+    vx: (random() - 0.5) * 0.35,
+    vy: (random() - 0.5) * 0.35,
   }))
 }
 
@@ -71,17 +98,20 @@ export function insertBody(
   id: string,
   x: number,
   y: number,
+  box: GraphBox = DEFAULT_BOX,
 ): GraphBody[] {
   if (bodies.some((body) => body.id === id)) {
     return bodies
   }
+  const cx = box.width / 2
+  const cy = box.height / 2
   return [
     ...bodies.map((body) => ({
       ...body,
-      vx: body.vx + (body.x - 50) * 0.04,
-      vy: body.vy + (body.y - 50) * 0.04,
+      vx: body.vx + (body.x - cx) * 0.02,
+      vy: body.vy + (body.y - cy) * 0.02,
     })),
-    { id, x, y, vx: (50 - x) * 0.08, vy: (50 - y) * 0.08 },
+    { id, x, y, vx: (cx - x) * 0.04, vy: (cy - y) * 0.04 },
   ]
 }
 
@@ -89,10 +119,26 @@ export function dropBody(bodies: GraphBody[], id: string): GraphBody[] {
   return bodies.filter((body) => body.id !== id)
 }
 
+/** Keep bodies inside a resized viewBox (wide canvas after the first measure). */
+export function remapBodies(bodies: GraphBody[], from: GraphBox, to: GraphBox): GraphBody[] {
+  if (from.width === to.width && from.height === to.height) {
+    return bodies
+  }
+  const sx = to.width / (from.width || 1)
+  const sy = to.height / (from.height || 1)
+  return bodies.map((body) => ({
+    ...body,
+    x: body.x * sx,
+    y: body.y * sy,
+  }))
+}
+
 export function stepBodies(
   bodies: GraphBody[],
   links: GraphLink[],
   tuning: LayoutTuning = DEFAULT_LAYOUT,
+  box: GraphBox = DEFAULT_BOX,
+  dt = LAYOUT_DT,
 ): GraphBody[] {
   if (bodies.length === 0) {
     return bodies
@@ -100,6 +146,8 @@ export function stepBodies(
 
   const next = bodies.map((body) => ({ ...body }))
   const byId = new Map(next.map((body) => [body.id, body]))
+  const rest =
+    tuning.restLength * Math.max(0.58, Math.min(1, Math.min(box.width, box.height) / 72))
 
   for (let i = 0; i < next.length; i += 1) {
     for (let j = i + 1; j < next.length; j += 1) {
@@ -127,7 +175,7 @@ export function stepBodies(
     const dx = b.x - a.x
     const dy = b.y - a.y
     const dist = Math.hypot(dx, dy) || 0.05
-    const pull = (dist - tuning.restLength) * tuning.spring
+    const pull = (dist - rest) * tuning.spring
     const ux = dx / dist
     const uy = dy / dist
     a.vx += ux * pull
@@ -136,31 +184,34 @@ export function stepBodies(
     b.vy -= uy * pull
   }
 
-  const mid = GRAPH_SIZE / 2
-  const lo = tuning.padding
-  const hi = GRAPH_SIZE - tuning.padding
+  const midX = box.width / 2
+  const midY = box.height / 2
+  const loX = tuning.padding
+  const hiX = box.width - tuning.padding
+  const loY = Math.min(tuning.padding, box.height * 0.18)
+  const hiY = box.height - loY
 
   for (const body of next) {
-    body.vx += (mid - body.x) * tuning.gravity
-    body.vy += (mid - body.y) * tuning.gravity
-    if (body.x < lo) {
-      body.vx += (lo - body.x) * 0.12
+    body.vx += (midX - body.x) * tuning.gravity
+    body.vy += (midY - body.y) * tuning.gravity
+    if (body.x < loX) {
+      body.vx += (loX - body.x) * 0.12
     }
-    if (body.x > hi) {
-      body.vx -= (body.x - hi) * 0.12
+    if (body.x > hiX) {
+      body.vx -= (body.x - hiX) * 0.12
     }
-    if (body.y < lo) {
-      body.vy += (lo - body.y) * 0.12
+    if (body.y < loY) {
+      body.vy += (loY - body.y) * 0.12
     }
-    if (body.y > hi) {
-      body.vy -= (body.y - hi) * 0.12
+    if (body.y > hiY) {
+      body.vy -= (body.y - hiY) * 0.12
     }
     body.vx *= tuning.damping
     body.vy *= tuning.damping
-    body.x += body.vx
-    body.y += body.vy
-    body.x = Math.min(hi, Math.max(lo, body.x))
-    body.y = Math.min(hi, Math.max(lo, body.y))
+    body.x += body.vx * dt
+    body.y += body.vy * dt
+    body.x = Math.min(hiX, Math.max(loX, body.x))
+    body.y = Math.min(hiY, Math.max(loY, body.y))
   }
 
   return next
@@ -171,10 +222,11 @@ export function settleBodies(
   links: GraphLink[],
   ticks = 90,
   tuning: LayoutTuning = DEFAULT_LAYOUT,
+  box: GraphBox = DEFAULT_BOX,
 ): GraphBody[] {
   let current = bodies
   for (let i = 0; i < ticks; i += 1) {
-    current = stepBodies(current, links, tuning)
+    current = stepBodies(current, links, tuning, box, 1)
   }
   return current
 }
@@ -244,42 +296,107 @@ export function packetXY(
   to: { x: number; y: number },
   nowMs: number,
   pad: number,
+  hideT = PACKET_HIDE_T,
 ): { x: number; y: number } | null {
   const t = packetT(packet, nowMs)
-  if (t == null) {
+  if (t == null || t >= hideT) {
     return null
   }
   const ends = edgeEnds(from.x, from.y, to.x, to.y, pad)
+  const u = t / hideT
   return {
-    x: ends.x1 + (ends.x2 - ends.x1) * t,
-    y: ends.y1 + (ends.y2 - ends.y1) * t,
+    x: ends.x1 + (ends.x2 - ends.x1) * u,
+    y: ends.y1 + (ends.y2 - ends.y1) * u,
   }
+}
+
+export function neighborIds(id: string, links: GraphLink[]): string[] {
+  const out: string[] = []
+  for (const link of links) {
+    if (link.a === id) {
+      out.push(link.b)
+    } else if (link.b === id) {
+      out.push(link.a)
+    }
+  }
+  return out
+}
+
+/** One node broadcasts to every neighbor at once. */
+export function fanoutFrom(fromId: string, links: GraphLink[]): { fromId: string; toId: string }[] {
+  return neighborIds(fromId, links).map((toId) => ({ fromId, toId }))
+}
+
+/**
+ * Gossip flood: at each hop a node sends to every neighbor that does not
+ * already have the info. Same delayMs = same visual wave.
+ */
+export function floodHops(
+  originId: string,
+  links: GraphLink[],
+  hopMs: number,
+): { fromId: string; toId: string; delayMs: number }[] {
+  const hops: { fromId: string; toId: string; delayMs: number }[] = []
+  const informed = new Set<string>([originId])
+  const queue: { id: string; atMs: number }[] = [{ id: originId, atMs: 0 }]
+
+  while (queue.length > 0) {
+    const current = queue.shift()!
+    const wave: { fromId: string; toId: string; delayMs: number }[] = []
+    for (const next of neighborIds(current.id, links)) {
+      if (informed.has(next)) {
+        continue
+      }
+      informed.add(next)
+      wave.push({ fromId: current.id, toId: next, delayMs: current.atMs + hopMs })
+    }
+    for (const hop of wave) {
+      hops.push(hop)
+      queue.push({ id: hop.toId, atMs: hop.delayMs })
+    }
+  }
+
+  return hops
+}
+
+export function pickAmbientFanout(
+  links: GraphLink[],
+  random: () => number = Math.random,
+): { fromId: string; toId: string }[] {
+  const ids = [...new Set(links.flatMap((link) => [link.a, link.b]))]
+  if (ids.length === 0) {
+    return []
+  }
+  const fromId = ids[Math.floor(random() * ids.length)]!
+  return fanoutFrom(fromId, links)
 }
 
 export function pickAmbientHop(
   links: GraphLink[],
   random: () => number = Math.random,
 ): { fromId: string; toId: string } | null {
-  if (links.length === 0) {
-    return null
-  }
-  const link = links[Math.floor(random() * links.length)]!
-  if (random() < 0.5) {
-    return { fromId: link.a, toId: link.b }
-  }
-  return { fromId: link.b, toId: link.a }
+  const hops = pickAmbientFanout(links, random)
+  return hops[0] ?? null
 }
 
 export function mapClientToGraph(
   box: { left: number; top: number; width: number; height: number },
   clientX: number,
   clientY: number,
+  graph: GraphBox = DEFAULT_BOX,
 ): { x: number; y: number } {
   if (box.width <= 0 || box.height <= 0) {
-    return { x: 50, y: 50 }
+    return { x: graph.width / 2, y: graph.height / 2 }
   }
   return {
-    x: ((clientX - box.left) / box.width) * GRAPH_SIZE,
-    y: ((clientY - box.top) / box.height) * GRAPH_SIZE,
+    x: ((clientX - box.left) / box.width) * graph.width,
+    y: ((clientY - box.top) / box.height) * graph.height,
+  }
+}
+
+export function htmlPercent(pos: { x: number; y: number }, graph: GraphBox): { left: number; top: number } {
+  return {
+    left: (pos.x / graph.width) * 100,
+    top: (pos.y / graph.height) * 100,
   }
 }

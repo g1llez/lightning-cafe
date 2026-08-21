@@ -150,6 +150,9 @@ describe('L1 peer graph', () => {
     expect(hops.every((hop) => hop.delayMs % 500 === 0)).toBe(true)
     expect(hops[0]?.delayMs).toBe(500)
     expect(hops.some((hop) => hop.toId === MEMPOOL_NODE_ID)).toBe(true)
+    const firstWave = hops.filter((hop) => hop.fromId === EXCHANGE_NODE_ID)
+    expect(firstWave.length).toBeGreaterThan(1)
+    expect(new Set(firstWave.map((hop) => hop.delayMs)).size).toBe(1)
   })
 
   it('touches the orange disc of every node (desktop graph vs h-11 icon)', () => {

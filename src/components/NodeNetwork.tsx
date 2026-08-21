@@ -20,7 +20,7 @@ import { NetworkCanvas } from './NetworkCanvas'
 import { mempoolFlyId, nodeFlyId } from './SatsFlight'
 import { Tooltip } from './Tooltip'
 
-const TX_ORIGIN_HOLD_MS = 900
+const TX_ORIGIN_HOLD_MS = 480
 
 type NodeNetworkProps = {
   onSatsSent: (label: string, target: string, from?: string) => void
@@ -112,7 +112,7 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-2">
+    <div className="mx-auto w-full max-w-5xl">
       <p className="mb-2 text-center text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">
         {t('layers.network')}
       </p>
@@ -141,25 +141,9 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
                     ? t('layers.nodeNpcTip')
                     : null
 
-          const discPx = `${NODE_DISC_RADIUS * 2}cqi`
           const icon = (
-            <span
-              data-fly={nodeFlyId(node.id)}
-              className={`inline-flex rounded-full ${
-                node.kind === 'own'
-                  ? 'ring-2 ring-accent'
-                  : node.kind === 'exchange'
-                    ? 'ring-2 ring-amber-400/80'
-                    : node.kind === 'mempool'
-                      ? 'border-2 border-dashed border-accent/80'
-                      : ''
-              }`}
-            >
-              <BitcoinNodeIcon
-                className="block"
-                style={{ width: discPx, height: discPx }}
-                title={node.name}
-              />
+            <span data-fly={nodeFlyId(node.id)} className="inline-flex">
+              <BitcoinNodeIcon className="block h-10 w-10" title={node.name} />
             </span>
           )
 
@@ -169,8 +153,8 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
                 <span
                   className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-accent/35"
                   style={{
-                    width: `calc(${NODE_DISC_RADIUS * 2}cqi + 8px)`,
-                    height: `calc(${NODE_DISC_RADIUS * 2}cqi + 8px)`,
+                    width: '48px',
+                    height: '48px',
                     background: `conic-gradient(var(--color-accent, #f7931a) ${syncProgress * 360}deg, transparent 0)`,
                     mask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px))',
                     WebkitMask:
@@ -189,7 +173,7 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
               </div>
               <div
                 className="absolute left-1/2 flex -translate-x-1/2 flex-col items-center gap-0.5"
-                style={{ top: `calc(${NODE_DISC_RADIUS}cqi + 6px)` }}
+                style={{ top: '26px' }}
               >
                 <span className="max-w-[6.5rem] truncate text-center text-xs font-medium text-text-primary md:text-[13px]">
                   {node.name}

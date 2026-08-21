@@ -300,7 +300,7 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col justify-between gap-3 px-4 pb-4 md:pl-[23rem]">
-        <div className="flex min-h-0 flex-1 items-center justify-center">
+        <div className="flex min-h-0 w-full max-w-5xl flex-1 items-center self-center">
           <NodeNetwork onSatsSent={onSatsSent} />
         </div>
 

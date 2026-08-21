@@ -5,28 +5,38 @@ import {
   type ReactNode,
 } from 'react'
 import {
+  DEFAULT_BOX,
+  boxFromElement,
+  discRadiusFor,
   displayedPosition,
   edgeEnds,
   energyOf,
+  htmlPercent,
   insertBody,
   mapClientToGraph,
   packetXY,
-  pickAmbientHop,
+  pickAmbientFanout,
+  remapBodies,
   scatterBodies,
   settleBodies,
   stepBodies,
   type GraphBody,
+  type GraphBox,
   type GraphLink,
   type GraphPacket,
 } from '../simulation/livingGraph'
 
-const EAT_MS = 280
-const AMBIENT_MS = 720
+const EAT_MS = 420
+const AMBIENT_MS = 1100
 const ENERGY_IDLE = 0.35
+const ICON_PX = 40
+/** Extra graph-units so a tx disc hides before the Bitcoin rim. */
+const PACKET_RIM_PAD = 1.85
 
 export type NetworkCanvasProps = {
   nodeIds: string[]
   edges: GraphLink[]
+  /** Fallback disc radius until the box is measured. */
   discRadius: number
   renderNode: (id: string, eating: boolean) => ReactNode
   /** data-fly selector used as the entry point when `spawnId` first appears. */
@@ -50,12 +60,13 @@ export function NetworkCanvas({
 }: NetworkCanvasProps) {
   const boxRef = useRef<HTMLDivElement>(null)
   const bodiesRef = useRef<GraphBody[]>([])
-  const knownRef = useRef<Set<string>>(new Set())
+  const knownRef = useRef(new Set<string>())
   const arriveRef = useRef(onPacketArrive)
   arriveRef.current = onPacketArrive
   const seenPackets = useRef(new Set<string>())
   const edgesRef = useRef(edges)
   edgesRef.current = edges
+  const graphRef = useRef<GraphBox>(DEFAULT_BOX)
   const idKey = nodeIds.join('|')
 
   const [bodies, setBodies] = useState<GraphBody[]>([])
@@ -63,8 +74,46 @@ export function NetworkCanvas({
   const [ambientPackets, setAmbientPackets] = useState<GraphPacket[]>([])
   const [eatingUntil, setEatingUntil] = useState<Record<string, number>>({})
   const [idle, setIdle] = useState(false)
+  const [graph, setGraph] = useState<GraphBox>(DEFAULT_BOX)
+  const [pad, setPad] = useState(discRadius)
+  const [boxReady, setBoxReady] = useState(false)
 
   useEffect(() => {
+    const el = boxRef.current
+    if (!el) {
+      return
+    }
+    const apply = () => {
+      const widthPx = el.clientWidth
+      const heightPx = el.clientHeight
+      if (widthPx < 8 || heightPx < 8) {
+        return
+      }
+      const next = boxFromElement(widthPx, heightPx)
+      const prev = graphRef.current
+      if (
+        bodiesRef.current.length > 0 &&
+        (prev.width !== next.width || prev.height !== next.height)
+      ) {
+        const remapped = remapBodies(bodiesRef.current, prev, next)
+        bodiesRef.current = remapped
+        setBodies(remapped)
+      }
+      graphRef.current = next
+      setGraph(next)
+      setPad(discRadiusFor(widthPx, ICON_PX, next))
+      setBoxReady(true)
+    }
+    apply()
+    const observer = new ResizeObserver(apply)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (!boxReady) {
+      return
+    }
     const ids = nodeIds
     const known = knownRef.current
     const added = ids.filter((id) => !known.has(id))
@@ -76,37 +125,35 @@ export function NetworkCanvas({
 
     const reduced =
       typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const box = graphRef.current
 
     let next: GraphBody[]
     if (known.size === 0) {
-      next = scatterBodies(ids)
+      next = scatterBodies(ids, Math.random, box)
     } else {
       next = dropBodyMany(bodiesRef.current, removed)
       for (const id of added) {
-        const spawn = id === spawnId ? spawnPoint(boxRef.current, spawnFrom) : null
-        next = insertBody(
-          next,
-          id,
-          spawn?.x ?? 50 + (Math.random() - 0.5) * 10,
-          spawn?.y ?? 50 + (Math.random() - 0.5) * 10,
-        )
+        const spawn = id === spawnId ? spawnPoint(boxRef.current, spawnFrom, box) : null
+        const x = spawn?.x ?? box.width / 2 + (Math.random() - 0.5) * 10
+        const y = spawn?.y ?? box.height / 2 + (Math.random() - 0.5) * 6
+        next = insertBody(next, id, x, clamp(y, 8, box.height - 8), box)
       }
     }
 
     if (reduced) {
-      next = settleBodies(next, edgesRef.current)
+      next = settleBodies(next, edgesRef.current, 90, undefined, box)
     }
 
     bodiesRef.current = next
     knownRef.current = new Set(ids)
     setBodies(next)
     setIdle(false)
-  }, [idKey, spawnId, spawnFrom])
+  }, [boxReady, idKey, spawnId, spawnFrom])
 
   useEffect(() => {
     let frame = 0
     const tick = () => {
-      const current = stepBodies(bodiesRef.current, edgesRef.current)
+      const current = stepBodies(bodiesRef.current, edgesRef.current, undefined, graphRef.current)
       bodiesRef.current = current
       setBodies(current)
       const stamp = Date.now()
@@ -129,21 +176,22 @@ export function NetworkCanvas({
 
     let timer = 0
     const loop = () => {
-      const hop = pickAmbientHop(edges)
-      if (hop) {
-        const packet: GraphPacket = {
-          id: `amb-${Date.now()}-${hop.fromId}`,
+      const hops = pickAmbientFanout(edges)
+      if (hops.length > 0) {
+        const bornAt = Date.now()
+        const wave: GraphPacket[] = hops.map((hop, index) => ({
+          id: `amb-${bornAt}-${hop.fromId}-${hop.toId}-${index}`,
           fromId: hop.fromId,
           toId: hop.toId,
           kind: 'ambient',
-          bornAt: Date.now(),
+          bornAt,
           duration: AMBIENT_MS,
-        }
-        setAmbientPackets((current) => [...current.slice(-4), packet])
+        }))
+        setAmbientPackets((current) => [...current.slice(-6), ...wave])
       }
-      timer = window.setTimeout(loop, 700 + Math.random() * 900)
+      timer = window.setTimeout(loop, 900 + Math.random() * 1100)
     }
-    timer = window.setTimeout(loop, 600)
+    timer = window.setTimeout(loop, 700)
     return () => window.clearTimeout(timer)
   }, [ambient, edges])
 
@@ -185,17 +233,21 @@ export function NetworkCanvas({
   return (
     <div
       ref={boxRef}
-      className="relative mx-auto aspect-square w-[min(100%,min(52vh,28rem))]"
+      className="relative mx-auto h-[min(46vh,26rem)] w-full"
       style={{ containerType: 'size' }}
     >
-      <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full overflow-visible">
+      <svg
+        viewBox={`0 0 ${graph.width} ${graph.height}`}
+        preserveAspectRatio="none"
+        className="absolute inset-0 h-full w-full overflow-visible"
+      >
         {edges.map((edge) => {
           const a = byId.get(edge.a)
           const b = byId.get(edge.b)
           if (!a || !b) {
             return null
           }
-          const ends = edgeEnds(a.x, a.y, b.x, b.y, discRadius)
+          const ends = edgeEnds(a.x, a.y, b.x, b.y, pad)
           return (
             <line
               key={`${edge.a}-${edge.b}`}
@@ -204,7 +256,7 @@ export function NetworkCanvas({
               x2={ends.x2}
               y2={ends.y2}
               className="stroke-border/80"
-              strokeWidth={0.65}
+              strokeWidth={0.55}
               strokeLinecap="round"
             />
           )
@@ -215,7 +267,8 @@ export function NetworkCanvas({
           if (!from || !to) {
             return null
           }
-          const pos = packetXY(packet, from, to, now, discRadius)
+          const extra = packet.kind === 'tx' ? PACKET_RIM_PAD : packet.kind === 'block' ? 1.2 : 0.55
+          const pos = packetXY(packet, from, to, now, pad + extra)
           if (!pos) {
             return null
           }
@@ -229,11 +282,12 @@ export function NetworkCanvas({
           return null
         }
         const eating = (eatingUntil[id] ?? 0) > now
+        const pct = htmlPercent(pos, graph)
         return (
           <div
             key={id}
             className="absolute z-[1]"
-            style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
+            style={{ left: `${pct.left}%`, top: `${pct.top}%`, width: 0, height: 0 }}
           >
             <div
               className="origin-center transition-transform duration-200 ease-out"
@@ -258,9 +312,13 @@ function PacketDot({
   y: number
 }) {
   const own = packet.kind === 'tx'
-  const radius = own ? 1.65 : packet.kind === 'block' ? 1.35 : 0.72
+  const radius = own ? 1.35 : packet.kind === 'block' ? 1.15 : 0.62
   const fill = own ? '#fbbf24' : packet.kind === 'block' ? '#f7931a' : '#f8fafc'
   return <circle cx={x} cy={y} r={radius} fill={fill} opacity={own ? 0.95 : 0.8} />
+}
+
+function clamp(value: number, lo: number, hi: number): number {
+  return Math.min(hi, Math.max(lo, value))
 }
 
 function dropBodyMany(bodies: GraphBody[], ids: string[]): GraphBody[] {
@@ -273,7 +331,8 @@ function dropBodyMany(bodies: GraphBody[], ids: string[]): GraphBody[] {
 
 function spawnPoint(
   box: HTMLDivElement | null,
-  selector?: string,
+  selector: string | undefined,
+  graph: GraphBox,
 ): { x: number; y: number } | null {
   if (!box || !selector) {
     return null
@@ -287,5 +346,6 @@ function spawnPoint(
     box.getBoundingClientRect(),
     from.left + from.width / 2,
     from.top + from.height / 2,
+    graph,
   )
 }
