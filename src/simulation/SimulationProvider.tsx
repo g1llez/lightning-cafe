@@ -239,7 +239,13 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
                 if (!tick) {
                   continue
                 }
-                nextPlayer = advanceBlock(nextPlayer, nextChain.marketRate, null, tick.height)
+                nextPlayer = advanceBlock(
+                  nextPlayer,
+                  nextChain.marketRate,
+                  null,
+                  tick.height,
+                  false,
+                )
                 nextChain = applyServerTick(nextChain, tick)
               } else if (event.type === 'tx') {
                 const tx = parseRemoteTx(event.payload)

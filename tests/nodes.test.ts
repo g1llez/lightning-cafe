@@ -28,21 +28,22 @@ import {
   deleteOwnNode,
   renameOwnNode,
   selectBroadcastNode,
+  advanceBlock,
 } from '../src/simulation/player'
 import {
   hydrateSandbox,
   parsePersist,
   persistBlob,
 } from '../src/simulation/persist'
-import { createInitialChain, sandboxBlockInterval } from '../src/simulation/chain'
+import { createInitialChain, INITIAL_MARKET_RATE, sandboxBlockInterval } from '../src/simulation/chain'
 
 describe('bitcoin broadcast nodes', () => {
   it('lists public relays and optional own node once synced', () => {
     expect(PUBLIC_NODES.length).toBeGreaterThanOrEqual(2)
     expect(availableBroadcastNodes(null, 100)).toHaveLength(PUBLIC_NODES.length)
-    const syncing = { id: OWN_NODE_ID, name: 'Maison', syncStartHeight: 100 }
+    const syncing = { id: OWN_NODE_ID, name: 'Maison', syncStartHeight: 100, syncedBlocks: 0 }
     expect(availableBroadcastNodes(syncing, 100)).toHaveLength(PUBLIC_NODES.length)
-    const ready = { id: OWN_NODE_ID, name: 'Maison', syncStartHeight: 100 }
+    const ready = { id: OWN_NODE_ID, name: 'Maison', syncStartHeight: 100, syncedBlocks: OWN_NODE_SYNC_BLOCKS }
     expect(availableBroadcastNodes(ready, 100 + OWN_NODE_SYNC_BLOCKS).some((node) => node.kind === 'own')).toBe(
       true,
     )
@@ -55,22 +56,33 @@ describe('bitcoin broadcast nodes', () => {
     player = createOwnNode(player, '  Ma node  ', 912_004)
     expect(player.ownNode?.name).toBe('Ma node')
     expect(player.ownNode?.syncStartHeight).toBe(912_004)
+    expect(player.ownNode?.syncedBlocks).toBe(0)
     expect(player.selectedNodeId).toBe(DEFAULT_PUBLIC_NODE_ID)
-    expect(isOwnNodeReady(player.ownNode!, 912_004)).toBe(false)
-    expect(ownNodeBlocksSynced(player.ownNode!, 912_007)).toBe(3)
-    expect(isOwnNodeReady(player.ownNode!, 912_008)).toBe(true)
+    expect(isOwnNodeReady(player.ownNode!)).toBe(false)
+    player = advanceBlock(player, INITIAL_MARKET_RATE, null, 912_005)
+    player = advanceBlock(player, INITIAL_MARKET_RATE, null, 912_006)
+    player = advanceBlock(player, INITIAL_MARKET_RATE, null, 912_007)
+    expect(ownNodeBlocksSynced(player.ownNode!)).toBe(3)
+    player = advanceBlock(player, INITIAL_MARKET_RATE, null, 912_008)
+    expect(isOwnNodeReady(player.ownNode!)).toBe(true)
     expect(() => createOwnNode(player, 'Autre', 912_008)).toThrow('own-node-exists')
   })
 
   it('refuses selecting own node while syncing', () => {
     let player = createOwnNode(createInitialPlayer(), 'Maison', 100)
     expect(() => selectBroadcastNode(player, OWN_NODE_ID, 100)).toThrow('own-node-syncing')
+    for (let height = 101; height <= 100 + OWN_NODE_SYNC_BLOCKS; height += 1) {
+      player = advanceBlock(player, INITIAL_MARKET_RATE, null, height)
+    }
     player = selectBroadcastNode(player, OWN_NODE_ID, 100 + OWN_NODE_SYNC_BLOCKS)
     expect(player.selectedNodeId).toBe(OWN_NODE_ID)
   })
 
   it('falls back to a public relay when the own node is removed', () => {
     let player = createOwnNode(createInitialPlayer(), 'Maison', 50)
+    for (let height = 51; height <= 50 + OWN_NODE_SYNC_BLOCKS; height += 1) {
+      player = advanceBlock(player, INITIAL_MARKET_RATE, null, height)
+    }
     player = selectBroadcastNode(player, OWN_NODE_ID, 50 + OWN_NODE_SYNC_BLOCKS)
     player = deleteOwnNode(player)
     expect(player.ownNode).toBeNull()
@@ -78,10 +90,11 @@ describe('bitcoin broadcast nodes', () => {
   })
 
   it('resolves public and own selections', () => {
-    const own = { id: OWN_NODE_ID, name: 'Maison', syncStartHeight: 0 }
-    expect(resolveBroadcastNode(DEFAULT_PUBLIC_NODE_ID, own, 10)?.kind).toBe('public')
-    expect(resolveBroadcastNode(OWN_NODE_ID, own, OWN_NODE_SYNC_BLOCKS)?.kind).toBe('own')
-    expect(resolveBroadcastNode(OWN_NODE_ID, own, 1)).toBeNull()
+    const ready = { id: OWN_NODE_ID, name: 'Maison', syncStartHeight: 0, syncedBlocks: OWN_NODE_SYNC_BLOCKS }
+    const syncing = { id: OWN_NODE_ID, name: 'Maison', syncStartHeight: 0, syncedBlocks: 0 }
+    expect(resolveBroadcastNode(DEFAULT_PUBLIC_NODE_ID, ready, 10)?.kind).toBe('public')
+    expect(resolveBroadcastNode(OWN_NODE_ID, ready, OWN_NODE_SYNC_BLOCKS)?.kind).toBe('own')
+    expect(resolveBroadcastNode(OWN_NODE_ID, syncing, 1)).toBeNull()
     expect(resolveBroadcastNode(OWN_NODE_ID, null, 10)).toBeNull()
   })
 
@@ -97,6 +110,20 @@ describe('bitcoin broadcast nodes', () => {
     expect(parsed?.player.selectedNodeId).toBe(DEFAULT_PUBLIC_NODE_ID)
     const hydrated = hydrateSandbox(JSON.stringify(blob), null, sandboxBlockInterval())
     expect(hydrated.player.ownNode?.syncStartHeight).toBe(912_000)
+    expect(hydrated.player.ownNode?.syncedBlocks).toBe(0)
+  })
+
+  it('keeps IBD progress when a cafe reload rewinds the chain', () => {
+    let player = createOwnNode(createWallet(createInitialPlayer(), 'W1'), 'Maison', 912_020)
+    player = advanceBlock(player, INITIAL_MARKET_RATE, null, 912_021)
+    player = advanceBlock(player, INITIAL_MARKET_RATE, null, 912_022)
+    const chain = { ...createInitialChain(), nextHeight: 999_999 }
+    const hydrated = hydrateSandbox(JSON.stringify(persistBlob(player, chain, 40)), 'room-abc', 60)
+    expect(hydrated.chain.nextHeight).toBe(createInitialChain().nextHeight)
+    expect(hydrated.player.ownNode?.syncedBlocks).toBe(2)
+    expect(ownNodeProgressPercent(hydrated.player.ownNode!, hydrated.chain.confirmed[0]!.height, 0)).toBe(
+      50,
+    )
   })
   it('renames the own node', () => {
     let player = createOwnNode(createInitialPlayer(), 'Maison', 100)
@@ -105,12 +132,37 @@ describe('bitcoin broadcast nodes', () => {
     expect(() => renameOwnNode(player, '   ')).toThrow('own-node-name')
   })
 
-  it('reports sync as a percent while keeping a 4-block window', () => {
-    const own = { id: OWN_NODE_ID, name: 'Maison', syncStartHeight: 100 }
+  it('reports sync as a percent of mined blocks, not chain height', () => {
+    const own = { id: OWN_NODE_ID, name: 'Maison', syncStartHeight: 100, syncedBlocks: 0 }
     expect(ownNodeProgressPercent(own, 100, 0)).toBe(0)
     expect(ownNodeProgressPercent(own, 100, 0.5)).toBe(13)
-    expect(ownNodeProgressPercent(own, 102, 0)).toBe(50)
-    expect(ownNodeProgressPercent(own, 104, 0)).toBe(100)
+    expect(ownNodeProgressPercent({ ...own, syncedBlocks: 2 }, 102, 0)).toBe(50)
+    expect(ownNodeProgressPercent({ ...own, syncedBlocks: 4 }, 104, 0)).toBe(100)
+  })
+
+  it('does not restart IBD when the next block lands or the cafe chain is shorter', () => {
+    let player = createOwnNode(createInitialPlayer(), 'Maison', 912_020)
+    expect(ownNodeProgressPercent(player.ownNode!, 912_020, 0.8)).toBe(20)
+    player = advanceBlock(player, INITIAL_MARKET_RATE, null, 912_021)
+    expect(ownNodeBlocksSynced(player.ownNode!)).toBe(1)
+    expect(ownNodeProgressPercent(player.ownNode!, 912_021, 0)).toBe(25)
+    player = advanceBlock(player, INITIAL_MARKET_RATE, null, 912_022)
+    expect(ownNodeProgressPercent(player.ownNode!, 912_022, 0)).toBe(50)
+    expect(ownNodeProgressPercent(player.ownNode!, 912_004, 0.8)).toBe(70)
+    player = advanceBlock(player, INITIAL_MARKET_RATE, null, 912_005)
+    expect(ownNodeProgressPercent(player.ownNode!, 912_005, 0)).toBe(75)
+    player = advanceBlock(player, INITIAL_MARKET_RATE, null, 912_006)
+    expect(isOwnNodeReady(player.ownNode!)).toBe(true)
+    expect(ownNodeProgressPercent(player.ownNode!, 912_006, 0.9)).toBe(100)
+  })
+
+  it('does not count cafe catch-up ticks as IBD', () => {
+    let player = createOwnNode(createInitialPlayer(), 'Maison', 912_020)
+    player = advanceBlock(player, INITIAL_MARKET_RATE, null, 912_005, false)
+    player = advanceBlock(player, INITIAL_MARKET_RATE, null, 912_006, false)
+    expect(ownNodeBlocksSynced(player.ownNode!)).toBe(0)
+    player = advanceBlock(player, INITIAL_MARKET_RATE, null, 912_007)
+    expect(ownNodeBlocksSynced(player.ownNode!)).toBe(1)
   })
 
   it('shortens edges to the disc rim', () => {
@@ -130,7 +182,7 @@ describe('L1 peer graph', () => {
     const exchange = BASE_NETWORK.find((node) => node.id === EXCHANGE_NODE_ID)!
     expect(exchange.x).not.toBe(50)
     expect(exchange.y).toBeGreaterThan(50)
-    const withOwn = visibleNetwork({ id: OWN_NODE_ID, name: 'Maison', syncStartHeight: 1 })
+    const withOwn = visibleNetwork({ id: OWN_NODE_ID, name: 'Maison', syncStartHeight: 1, syncedBlocks: 0 })
     expect(withOwn).toHaveLength(8)
     const ids = new Set(withOwn.map((node) => node.id))
     expect(visibleEdges(ids).some((edge) => edge.a === OWN_NODE_ID || edge.b === OWN_NODE_ID)).toBe(true)
@@ -163,7 +215,7 @@ describe('L1 peer graph', () => {
 
   it('touches the orange disc of every node (desktop graph vs h-11 icon)', () => {
     expect(NODE_DISC_RADIUS).toBe(orangeDiscRadius())
-    const nodes = visibleNetwork({ id: OWN_NODE_ID, name: 'Maison', syncStartHeight: 1 })
+    const nodes = visibleNetwork({ id: OWN_NODE_ID, name: 'Maison', syncStartHeight: 1, syncedBlocks: 0 })
     const ids = new Set(nodes.map((node) => node.id))
     const edges = visibleEdges(ids)
     const disc = orangeDiscRadius()

@@ -11,6 +11,7 @@ import {
   DEFAULT_PUBLIC_NODE_ID,
   OWN_NODE_ID,
   isOwnNodeReady,
+  tickOwnNodeSync,
   type OwnNode,
 } from './nodes'
 
@@ -247,7 +248,7 @@ export function createOwnNode(player: PlayerState, name: string, tipHeight: numb
   }
   return {
     ...player,
-    ownNode: { id: OWN_NODE_ID, name: trimmed, syncStartHeight: tipHeight },
+    ownNode: { id: OWN_NODE_ID, name: trimmed, syncStartHeight: tipHeight, syncedBlocks: 0 },
     selectedNodeId: DEFAULT_PUBLIC_NODE_ID,
   }
 }
@@ -703,6 +704,8 @@ export function advanceBlock(
   marketRate: number,
   random: (() => number) | null = Math.random,
   height = 0,
+  /** Live blocks count toward IBD. Cafe history catch-up must pass false. */
+  syncOwnNode = true,
 ): PlayerState {
   let next = player
   if (player.pending.length > 0) {
@@ -734,7 +737,11 @@ export function advanceBlock(
     }
   }
 
-  return payoutExchangeSells(next, height)
+  next = payoutExchangeSells(next, height)
+  if (syncOwnNode && next.ownNode) {
+    next = { ...next, ownNode: tickOwnNodeSync(next.ownNode) }
+  }
+  return next
 }
 
 /**

@@ -122,8 +122,10 @@ export const NETWORK_EDGES: NetworkEdge[] = [
 export type OwnNode = {
   id: string
   name: string
-  /** Tip height when the node was added; ready after +OWN_NODE_SYNC_BLOCKS. */
+  /** Tip height when the node was added (debug / legacy hydrate). */
   syncStartHeight: number
+  /** Confirmed blocks processed since the node was added. IBD, not chain height. */
+  syncedBlocks: number
 }
 
 export function publicNodeById(id: string): BroadcastNode | undefined {
@@ -134,16 +136,30 @@ export function tipHeight(confirmedHeight: number): number {
   return confirmedHeight
 }
 
-export function ownNodeBlocksSynced(own: OwnNode, tip: number): number {
-  return Math.min(OWN_NODE_SYNC_BLOCKS, Math.max(0, tip - own.syncStartHeight))
+export function clampSyncedBlocks(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 0
+  }
+  return Math.min(OWN_NODE_SYNC_BLOCKS, Math.max(0, Math.floor(value)))
 }
 
-export function isOwnNodeReady(own: OwnNode, tip: number): boolean {
+export function ownNodeBlocksSynced(own: OwnNode, _tip?: number): number {
+  return clampSyncedBlocks(own.syncedBlocks)
+}
+
+export function isOwnNodeReady(own: OwnNode, tip?: number): boolean {
   return ownNodeBlocksSynced(own, tip) >= OWN_NODE_SYNC_BLOCKS
 }
 
-export function ownNodeProgress(own: OwnNode, tip: number, blockFill = 0): number {
-  const done = ownNodeBlocksSynced(own, tip)
+export function tickOwnNodeSync(own: OwnNode): OwnNode {
+  if (own.syncedBlocks >= OWN_NODE_SYNC_BLOCKS) {
+    return own
+  }
+  return { ...own, syncedBlocks: own.syncedBlocks + 1 }
+}
+
+export function ownNodeProgress(own: OwnNode, _tip = 0, blockFill = 0): number {
+  const done = ownNodeBlocksSynced(own)
   if (done >= OWN_NODE_SYNC_BLOCKS) {
     return 1
   }
