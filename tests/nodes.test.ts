@@ -19,6 +19,7 @@ import {
   propagationHops,
   randomNodeName,
   resolveBroadcastNode,
+  resolveOwnNodeName,
   visibleEdges,
   visibleNetwork,
 } from '../src/simulation/nodes'
@@ -75,9 +76,15 @@ describe('bitcoin broadcast nodes', () => {
     const zero = randomNodeName(() => 0)
     const last = randomNodeName(() => 0.999)
     expect(zero).toBe('aaaa')
-    expect(last).toBe('9999')
-    expect(zero).toMatch(/^[a-z0-9]{4}$/)
+    expect(last).toBe('z999')
+    expect(zero).toMatch(/^[a-z][a-z0-9]{3}$/)
     expect(randomNodeName(() => 0.5)).not.toBe(zero)
+  })
+
+  it('keeps a typed node name and falls back to the random code if empty', () => {
+    expect(resolveOwnNodeName('  Cave  ', 'aaaa')).toBe('Cave')
+    expect(resolveOwnNodeName('   ', 'ks63')).toBe('ks63')
+    expect(resolveOwnNodeName('', 'n4m2')).toBe('n4m2')
   })
 
   it('refuses selecting own node while syncing', () => {

@@ -17,6 +17,7 @@ import {
   ownNodeProgressPercent,
   isOwnNodeReady,
   randomNodeName,
+  resolveOwnNodeName,
 } from '../simulation/nodes'
 import { useSimulation } from '../simulation/SimulationProvider'
 import { LayerAssetCard } from './LayerAssetCard'
@@ -62,6 +63,9 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
   const [justCreatedId, setJustCreatedId] = useState('')
   const [sendWalletId, setSendWalletId] = useState('')
   const [openNode, setOpenNode] = useState(false)
+  const [namingNode, setNamingNode] = useState(false)
+  const [nodeNameDefault, setNodeNameDefault] = useState('')
+  const [nodeNameDraft, setNodeNameDraft] = useState('')
   const [renamingNode, setRenamingNode] = useState(false)
   const [confirmDeleteNode, setConfirmDeleteNode] = useState(false)
   const [editingNodeName, setEditingNodeName] = useState('')
@@ -101,14 +105,33 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
   }
 
   function handleAddNode() {
+    if (player.ownNode) {
+      onMessage(t('assets.nodeExists'))
+      return
+    }
+    const fallback = randomNodeName()
+    setNodeNameDefault(fallback)
+    setNodeNameDraft(fallback)
+    setNamingNode(true)
+  }
+
+  function closeNameNode() {
+    setNamingNode(false)
+    setNodeNameDraft('')
+    setNodeNameDefault('')
+  }
+
+  function commitCreateNode() {
     try {
-      addOwnNode(randomNodeName())
+      addOwnNode(resolveOwnNodeName(nodeNameDraft, nodeNameDefault))
       setOpenNode(true)
       setRenamingNode(false)
       setConfirmDeleteNode(false)
+      closeNameNode()
       onMessage(t('assets.nodeCreated'))
     } catch {
       onMessage(t('assets.nodeExists'))
+      closeNameNode()
     }
   }
 
@@ -452,6 +475,49 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
 
   return (
     <>
+      {namingNode && (
+        <Modal
+          title={t('assets.nameNodeTitle')}
+          subtitle={t('assets.addNodeTip')}
+          closeLabel={t('common.close')}
+          onClose={closeNameNode}
+        >
+          <div className="flex flex-col gap-3">
+            <p className="text-[12px] leading-relaxed text-text-muted">{t('assets.nameNodeHint')}</p>
+            <input
+              autoFocus
+              value={nodeNameDraft}
+              maxLength={32}
+              spellCheck={false}
+              autoComplete="off"
+              onFocus={(event) => event.currentTarget.select()}
+              onChange={(event) => setNodeNameDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  commitCreateNode()
+                }
+              }}
+              className="w-full rounded-md border border-border bg-bg-primary px-2 py-1.5 font-mono text-sm outline-none focus:border-accent"
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={closeNameNode}
+                className="flex-1 rounded-md border border-border px-3 py-2 text-sm text-text-muted transition hover:border-accent/60 hover:text-text-primary"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={commitCreateNode}
+                className="flex-1 rounded-md bg-accent px-3 py-2 text-sm font-semibold text-bg-primary transition hover:brightness-110"
+              >
+                {t('assets.nameNodeConfirm')}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
       {createdWallet && (
         <Modal
           title={t('assets.createdTitle')}
@@ -735,6 +801,7 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
                           }
                         }}
                         className="w-full rounded border border-accent bg-bg-primary px-2 py-1 text-sm outline-none"
+                        maxLength={32}
                       />
                     ) : (
                       <button

@@ -51,13 +51,24 @@ export const NODE_NAME_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789'
 export const NODE_NAME_LENGTH = 4
 
 export function randomNodeName(random = Math.random): string {
-  let name = ''
-  for (let index = 0; index < NODE_NAME_LENGTH; index += 1) {
+  const letters = 'abcdefghijklmnopqrstuvwxyz'
+  let name = letters[Math.floor(random() * letters.length) % letters.length] ?? 'a'
+  for (let index = 1; index < NODE_NAME_LENGTH; index += 1) {
     const pick = Math.floor(random() * NODE_NAME_ALPHABET.length) % NODE_NAME_ALPHABET.length
     name += NODE_NAME_ALPHABET[pick]
   }
   return name
 }
+
+export function resolveOwnNodeName(draft: string, fallback: string): string {
+  const trimmed = draft.trim()
+  if (trimmed) {
+    return trimmed
+  }
+  const code = fallback.trim()
+  return code || randomNodeName()
+}
+
 export const PROPAGATION_HOP_MS = GOSSIP_HOP_MS
 /** Desktop graph square (`max-h` 28rem) and the orange SVG (`md:h-11`). */
 export const GRAPH_DESKTOP_PX = 448
