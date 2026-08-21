@@ -47,8 +47,43 @@ export const MEMPOOL_NODE_ID = 'net-mempool'
 export const OWN_NODE_ID = 'own-node'
 export const OWN_NODE_SYNC_BLOCKS = 4
 export const PROPAGATION_HOP_MS = 500
-/** Radius of the orange disc in the 100×100 layout (lines stop at the rim). */
-export const NODE_DISC_RADIUS = 5.4
+/** Desktop graph square (`max-h` 28rem) and the orange SVG (`md:h-11`). */
+export const GRAPH_DESKTOP_PX = 448
+export const NODE_ICON_PX = 44
+
+export function orangeDiscRadius(
+  graphPx = GRAPH_DESKTOP_PX,
+  iconPx = NODE_ICON_PX,
+): number {
+  return (iconPx / 2 / graphPx) * 100
+}
+
+/** Orange disc radius in the 100×100 layout — matches a `NODE_DISC_RADIUS * 2 cqi` icon. */
+export const NODE_DISC_RADIUS = orangeDiscRadius()
+
+/** Positive gap = the line stops short of the disc (does not touch). */
+export function edgeEndGaps(
+  nodes: NetworkNode[],
+  edges: NetworkEdge[],
+  discRadius: number,
+  pad = NODE_DISC_RADIUS,
+): { nodeId: string; otherId: string; gap: number }[] {
+  const byId = new Map(nodes.map((node) => [node.id, node]))
+  const gaps: { nodeId: string; otherId: string; gap: number }[] = []
+  for (const edge of edges) {
+    const a = byId.get(edge.a)
+    const b = byId.get(edge.b)
+    if (!a || !b) {
+      continue
+    }
+    const ends = edgeEndpoints(a.x, a.y, b.x, b.y, pad)
+    const gapA = Math.hypot(ends.x1 - a.x, ends.y1 - a.y) - discRadius
+    const gapB = Math.hypot(ends.x2 - b.x, ends.y2 - b.y) - discRadius
+    gaps.push({ nodeId: a.id, otherId: b.id, gap: gapA })
+    gaps.push({ nodeId: b.id, otherId: a.id, gap: gapB })
+  }
+  return gaps
+}
 
 /** Always-on peers (no player node). Max 7; own makes 8. Exchange sits on the edge, not the hub. */
 export const BASE_NETWORK: NetworkNode[] = [

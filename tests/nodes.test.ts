@@ -10,7 +10,9 @@ import {
   PUBLIC_NODES,
   availableBroadcastNodes,
   edgeEndpoints,
+  edgeEndGaps,
   isOwnNodeReady,
+  orangeDiscRadius,
   ownNodeBlocksSynced,
   ownNodeProgressPercent,
   pickBlockOrigin,
@@ -148,5 +150,15 @@ describe('L1 peer graph', () => {
     expect(hops.every((hop) => hop.delayMs % 500 === 0)).toBe(true)
     expect(hops[0]?.delayMs).toBe(500)
     expect(hops.some((hop) => hop.toId === MEMPOOL_NODE_ID)).toBe(true)
+  })
+
+  it('touches the orange disc of every node (desktop graph vs h-11 icon)', () => {
+    expect(NODE_DISC_RADIUS).toBe(orangeDiscRadius())
+    const nodes = visibleNetwork({ id: OWN_NODE_ID, name: 'Maison', syncStartHeight: 1 })
+    const ids = new Set(nodes.map((node) => node.id))
+    const edges = visibleEdges(ids)
+    const disc = orangeDiscRadius()
+    const misses = edgeEndGaps(nodes, edges, disc).filter((row) => Math.abs(row.gap) > 0.05)
+    expect(misses).toEqual([])
   })
 })

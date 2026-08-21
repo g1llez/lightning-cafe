@@ -158,7 +158,10 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
       <p className="mb-2 text-center text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">
         {t('layers.network')}
       </p>
-      <div className="relative mx-auto aspect-square w-full max-h-[min(52vh,28rem)]">
+      <div
+        className="relative mx-auto aspect-square w-full max-h-[min(52vh,28rem)]"
+        style={{ containerType: 'size' }}
+      >
         <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full" aria-hidden="true">
           {edges.map((edge) => {
             const a = byId.get(edge.a)
@@ -177,6 +180,7 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
                 y2={ends.y2}
                 className={lit ? 'stroke-accent/70' : 'stroke-border/80'}
                 strokeWidth={lit ? 1 : 0.65}
+                strokeLinecap="round"
               />
             )
           })}
@@ -207,10 +211,11 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
                     ? t('layers.nodeNpcTip')
                     : null
 
+          const discPx = `${NODE_DISC_RADIUS * 2}cqi`
           const icon = (
             <span
               data-fly={nodeFlyId(node.id)}
-              className={`inline-flex rounded-full p-0.5 ${
+              className={`inline-flex rounded-full ${
                 node.kind === 'own'
                   ? 'ring-2 ring-accent'
                   : node.kind === 'exchange'
@@ -220,7 +225,11 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
                       : ''
               } ${hot ? 'ring-offset-1 ring-offset-bg-secondary' : ''}`}
             >
-              <BitcoinNodeIcon className="h-9 w-9 md:h-11 md:w-11" title={node.name} />
+              <BitcoinNodeIcon
+                className="block"
+                style={{ width: discPx, height: discPx }}
+                title={node.name}
+              />
             </span>
           )
 
@@ -233,8 +242,10 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
               <div className={`relative ${hot ? 'scale-105' : ''} transition`}>
                 {syncing && (
                   <span
-                    className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-accent/35 md:h-14 md:w-14"
+                    className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-accent/35"
                     style={{
+                      width: `calc(${NODE_DISC_RADIUS * 2}cqi + 8px)`,
+                      height: `calc(${NODE_DISC_RADIUS * 2}cqi + 8px)`,
                       background: `conic-gradient(var(--color-accent, #f7931a) ${syncProgress * 360}deg, transparent 0)`,
                       mask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px))',
                       WebkitMask:
@@ -245,7 +256,10 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
                 <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
                   {tipText ? <Tooltip text={tipText} side="top">{icon}</Tooltip> : icon}
                 </div>
-                <div className="absolute left-1/2 top-[1.55rem] flex -translate-x-1/2 flex-col items-center gap-0.5 md:top-[1.75rem]">
+                <div
+                  className="absolute left-1/2 flex -translate-x-1/2 flex-col items-center gap-0.5"
+                  style={{ top: `calc(${NODE_DISC_RADIUS}cqi + 6px)` }}
+                >
                   <span className="max-w-[6.5rem] truncate text-center text-xs font-medium text-text-primary md:text-[13px]">
                     {node.name}
                   </span>
