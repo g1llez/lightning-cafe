@@ -12,7 +12,7 @@ import {
   visibleEdges,
   visibleNetwork,
 } from '../simulation/nodes'
-import { fanoutFrom, type GraphPacket, type PacketKind } from '../simulation/livingGraph'
+import { gossipLearn, type GraphPacket, type PacketKind } from '../simulation/livingGraph'
 import { useSimulation } from '../simulation/SimulationProvider'
 import { BitcoinNodeIcon } from './BitcoinNodeIcon'
 import { MiniBlockChip } from './BlockTetris'
@@ -39,7 +39,7 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
   const pulseKey = useRef<string | null>(null)
   const pulseRef = useRef(networkPulse)
   pulseRef.current = networkPulse
-  const announced = useRef(new Set<string>())
+  const books = useRef(new Map<string, Set<string>>())
 
   const tip = chain.confirmed[0]?.height ?? chain.nextHeight - 1
   const blockFill = 1 - secondsLeft / sandboxBlockInterval()
@@ -60,12 +60,12 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
     tag: string | undefined,
     bornAt: number,
   ) {
-    const key = `${group}:${fromId}`
-    if (announced.current.has(key)) {
-      return
+    let book = books.current.get(group)
+    if (!book) {
+      book = new Set()
+      books.current.set(group, book)
     }
-    announced.current.add(key)
-    const hops = fanoutFrom(fromId, edgesRef.current).filter((hop) => hop.toId !== exceptId)
+    const hops = gossipLearn(book, fromId, exceptId, edgesRef.current)
     if (hops.length === 0) {
       return
     }

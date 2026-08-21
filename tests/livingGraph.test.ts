@@ -6,6 +6,7 @@ import {
   boxFromElement,
   edgeEnds,
   floodHops,
+  gossipLearn,
   htmlPercent,
   insertBody,
   mapClientToGraph,
@@ -135,6 +136,23 @@ describe('living graph layout', () => {
     const fromB = hops.filter((hop) => hop.fromId === 'b').map((hop) => hop.toId).sort()
     expect(fromB).toEqual(['c', 'd'])
     expect(hops.some((hop) => hop.fromId === 'b' && hop.toId === 'a')).toBe(false)
+  })
+
+  it('ignores a second learn so a mesh cannot loop', () => {
+    const announced = new Set<string>()
+    const links = [
+      { a: 'a', b: 'b' },
+      { a: 'b', b: 'c' },
+      { a: 'c', b: 'a' },
+    ]
+    const first = gossipLearn(announced, 'a', null, links)
+    expect(first.map((hop) => hop.toId).sort()).toEqual(['b', 'c'])
+    expect(gossipLearn(announced, 'a', 'b', links)).toEqual([])
+
+    const hops = floodHops('a', links, 500)
+    const fromIds = hops.map((hop) => hop.fromId)
+    expect(new Set(fromIds).size).toBe(3)
+    expect(hops).toHaveLength(4)
   })
 
   it('picks a one-hop broadcast from a node', () => {

@@ -61,6 +61,8 @@ export const DEFAULT_LAYOUT: LayoutTuning = {
 /** Live step: about 1s of leftover motion after the start ring. */
 export const LAYOUT_DT = 0.72
 export const PACKET_HIDE_T = 0.84
+/** Hop duration shared by ambient txs, player txs, and blocks. */
+export const GOSSIP_HOP_MS = 900
 
 export type PacketKind = 'ambient' | 'tx' | 'block'
 
@@ -331,56 +333,75 @@ export function neighborIds(id: string, links: GraphLink[]): string[] {
   return out
 }
 
-/** One node broadcasts to every neighbor at once. */
-export function fanoutFrom(fromId: string, links: GraphLink[]): { fromId: string; toId: string }[] {
-  return neighborIds(fromId, links).map((toId) => ({ fromId, toId }))
+/**
+ * INV gossip: a node announces once, to every neighbor except the peer it
+ * heard it from. A second call for the same node returns [] — already-informed
+ * peers ignore, so a mesh cannot loop.
+ */
+export function gossipLearn(
+  announced: Set<string>,
+  nodeId: string,
+  exceptId: string | null,
+  links: GraphLink[],
+): { fromId: string; toId: string }[] {
+  if (announced.has(nodeId)) {
+    return []
+  }
+  announced.add(nodeId)
+  return neighborIds(nodeId, links)
+    .filter((toId) => toId !== exceptId)
+    .map((toId) => ({ fromId: nodeId, toId }))
 }
 
-/**
- * Gossip flood: when a node learns the tx it announces to every neighbor
- * except the peer it heard it from. Already-informed peers still get a hop
- * so the second wave is visible.
- */
+/** @deprecated use gossipLearn — kept as a one-shot first wave. */
+export function fanoutFrom(fromId: string, links: GraphLink[]): { fromId: string; toId: string }[] {
+  return gossipLearn(new Set(), fromId, null, links)
+}
+
+/** Timed replay of gossipLearn, for tests. */
 export function floodHops(
   originId: string,
   links: GraphLink[],
   hopMs: number,
 ): { fromId: string; toId: string; delayMs: number }[] {
   const hops: { fromId: string; toId: string; delayMs: number }[] = []
-  const informedAt = new Map<string, number>([[originId, 0]])
-  const parent = new Map<string, string | null>([[originId, null]])
-  const queue: string[] = [originId]
+  const announced = new Set<string>()
+  const queue: { id: string; except: string | null; at: number }[] = [
+    { id: originId, except: null, at: 0 },
+  ]
 
   while (queue.length > 0) {
     const current = queue.shift()!
-    const t = informedAt.get(current) ?? 0
-    const from = parent.get(current)
-    for (const next of neighborIds(current, links)) {
-      if (next === from) {
-        continue
-      }
-      hops.push({ fromId: current, toId: next, delayMs: t + hopMs })
-      if (!informedAt.has(next)) {
-        informedAt.set(next, t + hopMs)
-        parent.set(next, current)
-        queue.push(next)
-      }
+    const wave = gossipLearn(announced, current.id, current.except, links)
+    for (const hop of wave) {
+      hops.push({ fromId: hop.fromId, toId: hop.toId, delayMs: current.at + hopMs })
+      queue.push({ id: hop.toId, except: hop.fromId, at: current.at + hopMs })
     }
   }
 
   return hops
 }
 
+export function pickGossipOrigin(
+  links: GraphLink[],
+  random: () => number = Math.random,
+): string | null {
+  const ids = [...new Set(links.flatMap((link) => [link.a, link.b]))]
+  if (ids.length === 0) {
+    return null
+  }
+  return ids[Math.floor(random() * ids.length)]!
+}
+
 export function pickAmbientFanout(
   links: GraphLink[],
   random: () => number = Math.random,
 ): { fromId: string; toId: string }[] {
-  const ids = [...new Set(links.flatMap((link) => [link.a, link.b]))]
-  if (ids.length === 0) {
+  const fromId = pickGossipOrigin(links, random)
+  if (!fromId) {
     return []
   }
-  const fromId = ids[Math.floor(random() * ids.length)]!
-  return fanoutFrom(fromId, links)
+  return gossipLearn(new Set(), fromId, null, links)
 }
 
 export function pickAmbientHop(

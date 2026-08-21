@@ -5,7 +5,7 @@
  */
 
 import type { Priority } from './chain'
-import { edgeEnds, floodHops } from './livingGraph'
+import { edgeEnds, floodHops, GOSSIP_HOP_MS } from './livingGraph'
 
 export type NodeKind = 'public' | 'npc' | 'exchange' | 'own' | 'mempool'
 
@@ -47,7 +47,7 @@ export const EXCHANGE_NODE_ID = 'ex-cafe-desk'
 export const MEMPOOL_NODE_ID = 'net-mempool'
 export const OWN_NODE_ID = 'own-node'
 export const OWN_NODE_SYNC_BLOCKS = 4
-export const PROPAGATION_HOP_MS = 900
+export const PROPAGATION_HOP_MS = GOSSIP_HOP_MS
 /** Desktop graph square (`max-h` 28rem) and the orange SVG (`md:h-11`). */
 export const GRAPH_DESKTOP_PX = 448
 export const NODE_ICON_PX = 44

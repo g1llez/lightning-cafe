@@ -6,16 +6,18 @@ import {
 } from 'react'
 import {
   DEFAULT_BOX,
+  GOSSIP_HOP_MS,
   boxFromElement,
   discRadiusFor,
   displayedPosition,
   edgeEnds,
   energyOf,
+  gossipLearn,
   htmlPercent,
   insertBody,
   mapClientToGraph,
   packetXY,
-  pickAmbientFanout,
+  pickGossipOrigin,
   remapBodies,
   scatterBodies,
   settleBodies,
@@ -27,7 +29,6 @@ import {
 } from '../simulation/livingGraph'
 
 const EAT_MS = 420
-const AMBIENT_MS = 1100
 const ENERGY_IDLE = 0.35
 const ICON_PX = 40
 /** Extra graph-units so a tx disc hides before the Bitcoin rim. */
@@ -67,6 +68,8 @@ export function NetworkCanvas({
   arriveRef.current = onPacketArrive
   const seenPackets = useRef(new Set<string>())
   const startedPackets = useRef(new Set<string>())
+  const ambientBooks = useRef(new Map<string, Set<string>>())
+  const ambientBusy = useRef(false)
   const edgesRef = useRef(edges)
   edgesRef.current = edges
   const graphRef = useRef<GraphBox>(DEFAULT_BOX)
@@ -179,22 +182,35 @@ export function NetworkCanvas({
 
     let timer = 0
     const loop = () => {
-      const hops = pickAmbientFanout(edges)
-      if (hops.length > 0) {
-        const bornAt = Date.now()
-        const wave: GraphPacket[] = hops.map((hop, index) => ({
-          id: `amb-${bornAt}-${hop.fromId}-${hop.toId}-${index}`,
-          fromId: hop.fromId,
-          toId: hop.toId,
-          kind: 'ambient',
-          bornAt,
-          duration: AMBIENT_MS,
-        }))
-        setAmbientPackets((current) => [...current.slice(-6), ...wave])
+      if (!ambientBusy.current) {
+        const origin = pickGossipOrigin(edges)
+        if (origin) {
+          const group = `amb-${Date.now()}`
+          const book = new Set<string>()
+          ambientBooks.current.set(group, book)
+          const hops = gossipLearn(book, origin, null, edges)
+          if (hops.length > 0) {
+            ambientBusy.current = true
+            const bornAt = Date.now()
+            const wave: GraphPacket[] = hops.map((hop) => ({
+              id: `${group}-${hop.fromId}-${hop.toId}-${bornAt}`,
+              fromId: hop.fromId,
+              toId: hop.toId,
+              kind: 'ambient',
+              bornAt,
+              duration: GOSSIP_HOP_MS,
+              group,
+            }))
+            setAmbientPackets((current) => [
+              ...current.filter((packet) => Date.now() < packet.bornAt + packet.duration),
+              ...wave,
+            ])
+          }
+        }
       }
-      timer = window.setTimeout(loop, 900 + Math.random() * 1100)
+      timer = window.setTimeout(loop, 2200 + Math.random() * 1800)
     }
-    timer = window.setTimeout(loop, 700)
+    timer = window.setTimeout(loop, 900)
     return () => window.clearTimeout(timer)
   }, [ambient, edges])
 
@@ -221,9 +237,37 @@ export function NetworkCanvas({
     if (starting.length === 0 && fresh.length === 0) {
       return
     }
-    setAmbientPackets((current) =>
-      current.filter((packet) => stamp < packet.bornAt + packet.duration),
-    )
+    const extraWaves: GraphPacket[] = []
+    for (const packet of fresh) {
+      if (packet.kind !== 'ambient' || !packet.group) {
+        continue
+      }
+      const book = ambientBooks.current.get(packet.group)
+      if (!book) {
+        continue
+      }
+      const hops = gossipLearn(book, packet.toId, packet.fromId, edgesRef.current)
+      const bornAt = Date.now()
+      for (const hop of hops) {
+        extraWaves.push({
+          id: `${packet.group}-${hop.fromId}-${hop.toId}-${bornAt}`,
+          fromId: hop.fromId,
+          toId: hop.toId,
+          kind: 'ambient',
+          bornAt,
+          duration: GOSSIP_HOP_MS,
+          group: packet.group,
+        })
+      }
+    }
+    setAmbientPackets((current) => {
+      const live = current.filter((packet) => stamp < packet.bornAt + packet.duration)
+      const next = [...live, ...extraWaves]
+      if (next.length === 0) {
+        ambientBusy.current = false
+      }
+      return next
+    })
     setEatingUntil((current) => {
       const next = { ...current }
       for (const packet of starting) {
@@ -356,7 +400,7 @@ function PacketDot({
   y: number
 }) {
   const own = packet.kind === 'tx'
-  const radius = own ? 1.7 : 0.62
+  const radius = own ? 1.35 : 0.62
   const fill = own ? '#fbbf24' : '#f8fafc'
   return <circle cx={x} cy={y} r={radius} fill={fill} opacity={own ? 0.95 : 0.8} />
 }
