@@ -116,7 +116,14 @@ A wallet can receive, send, and watch its money move on the fake chain. Buying a
 - Prerequisite for later Lightning: no LN node without a Bitcoin node
 - Sim in `/tests/nodes.test.ts`
 
-**v0.2 done when:** you can create two wallets, buy, wait for a block, send between them with a fee choice, see the tx in a block, sell, refresh the page and still have the same state. **v0.2.7** adds the broadcast-node step before closing into v0.3.
+### v0.2.8 — L1 peer graph ✅
+- Blockchain row sits at the bottom; centered **network** above (7 peers + optional own)
+- Public relays + NPC full nodes + Café Exchange; own node appears and links in when added
+- Own node syncs over **4 blocks** before it can broadcast in Send
+- On mine / buy / send: packet flood (~500 ms/hop) from a random peer, the exchange, or the chosen relay
+- Sim in `/tests/nodes.test.ts` (sync + propagation)
+
+**v0.2 done when:** you can create two wallets, buy, wait for a block, send between them with a fee choice, see the tx in a block, sell, refresh the page and still have the same state. **v0.2.7–0.2.8** add the broadcast-node + peer-graph step before closing into v0.3.
 
 ---
 

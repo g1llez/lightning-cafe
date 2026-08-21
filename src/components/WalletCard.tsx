@@ -12,6 +12,11 @@ import {
   type Wallet,
 } from '../simulation/player'
 import { txsForAddress } from '../simulation/inspect'
+import {
+  OWN_NODE_SYNC_BLOCKS,
+  isOwnNodeReady,
+  ownNodeBlocksSynced,
+} from '../simulation/nodes'
 import { useSimulation } from '../simulation/SimulationProvider'
 import { LayerAssetCard } from './LayerAssetCard'
 import { Modal } from './Modal'
@@ -33,8 +38,18 @@ type WalletCardProps = {
 
 export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
   const { t } = useTranslation()
-  const { player, addWallet, renameWallet, newAddress, restoreWallet, deleteWallet, addOwnNode, removeOwnNode } =
-    useSimulation()
+  const {
+    player,
+    chain,
+    addWallet,
+    renameWallet,
+    newAddress,
+    restoreWallet,
+    deleteWallet,
+    addOwnNode,
+    removeOwnNode,
+  } = useSimulation()
+  const tip = chain.confirmed[0]?.height ?? chain.nextHeight - 1
   const [openWalletId, setOpenWalletId] = useState('')
   const [justCreatedId, setJustCreatedId] = useState('')
   const [sendWalletId, setSendWalletId] = useState('')
@@ -646,6 +661,14 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
             <div className="flex items-center border-t border-border first:border-t-0">
               <div className="min-w-0 flex-1 truncate px-2 py-2 text-sm font-medium">
                 {player.ownNode.name}
+                <span className="mt-0.5 block font-mono text-[10px] text-text-muted">
+                  {isOwnNodeReady(player.ownNode, tip)
+                    ? t('assets.nodeReady')
+                    : t('assets.nodeSyncing', {
+                        done: ownNodeBlocksSynced(player.ownNode, tip),
+                        total: OWN_NODE_SYNC_BLOCKS,
+                      })}
+                </span>
               </div>
               <div className="whitespace-nowrap pr-1">
                 <button

@@ -30,6 +30,7 @@ type SendModalProps = {
 export function SendModal({ walletId, onClose, onMessage, onSatsSent }: SendModalProps) {
   const { t } = useTranslation()
   const { chain, player, btcPriceCad, sendBtc, chooseBroadcastNode } = useSimulation()
+  const tip = chain.confirmed[0]?.height ?? chain.nextHeight - 1
   const wallet = player.wallets.find((item) => item.id === walletId)
   const available = wallet ? walletSats(wallet) : 0
   const [priority, setPriority] = useState<Priority>('high')
@@ -37,9 +38,9 @@ export function SendModal({ walletId, onClose, onMessage, onSatsSent }: SendModa
   const maxSend = Math.max(0, available - fee)
   const [amount, setAmount] = useState(Math.min(10_000, maxSend) || maxSend)
   const [addressDraft, setAddressDraft] = useState('')
-  const nodes = availableBroadcastNodes(player.ownNode)
+  const nodes = availableBroadcastNodes(player.ownNode, tip)
   const selected =
-    resolveBroadcastNode(player.selectedNodeId, player.ownNode) ?? nodes[0] ?? null
+    resolveBroadcastNode(player.selectedNodeId, player.ownNode, tip) ?? nodes[0] ?? null
 
   const toExchange = isExchangeAddress(addressDraft)
   const owner = findWalletByAddress(player, addressDraft)

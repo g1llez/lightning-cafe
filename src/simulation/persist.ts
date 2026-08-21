@@ -1,5 +1,5 @@
 import { createInitialChain, type ChainState, type ConfirmedBlock, type Priority, type ProjectedBlock } from './chain'
-import { DEFAULT_PUBLIC_NODE_ID, type OwnNode } from './nodes'
+import { DEFAULT_PUBLIC_NODE_ID, OWN_NODE_SYNC_BLOCKS, type OwnNode } from './nodes'
 import {
   createInitialPlayer,
   isOurExchangeSend,
@@ -194,7 +194,12 @@ function parseOwnNode(value: unknown): OwnNode | null {
   if (!name) {
     return null
   }
-  return { id: value.id, name }
+  // Legacy saves without syncStartHeight are treated as already synced.
+  const syncStartHeight =
+    typeof value.syncStartHeight === 'number' && Number.isFinite(value.syncStartHeight)
+      ? Math.floor(value.syncStartHeight)
+      : -OWN_NODE_SYNC_BLOCKS
+  return { id: value.id, name, syncStartHeight }
 }
 
 function parseSelectedNodeId(value: unknown, ownNode: OwnNode | null): string {

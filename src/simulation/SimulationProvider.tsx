@@ -33,6 +33,11 @@ import {
   writePersist,
 } from './persist'
 import {
+  EXCHANGE_NODE_ID,
+  pickBlockOrigin,
+  type NetworkPulse,
+} from './nodes'
+import {
   createRoom,
   fetchEvents,
   fetchRoom,
@@ -56,6 +61,7 @@ type SimulationContextValue = {
   btcPriceCad: number
   roomId: string | null
   sessionStatus: SessionStatus
+  networkPulse: NetworkPulse | null
   addWallet: (name: string) => void
   renameWallet: (walletId: string, name: string) => void
   newAddress: (walletId: string) => void
@@ -94,6 +100,7 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
   const [player, setPlayer] = useState(boot.player)
   const [roomId, setRoomId] = useState<string | null>(boot.roomId)
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>('off')
+  const [networkPulse, setNetworkPulse] = useState<NetworkPulse | null>(null)
   const chainRef = useRef(chain)
   const socketRef = useRef<WebSocket | null>(null)
   const seqRef = useRef(0)
@@ -127,6 +134,7 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
     const height = chain.nextHeight
     setPlayer((current) => advanceBlock(current, marketRate, Math.random, height))
     setChain((current) => mineBlock(current, pickPool()))
+    setNetworkPulse({ id: `block-${height}`, kind: 'block', originId: pickBlockOrigin() })
     setSecondsLeft(blockInterval)
   }, [secondsLeft, blockInterval, roomId, chain.marketRate, chain.nextHeight])
 
@@ -165,6 +173,7 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
           chainRef.current = next
           return next
         })
+        setNetworkPulse({ id: `block-${tick.height}`, kind: 'block', originId: pickBlockOrigin() })
         setSecondsLeft(60)
         return
       }
@@ -283,6 +292,10 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
     }
   }
 
+  function chainTip(): number {
+    return chain.confirmed[0]?.height ?? chain.nextHeight - 1
+  }
+
   const value = useMemo<SimulationContextValue>(
     () => ({
       chain,
@@ -291,6 +304,7 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
       btcPriceCad: BTC_PRICE_CAD,
       roomId,
       sessionStatus,
+      networkPulse,
       addWallet: (name) => setPlayer((current) => createWallet(current, name)),
       renameWallet: (walletId, name) => setPlayer((current) => renameWallet(current, walletId, name)),
       newAddress: (walletId) => setPlayer((current) => createAddress(current, walletId)),
@@ -302,9 +316,11 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
         const next = applyDelete(player, walletId)
         setPlayer(next)
       },
-      addOwnNode: (name) => setPlayer((current) => createOwnNode(current, name)),
+      addOwnNode: (name) =>
+        setPlayer((current) => createOwnNode(current, name, chainTip())),
       removeOwnNode: () => setPlayer((current) => deleteOwnNode(current)),
-      chooseBroadcastNode: (nodeId) => setPlayer((current) => selectBroadcastNode(current, nodeId)),
+      chooseBroadcastNode: (nodeId) =>
+        setPlayer((current) => selectBroadcastNode(current, nodeId, chainTip())),
       buyBtc: (address, cadAmount) => {
         const next = buyBitcoin(
           player,
@@ -317,6 +333,7 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
         const tx = next.pending[next.pending.length - 1]
         if (tx) {
           publishTx('buy', tx.address, tx.sats, tx.feeRate, tx.id)
+          setNetworkPulse({ id: `tx-${tx.id}`, kind: 'tx', originId: EXCHANGE_NODE_ID })
         }
       },
       sendBtc: (fromWalletId, toAddress, sats, feeRate) => {
@@ -325,6 +342,11 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
         const tx = next.pending[next.pending.length - 1]
         if (tx) {
           publishTx('send', tx.address, tx.sats, tx.feeRate, tx.id)
+          setNetworkPulse({
+            id: `tx-${tx.id}`,
+            kind: 'tx',
+            originId: player.selectedNodeId,
+          })
         }
       },
       createCafe: async () => {
@@ -353,9 +375,10 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
         setPlayer(createInitialPlayer())
         setChain(createInitialChain())
         setSecondsLeft(blockInterval)
+        setNetworkPulse(null)
       },
     }),
-    [chain, player, secondsLeft, roomId, sessionStatus, blockInterval],
+    [chain, player, secondsLeft, roomId, sessionStatus, blockInterval, networkPulse],
   )
 
   return <SimulationContext.Provider value={value}>{children}</SimulationContext.Provider>

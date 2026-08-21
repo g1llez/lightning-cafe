@@ -23,6 +23,7 @@ import { useSimulation } from '../simulation/SimulationProvider'
 import { mempoolFlyId } from './SatsFlight'
 import { BlockTetris } from './BlockTetris'
 import { BlockInspectModal } from './TxInspect'
+import { NodeNetwork } from './NodeNetwork'
 import { Tooltip } from './Tooltip'
 import { WalletCard } from './WalletCard'
 
@@ -284,11 +285,11 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
 
   return (
     <section
-      className={`relative border-t border-border bg-bg-secondary ${
+      className={`relative flex flex-col border-t border-border bg-bg-secondary ${
         fill ? 'min-h-0 flex-1' : 'h-[22rem] shrink-0'
       }`}
     >
-      <div className="absolute inset-x-0 top-0 z-10 px-4 py-3 text-center">
+      <div className="shrink-0 px-4 py-3 text-center">
         <h2 className="text-xl font-semibold tracking-tight md:text-2xl">{t('layers.bitcoin')}</h2>
         <p className="mt-1 font-mono text-sm text-accent">
           <Tooltip text={t('layers.nextBlockTip')} side="bottom">
@@ -297,13 +298,12 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
         </p>
       </div>
 
-      {/* Left padding (md+) keeps the floating wallet from covering the mempool. */}
-      <div
-        className={`flex h-full justify-center px-4 pb-4 pt-20 md:pl-[23rem] ${
-          fill ? 'items-center' : 'items-end'
-        }`}
-      >
-        <div className="flex w-full max-w-5xl flex-col items-stretch gap-4 md:flex-row md:items-start md:justify-center">
+      <div className="flex min-h-0 flex-1 flex-col justify-between gap-3 px-4 pb-4 md:pl-[23rem]">
+        <div className="flex min-h-0 flex-1 items-center justify-center">
+          <NodeNetwork />
+        </div>
+
+        <div className="flex w-full max-w-5xl flex-col items-stretch gap-4 self-center md:flex-row md:items-start md:justify-center">
           <div className="flex-1">
             <p className="mb-3 text-center text-sm font-semibold uppercase tracking-[0.16em] text-text-muted">
               {t('layers.mempool')}

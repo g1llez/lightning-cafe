@@ -7,7 +7,12 @@ import {
   seededRandom,
   type Priority,
 } from './chain'
-import { DEFAULT_PUBLIC_NODE_ID, type OwnNode } from './nodes'
+import {
+  DEFAULT_PUBLIC_NODE_ID,
+  OWN_NODE_ID,
+  isOwnNodeReady,
+  type OwnNode,
+} from './nodes'
 
 export const STARTING_CAD = 1_000
 export const BTC_PRICE_CAD = 100_000
@@ -228,8 +233,11 @@ function addWalletFromSeed(player: PlayerState, name: string, seed: string[]): P
   }
 }
 
-/** One own Bitcoin node per browser — created from the Nodes section, not from Send. */
-export function createOwnNode(player: PlayerState, name: string): PlayerState {
+/**
+ * One own Bitcoin node per browser — created from the Nodes section, not from Send.
+ * Needs `tipHeight` so sync can finish after OWN_NODE_SYNC_BLOCKS.
+ */
+export function createOwnNode(player: PlayerState, name: string, tipHeight: number): PlayerState {
   if (player.ownNode) {
     throw new Error('own-node-exists')
   }
@@ -237,11 +245,10 @@ export function createOwnNode(player: PlayerState, name: string): PlayerState {
   if (!trimmed) {
     throw new Error('own-node-name')
   }
-  const id = 'own-node'
   return {
     ...player,
-    ownNode: { id, name: trimmed },
-    selectedNodeId: id,
+    ownNode: { id: OWN_NODE_ID, name: trimmed, syncStartHeight: tipHeight },
+    selectedNodeId: DEFAULT_PUBLIC_NODE_ID,
   }
 }
 
@@ -258,11 +265,18 @@ export function deleteOwnNode(player: PlayerState): PlayerState {
   }
 }
 
-export function selectBroadcastNode(player: PlayerState, nodeId: string): PlayerState {
+export function selectBroadcastNode(
+  player: PlayerState,
+  nodeId: string,
+  tipHeight: number,
+): PlayerState {
   const isPublic = nodeId.startsWith('pub-')
   const isOwn = player.ownNode?.id === nodeId
   if (!isPublic && !isOwn) {
     throw new Error('node-unknown')
+  }
+  if (isOwn && player.ownNode && !isOwnNodeReady(player.ownNode, tipHeight)) {
+    throw new Error('own-node-syncing')
   }
   return { ...player, selectedNodeId: nodeId }
 }
