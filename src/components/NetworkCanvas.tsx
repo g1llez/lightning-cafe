@@ -31,8 +31,6 @@ import {
 const EAT_MS = 420
 const ENERGY_IDLE = 0.35
 const ICON_PX = 40
-/** Extra graph-units so a tx disc hides before the Bitcoin rim. */
-const PACKET_RIM_PAD = 1.85
 
 export type NetworkCanvasProps = {
   nodeIds: string[]
@@ -323,7 +321,7 @@ export function NetworkCanvas({
             return null
           }
           const extra =
-            packet.kind === 'tx' ? PACKET_RIM_PAD : packet.kind === 'block' ? 1.15 : 0.55
+            packet.kind === 'block' ? 1.15 : 0.55
           const pos = packetXY(packet, from, to, now, pad + extra)
           if (!pos) {
             return null
@@ -400,9 +398,9 @@ function PacketDot({
   y: number
 }) {
   const own = packet.kind === 'tx'
-  const radius = own ? 1.35 : 0.62
+  const radius = 0.62
   const fill = own ? '#f7931a' : '#f8fafc'
-  return <circle cx={x} cy={y} r={radius} fill={fill} opacity={own ? 0.95 : 0.8} />
+  return <circle cx={x} cy={y} r={radius} fill={fill} opacity={0.8} />
 }
 
 function clamp(value: number, lo: number, hi: number): number {
