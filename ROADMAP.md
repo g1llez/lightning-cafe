@@ -108,17 +108,26 @@ A wallet can receive, send, and watch its money move on the fake chain. Buying a
 - You pick sat/vB on Send; no extra cut; $ after 3 confirmations (tooltip on the deposit screen and on Send)
 - Sim in `/tests/sell.test.ts` (a send to that address)
 
-**v0.2 done when:** you can create two wallets, buy, wait for a block, send between them with a fee choice, see the tx in a block, sell, refresh the page and still have the same state.
+### v0.2.7 — Bitcoin node (broadcast) ✅
+- Section **Nodes** under wallets (`+` = your own sandbox node, one per browser)
+- **Send** picks a broadcast endpoint: public relay(s) or your node (hints on privacy / trust)
+- **Buy** unchanged: you paste `lc1`; the exchange broadcasts on its side
+- Persist own node + last choice; Café-compatible (client-local)
+- Prerequisite for later Lightning: no LN node without a Bitcoin node
+- Sim in `/tests/nodes.test.ts`
+
+**v0.2 done when:** you can create two wallets, buy, wait for a block, send between them with a fee choice, see the tx in a block, sell, refresh the page and still have the same state. **v0.2.7** adds the broadcast-node step before closing into v0.3.
 
 ---
 
 ## v0.3 — L2 node sim animated
 
-Visual Lightning network that lives, still not fully playable.
+Visual Lightning network that lives, still not fully playable. Requires a Bitcoin node from v0.2.7.
 
-### v0.3.1 — Create a node
+### v0.3.1 — Create a Lightning node
 - Alias, color, appears in L2 table
 - Tied to a funding wallet (on-chain balance shown)
+- Gate: player already has a Bitcoin node
 
 ### v0.3.2 — NPC graph
 - Several NPC nodes already connected

@@ -7,6 +7,7 @@ import {
   seededRandom,
   type Priority,
 } from './chain'
+import { DEFAULT_PUBLIC_NODE_ID, type OwnNode } from './nodes'
 
 export const STARTING_CAD = 1_000
 export const BTC_PRICE_CAD = 100_000
@@ -95,6 +96,10 @@ export type PlayerState = {
   nextTxId: number
   /** Exchange deposits already paid out in $, so a later block cannot credit twice. */
   paidSellIds: string[]
+  /** At most one self-hosted sandbox node. */
+  ownNode: OwnNode | null
+  /** Last broadcast endpoint used on Send (public id or own node id). */
+  selectedNodeId: string
 }
 
 export function createInitialPlayer(): PlayerState {
@@ -106,6 +111,8 @@ export function createInitialPlayer(): PlayerState {
     nextWalletId: 1,
     nextTxId: 1,
     paidSellIds: [],
+    ownNode: null,
+    selectedNodeId: DEFAULT_PUBLIC_NODE_ID,
   }
 }
 
@@ -219,6 +226,45 @@ function addWalletFromSeed(player: PlayerState, name: string, seed: string[]): P
     nextWalletId: player.nextWalletId + 1,
     wallets: [...player.wallets, wallet],
   }
+}
+
+/** One own Bitcoin node per browser — created from the Nodes section, not from Send. */
+export function createOwnNode(player: PlayerState, name: string): PlayerState {
+  if (player.ownNode) {
+    throw new Error('own-node-exists')
+  }
+  const trimmed = name.trim()
+  if (!trimmed) {
+    throw new Error('own-node-name')
+  }
+  const id = 'own-node'
+  return {
+    ...player,
+    ownNode: { id, name: trimmed },
+    selectedNodeId: id,
+  }
+}
+
+export function deleteOwnNode(player: PlayerState): PlayerState {
+  if (!player.ownNode) {
+    return player
+  }
+  const selectedNodeId =
+    player.selectedNodeId === player.ownNode.id ? DEFAULT_PUBLIC_NODE_ID : player.selectedNodeId
+  return {
+    ...player,
+    ownNode: null,
+    selectedNodeId,
+  }
+}
+
+export function selectBroadcastNode(player: PlayerState, nodeId: string): PlayerState {
+  const isPublic = nodeId.startsWith('pub-')
+  const isOwn = player.ownNode?.id === nodeId
+  if (!isPublic && !isOwn) {
+    throw new Error('node-unknown')
+  }
+  return { ...player, selectedNodeId: nodeId }
 }
 
 /** Strip list numbers people copy from the backup grid: `1. cafe`, `1-cafe`, `2) cafe`. */

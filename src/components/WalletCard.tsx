@@ -33,7 +33,8 @@ type WalletCardProps = {
 
 export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
   const { t } = useTranslation()
-  const { player, addWallet, renameWallet, newAddress, restoreWallet, deleteWallet } = useSimulation()
+  const { player, addWallet, renameWallet, newAddress, restoreWallet, deleteWallet, addOwnNode, removeOwnNode } =
+    useSimulation()
   const [openWalletId, setOpenWalletId] = useState('')
   const [justCreatedId, setJustCreatedId] = useState('')
   const [sendWalletId, setSendWalletId] = useState('')
@@ -70,6 +71,20 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
     setOpenWalletId(id)
     setRenaming(false)
     setSeedStep('hidden')
+  }
+
+  function handleAddNode() {
+    try {
+      addOwnNode(t('assets.nodeName'))
+      onMessage(t('assets.nodeCreated'))
+    } catch {
+      onMessage(t('assets.nodeExists'))
+    }
+  }
+
+  function handleDeleteNode() {
+    removeOwnNode()
+    onMessage(t('assets.nodeDeleted'))
   }
 
   function commitRename(walletId: string) {
@@ -595,6 +610,50 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
             })}
           </div>
         )}
+
+        <div className="mt-3 border-t border-border pt-3">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-xs uppercase tracking-[0.14em] text-text-muted">{t('assets.nodes')}</p>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-text-muted">{t('assets.ownNodeHint')}</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleAddNode}
+              disabled={Boolean(player.ownNode)}
+              aria-label={t('assets.addNode')}
+              title={t('assets.addNode')}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-accent/70 bg-bg-panel text-accent transition hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden="true">
+                <path
+                  d="M8 2.5v11M2.5 8h11"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
+          </div>
+          {!player.ownNode ? (
+            <p className="px-2 py-1 text-sm text-text-muted">{t('assets.noOwnNode')}</p>
+          ) : (
+            <div className="flex items-center gap-2 rounded-md border border-border px-2 py-2">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{player.ownNode.name}</p>
+                <p className="font-mono text-[10px] text-accent">own</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleDeleteNode}
+                className="rounded-md border border-border px-2 py-1 text-[11px] text-text-muted transition hover:border-danger/60 hover:text-danger"
+              >
+                {t('assets.deleteNode')}
+              </button>
+            </div>
+          )}
+        </div>
       </LayerAssetCard>
     </>
   )

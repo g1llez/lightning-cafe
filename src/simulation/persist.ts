@@ -1,4 +1,5 @@
 import { createInitialChain, type ChainState, type ConfirmedBlock, type Priority, type ProjectedBlock } from './chain'
+import { DEFAULT_PUBLIC_NODE_ID, type OwnNode } from './nodes'
 import {
   createInitialPlayer,
   isOurExchangeSend,
@@ -177,7 +178,32 @@ function parsePlayer(value: unknown): PlayerState | null {
     nextWalletId: value.nextWalletId,
     nextTxId: value.nextTxId,
     paidSellIds,
+    ownNode: parseOwnNode(value.ownNode),
+    selectedNodeId: parseSelectedNodeId(value.selectedNodeId, parseOwnNode(value.ownNode)),
   }
+}
+
+function parseOwnNode(value: unknown): OwnNode | null {
+  if (value == null) {
+    return null
+  }
+  if (!isRecord(value) || typeof value.id !== 'string' || !value.id || typeof value.name !== 'string') {
+    return null
+  }
+  const name = value.name.trim()
+  if (!name) {
+    return null
+  }
+  return { id: value.id, name }
+}
+
+function parseSelectedNodeId(value: unknown, ownNode: OwnNode | null): string {
+  if (typeof value === 'string' && value) {
+    if (value.startsWith('pub-') || (ownNode && ownNode.id === value)) {
+      return value
+    }
+  }
+  return DEFAULT_PUBLIC_NODE_ID
 }
 
 function parseProjected(value: unknown): ProjectedBlock | null {

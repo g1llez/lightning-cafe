@@ -14,10 +14,13 @@ import {
   buyBitcoin,
   createAddress,
   createInitialPlayer,
+  createOwnNode,
   ingestRemoteTx,
   renameWallet,
+  deleteOwnNode,
   deleteWallet as applyDelete,
   restoreWallet as applyRestore,
+  selectBroadcastNode,
   sendBitcoin,
   createWallet,
   type PlayerState,
@@ -58,6 +61,9 @@ type SimulationContextValue = {
   newAddress: (walletId: string) => void
   restoreWallet: (name: string, words: string) => void
   deleteWallet: (walletId: string) => void
+  addOwnNode: (name: string) => void
+  removeOwnNode: () => void
+  chooseBroadcastNode: (nodeId: string) => void
   buyBtc: (address: string, cadAmount: number) => void
   sendBtc: (fromWalletId: string, toAddress: string, sats: number, feeRate: number) => void
   createCafe: () => Promise<void>
@@ -296,6 +302,9 @@ export function SimulationProvider({ children }: SimulationProviderProps) {
         const next = applyDelete(player, walletId)
         setPlayer(next)
       },
+      addOwnNode: (name) => setPlayer((current) => createOwnNode(current, name)),
+      removeOwnNode: () => setPlayer((current) => deleteOwnNode(current)),
+      chooseBroadcastNode: (nodeId) => setPlayer((current) => selectBroadcastNode(current, nodeId)),
       buyBtc: (address, cadAmount) => {
         const next = buyBitcoin(
           player,
