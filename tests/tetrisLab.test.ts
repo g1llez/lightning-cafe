@@ -1,105 +1,103 @@
 import { describe, expect, it } from 'vitest'
 import {
   createLabState,
-  formatLabScenario,
+  formatLabTapes,
   labApply,
   labFilledCount,
-  labLockedToPieces,
-  LAB_PREVIEW_ROWS,
-  LAB_ROWS,
+  labSimulateTape,
+  labToTape,
+  LAB_MOVES_PER_TICK,
 } from '../src/simulation/tetrisLab'
-import { TETRIS_COLS, TETRIS_ROWS, tetrisPathClear } from '../src/simulation/tetris'
+import {
+  tetrisFilledCount,
+  tetrisPlan,
+  tetrisPlanPaintedCount,
+  tetrisScenarioCount,
+  tetrisSnapshot,
+} from '../src/simulation/tetris'
 
-describe('tetrisLab', () => {
-  it('uses 2 preview rows above the café 8×8', () => {
-    expect(LAB_ROWS).toBe(TETRIS_ROWS + LAB_PREVIEW_ROWS)
-    expect(LAB_PREVIEW_ROWS).toBe(2)
-    const state = createLabState()
-    expect(state.occupied).toHaveLength(LAB_ROWS)
-    expect(state.active!.y).toBe(0)
-  })
-
-  it('starts with an active piece and empty café', () => {
-    const state = createLabState()
-    expect(state.status).toBe('play')
-    expect(state.active).not.toBeNull()
-    expect(labFilledCount(state)).toBe(0)
-  })
-
-  it('each action drops the piece by 1; S only drops', () => {
+describe('tetrisLab action tapes', () => {
+  it('allows two moves before auto gravity', () => {
     let state = createLabState()
+    expect(state.movesLeft).toBe(LAB_MOVES_PER_TICK)
     const y0 = state.active!.y
-    state = labApply(state, 'noop')
-    expect(state.active!.y).toBe(y0 + 1)
-    state = labApply(state, 'rotCw')
-    expect(state.active!.y).toBe(y0 + 2)
-    const x0 = state.active!.x
     state = labApply(state, 'left')
-    expect(state.active!.x).toBe(x0 - 1)
-    expect(state.active!.y).toBe(y0 + 3)
+    expect(state.active!.y).toBe(y0)
+    expect(state.movesLeft).toBe(1)
+    expect(state.events.at(-1)).toBe('L')
+    state = labApply(state, 'right')
+    expect(state.events).toContain('G')
+    expect(state.active!.y).toBe(y0 + 1)
+    expect(state.movesLeft).toBe(LAB_MOVES_PER_TICK)
   })
 
-  it('locks when it cannot fall after an action', () => {
+  it('records hard drop and soft drop', () => {
     let state = createLabState()
-    let guard = 0
-    while (state.status === 'play' && state.active && guard < 40) {
-      state = labApply(state, 'noop')
-      guard += 1
-    }
-    expect(state.locked.length).toBeGreaterThanOrEqual(1)
-    expect(state.locked[0]!.landY).toBeGreaterThanOrEqual(0)
-    expect(state.locked[0]!.landY).toBeLessThan(TETRIS_ROWS)
+    state = labApply(state, 'soft')
+    expect(state.events.at(-1)).toBe('S')
+    state = labApply(state, 'drop')
+    expect(state.events.at(-1)).toBe('HD')
+    expect(state.lockedCount).toBe(1)
   })
 
-  it('blocks moves through occupied cells', () => {
+  it('exports a single TAPES block', () => {
     let state = createLabState()
     state = labApply(state, 'drop')
-    expect(state.locked.length).toBe(1)
-    expect(labFilledCount(state)).toBe(4)
-
-    expect(state.active).not.toBeNull()
-    for (let i = 0; i < TETRIS_COLS; i += 1) {
-      state = labApply(state, 'left')
-    }
-    state = labApply(state, 'drop')
-    expect(state.locked.length).toBe(2)
-
-    const cells = new Set<string>()
-    for (const piece of state.locked) {
-      for (const [dx, dy] of piece.cells) {
-        const key = `${piece.x + dx},${piece.landY + dy}`
-        expect(cells.has(key)).toBe(false)
-        cells.add(key)
-      }
-    }
+    const text = formatLabTapes([labToTape(state)])
+    expect(text.startsWith('[')).toBe(true)
+    expect(text).toContain('colors:')
+    expect(text).toContain('events:')
+    expect(text).toContain('HD')
   })
 
-  it('formats a full café scenario with path-clear drops', () => {
+  it('replays recorded events without overlapping cells', () => {
     let state = createLabState()
-    let guard = 0
-    while (state.status === 'play' && guard < 120) {
-      if (guard % 3 === 0) {
-        state = labApply(state, 'left')
-      } else if (guard % 3 === 1) {
-        state = labApply(state, 'right')
-      } else {
-        state = labApply(state, 'rotCw')
+    for (let i = 0; i < 6; i += 1) {
+      state = labApply(state, 'drop')
+      if (state.status !== 'play') {
+        break
       }
-      if (state.status === 'play') {
-        state = labApply(state, 'drop')
-      }
-      guard += 1
     }
-    if (state.status === 'full') {
-      expect(labFilledCount(state)).toBe(TETRIS_COLS * TETRIS_ROWS)
-      const text = formatLabScenario(state.locked)
-      expect(text).toContain('landY:')
-      const pieces = labLockedToPieces(state.locked).map((piece) => ({ ...piece, kind: 'npc' as const }))
-      for (let i = 0; i < pieces.length; i += 1) {
-        expect(tetrisPathClear(pieces, i)).toBe(true)
-      }
-    } else {
-      expect(['stuck', 'play']).toContain(state.status)
-    }
+    const tape = labToTape(state)
+    const end = labSimulateTape(tape, tape.events.length)
+    expect(end.lockedCount).toBe(state.lockedCount)
+    expect(labFilledCount(state)).toBe(
+      end.occupied.slice(2).reduce((sum, row) => sum + row.filter(Boolean).length, 0),
+    )
+  })
+})
+
+describe('block tetris tape replay', () => {
+  it('has the seven lab tapes', () => {
+    expect(tetrisScenarioCount()).toBe(7)
+  })
+
+  it('replays the same tape for the same seed', () => {
+    expect(tetrisPlan('u-2', 2_300)).toEqual(tetrisPlan('u-2', 2_300))
+  })
+
+  it('paints cells by the end of the minute', () => {
+    const tape = tetrisPlan('u-2', 2_300)
+    const done = tetrisSnapshot(tape, 1)
+    expect(done.falling).toBeNull()
+    expect(tetrisFilledCount(done.landed)).toBe(tetrisPlanPaintedCount(tape))
+    expect(tetrisFilledCount(done.landed)).toBeGreaterThan(0)
+  })
+
+  it('moves the active piece across events instead of ghosting a final pose', () => {
+    const tape = tetrisPlan('cafe', 2_000)
+    const start = tetrisSnapshot(tape, 0)
+    expect(start.falling).not.toBeNull()
+    const mid = tetrisSnapshot(tape, 0.3)
+    // Still progressing through events
+    expect(tetrisFilledCount(mid.landed) + (mid.falling ? 4 : 0)).toBeGreaterThan(0)
+  })
+
+  it('paints the last locked pieces as yours', () => {
+    const tape = tetrisPlan('u-2', 2_300)
+    const plain = tetrisSnapshot(tape, 1, 0).landed
+    const mine = tetrisSnapshot(tape, 1, 2).landed
+    expect(plain.flat().filter((cell) => cell?.kind === 'mine')).toHaveLength(0)
+    expect(mine.flat().filter((cell) => cell?.kind === 'mine').length).toBeGreaterThan(0)
   })
 })

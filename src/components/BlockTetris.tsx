@@ -3,13 +3,10 @@ import {
   tetrisCellFill,
   tetrisPlan,
   tetrisSnapshot,
-  tetrisSpawnY,
   TETRIS_COLS,
-  TETRIS_DROP_SHARE,
   TETRIS_ROWS,
   type TetrisCell,
   type TetrisFalling,
-  type TetrisPiece,
 } from '../simulation/tetris'
 
 type BlockTetrisProps = {
@@ -37,14 +34,14 @@ function cellStyle(cell: TetrisCell | Pick<TetrisFalling, 'color' | 'kind'>, fal
 }
 
 /**
- * Live packing: clock picks the step; each piece CSS-falls from spawn onto its
- * seat (short hop if the full path would ghost through landed tiles).
+ * Replays a lab action tape step-by-step (moves / rotates / gravity / drops).
+ * No vertical ghosting: the active piece is drawn at its recorded pose each event.
  */
 export function BlockTetris({ seed, fill, txCount, minePieces, interval }: BlockTetrisProps) {
   const fillRef = useRef(fill)
   fillRef.current = fill
   const [progress, setProgress] = useState(fill)
-  const plan = useMemo(() => tetrisPlan(seed, txCount, minePieces), [seed, txCount, minePieces])
+  const tape = useMemo(() => tetrisPlan(seed, txCount, minePieces), [seed, txCount, minePieces])
   const frozen = interval <= 0
 
   useEffect(() => {
@@ -63,13 +60,9 @@ export function BlockTetris({ seed, fill, txCount, minePieces, interval }: Block
     return () => window.cancelAnimationFrame(frame)
   }, [seed, interval, frozen])
 
-  const snap = tetrisSnapshot(plan, frozen ? 1 : progress)
-  const dropMs = Math.max(400, (interval / Math.max(1, plan.length)) * TETRIS_DROP_SHARE * 1000)
-  const fallingIndex =
-    snap.falling && plan.length > 0
-      ? Math.min(plan.length - 1, Math.floor(Math.min(0.999, progress) * plan.length))
-      : -1
-  const fallingPiece = fallingIndex >= 0 ? plan[fallingIndex] : null
+  const snap = tetrisSnapshot(tape, frozen ? 1 : progress, minePieces)
+  const width = 100 / TETRIS_COLS
+  const height = 100 / TETRIS_ROWS
 
   return (
     <div className="relative h-full w-full" data-testid="block-tetris" aria-hidden="true">
@@ -87,67 +80,26 @@ export function BlockTetris({ seed, fill, txCount, minePieces, interval }: Block
           }),
         )}
       </div>
-      {!frozen && fallingPiece ? (
-        <CssFallingPiece
-          key={`${seed}-${fallingIndex}`}
-          piece={fallingPiece}
-          spawnY={tetrisSpawnY(plan, fallingIndex)}
-          dropMs={dropMs}
-        />
+      {!frozen && snap.falling ? (
+        <div className="pointer-events-none absolute inset-0.5" data-testid="tetris-falling">
+          {snap.falling.cells.map(([dx, dy]) => {
+            const look = cellStyle(snap.falling!, true)
+            return (
+              <span
+                key={`${dx}-${dy}`}
+                className={`absolute rounded-[1px] transition-[top,left] duration-75 ease-linear ${look.className}`}
+                style={{
+                  ...look.style,
+                  left: `${(snap.falling!.x + dx) * width}%`,
+                  top: `${(snap.falling!.y + dy) * height}%`,
+                  width: `${width}%`,
+                  height: `${height}%`,
+                }}
+              />
+            )
+          })}
+        </div>
       ) : null}
-    </div>
-  )
-}
-
-function CssFallingPiece({
-  piece,
-  spawnY,
-  dropMs,
-}: {
-  piece: TetrisPiece
-  spawnY: number
-  dropMs: number
-}) {
-  const layerRef = useRef<HTMLDivElement>(null)
-  const width = 100 / TETRIS_COLS
-  const height = 100 / TETRIS_ROWS
-  const fromPercent = ((spawnY - piece.landY) / TETRIS_ROWS) * 100
-  const look = cellStyle(piece, true)
-
-  useEffect(() => {
-    const layer = layerRef.current
-    if (!layer) {
-      return
-    }
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const animation = layer.animate(
-      [{ transform: `translateY(${fromPercent}%)` }, { transform: 'translateY(0)' }],
-      { duration: reduced ? 200 : dropMs, easing: 'linear', fill: 'both' },
-    )
-    return () => animation.cancel()
-  }, [dropMs, fromPercent])
-
-  return (
-    <div
-      ref={layerRef}
-      className="pointer-events-none absolute inset-0.5"
-      data-testid="tetris-falling"
-      data-y={String(piece.landY)}
-      style={{ transform: `translateY(${fromPercent}%)` }}
-    >
-      {piece.cells.map(([dx, dy]) => (
-        <span
-          key={`${dx}-${dy}`}
-          className={`absolute rounded-[1px] ${look.className}`}
-          style={{
-            ...look.style,
-            left: `${(piece.x + dx) * width}%`,
-            top: `${(piece.landY + dy) * height}%`,
-            width: `${width}%`,
-            height: `${height}%`,
-          }}
-        />
-      ))}
     </div>
   )
 }

@@ -1,5 +1,5 @@
 /**
- * Smoke-check that the high-lane tetris piece actually moves down via CSS.
+ * Smoke-check that the high-lane tetris active piece changes position over time.
  * Run: npm run build && npm run preview
  * Then: npm run test:browser:tetris
  */
@@ -21,40 +21,34 @@ await page.goto(URL, { waitUntil: 'networkidle' })
 const falling = page.getByTestId('tetris-falling')
 await falling.waitFor({ state: 'visible', timeout: 8_000 })
 
-async function fallingTop() {
-  return falling.evaluate((node) => node.getBoundingClientRect().top)
+async function fallingFingerprint() {
+  return falling.evaluate((node) => {
+    const cells = [...node.querySelectorAll('span')]
+    return cells
+      .map((cell) => {
+        const box = cell.getBoundingClientRect()
+        return `${Math.round(box.left)},${Math.round(box.top)}`
+      })
+      .join('|')
+  })
 }
 
 const samples = []
-const deadline = Date.now() + 3_000
-while (Date.now() < deadline && samples.length < 40) {
+const deadline = Date.now() + 4_000
+while (Date.now() < deadline && samples.length < 50) {
   if ((await falling.count()) === 1) {
-    samples.push(await fallingTop())
+    samples.push(await fallingFingerprint())
   }
-  await page.waitForTimeout(50)
+  await page.waitForTimeout(80)
 }
 
 await page.screenshot({ path: `${SHOTS}/tetris-drop.png` })
 await browser.close()
 
-let downSteps = 0
-for (let index = 1; index < samples.length; index += 1) {
-  const prev = samples[index - 1]
-  const next = samples[index]
-  // Screen Y grows downward; a falling piece's top increases.
-  if (Number.isFinite(prev) && Number.isFinite(next) && next > prev + 1) {
-    downSteps += 1
-  }
-}
+const unique = new Set(samples.filter(Boolean))
+console.log(`falling fingerprints: ${unique.size} unique / ${samples.length} samples`)
 
-console.log(
-  `falling top px: ${samples
-    .slice(0, 6)
-    .map((y) => Math.round(y))
-    .join(' -> ')}... (${samples.length} samples, ${downSteps} down-steps)`,
-)
-
-if (downSteps < 2) {
-  console.error('Tetris piece did not move down during the drop window')
+if (unique.size < 2) {
+  console.error('Tetris active piece did not change pose during the window')
   process.exitCode = 1
 }

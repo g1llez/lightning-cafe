@@ -1,24 +1,26 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   createLabState,
-  formatLabScenario,
+  formatLabTapes,
   labApply,
   labColorHex,
   labFilledCount,
   labIsPreviewRow,
+  labToTape,
   LAB_COLS,
+  LAB_MOVES_PER_TICK,
   LAB_ROWS,
   type LabAction,
   type LabState,
+  type LabTape,
 } from '../simulation/tetrisLab'
 
 /**
- * Local recorder: one key = one action, then piece falls 1 (or locks).
- * Lab board is 8×10 (2 preview rows); export / café anim stay 8×8.
+ * Local recorder: 2 moves then gravity. Exports action tapes for café replay.
  */
 export function TetrisLab() {
   const [state, setState] = useState<LabState>(() => createLabState())
-  const [saved, setSaved] = useState<string[]>([])
+  const [saved, setSaved] = useState<LabTape[]>([])
   const [message, setMessage] = useState('')
 
   const apply = useCallback((action: LabAction) => {
@@ -50,7 +52,7 @@ export function TetrisLab() {
       }
       if (key === 's') {
         event.preventDefault()
-        apply('noop')
+        apply('soft')
         return
       }
       if (key === ' ' || key === 'enter') {
@@ -63,12 +65,14 @@ export function TetrisLab() {
   }, [apply])
 
   async function saveScenario() {
-    if (state.locked.length === 0) {
-      setMessage('Locke au moins une pièce avant de sauver.')
+    if (state.lockedCount === 0 && state.events.length === 0) {
+      setMessage('Joue un peu avant de sauver.')
       return
     }
-    const text = formatLabScenario(state.locked)
-    setSaved((current) => [...current, text])
+    const tape = labToTape(state)
+    const next = [...saved, tape]
+    setSaved(next)
+    const text = formatLabTapes(next)
     const filled = labFilledCount(state)
     const note =
       state.status === 'full'
@@ -78,21 +82,35 @@ export function TetrisLab() {
           : `${filled}/64`
     try {
       await navigator.clipboard.writeText(text)
-      setMessage(`Scénario ${saved.length + 1} (${note}) copié.`)
+      setMessage(`Tape ${next.length} ajoutée (${note}). Bloc complet copié.`)
     } catch {
-      setMessage(`Scénario ${saved.length + 1} (${note}) prêt ci-dessous.`)
+      setMessage(`Tape ${next.length} ajoutée (${note}). Copie le bloc ci-dessous.`)
+    }
+  }
+
+  async function copyAll() {
+    if (saved.length === 0) {
+      setMessage('Aucune tape sauvée.')
+      return
+    }
+    const text = formatLabTapes(saved)
+    try {
+      await navigator.clipboard.writeText(text)
+      setMessage(`${saved.length} tape(s) — bloc unique copié.`)
+    } catch {
+      setMessage('Copie manuelle ci-dessous.')
     }
   }
 
   return (
     <div className="flex min-h-full flex-col bg-bg-primary text-text-primary">
       <header className="border-b border-border px-4 py-3">
-        <h1 className="text-lg font-semibold">Tetris lab — enregistreur</h1>
+        <h1 className="text-lg font-semibold">Tetris lab — enregistreur d’actions</h1>
         <p className="mt-1 text-sm text-text-muted">
-          Grille lab 8×10 (2 rangées preview). Chaque action fait descendre d’1. L’export reste le bloc 8×8.
+          {LAB_MOVES_PER_TICK} moves (W/X/A/D), puis gravité auto. S = soft drop · Space = hard drop. Le Café rejoue chaque step.
         </p>
         <p className="mt-1 font-mono text-xs text-accent">
-          W/X rotate · A/D move · S descend · Space hard-drop
+          moves left: {state.movesLeft} · events: {state.events.length}
         </p>
       </header>
 
@@ -124,7 +142,6 @@ export function TetrisLab() {
                       backgroundColor: color ? labColorHex(color) : preview ? '#12141f' : '#1a1c2a',
                       boxShadow: y === 1 ? 'inset 0 -1px 0 0 #f7931a66' : undefined,
                     }}
-                    title={preview ? 'preview' : undefined}
                   />
                 )
               }),
@@ -132,7 +149,7 @@ export function TetrisLab() {
           </div>
 
           <p className="font-mono text-sm text-text-muted">
-            {labFilledCount(state)} / 64 · pièces {state.locked.length}
+            {labFilledCount(state)} / 64 · lock {state.lockedCount}
             {state.status === 'full' ? ' · PLEIN' : ''}
             {state.status === 'stuck' ? ' · BLOQUÉ' : ''}
           </p>
@@ -150,7 +167,7 @@ export function TetrisLab() {
             <button type="button" className="rounded border border-border px-3 py-1.5 text-sm" onClick={() => apply('right')}>
               D →
             </button>
-            <button type="button" className="rounded border border-border px-3 py-1.5 text-sm" onClick={() => apply('noop')}>
+            <button type="button" className="rounded border border-border px-3 py-1.5 text-sm" onClick={() => apply('soft')}>
               S ↓
             </button>
             <button
@@ -162,7 +179,7 @@ export function TetrisLab() {
             </button>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-center gap-2">
             <button
               type="button"
               className="rounded border border-border px-3 py-1.5 text-sm"
@@ -176,10 +193,18 @@ export function TetrisLab() {
             <button
               type="button"
               className="rounded bg-accent px-3 py-1.5 text-sm font-medium text-bg-primary disabled:opacity-40"
-              disabled={state.locked.length === 0}
+              disabled={state.events.length === 0}
               onClick={() => void saveScenario()}
             >
-              Sauver scénario
+              Sauver (+ bloc)
+            </button>
+            <button
+              type="button"
+              className="rounded border border-border px-3 py-1.5 text-sm disabled:opacity-40"
+              disabled={saved.length === 0}
+              onClick={() => void copyAll()}
+            >
+              Tout copier
             </button>
           </div>
           {message ? <p className="max-w-sm text-center text-sm text-accent">{message}</p> : null}
@@ -187,21 +212,16 @@ export function TetrisLab() {
 
         <aside className="w-full max-w-lg">
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-text-muted">
-            Scénarios sauvés ({saved.length})
+            Bloc TAPES ({saved.length})
           </h2>
           {saved.length === 0 ? (
-            <p className="text-sm text-text-muted">Aucun pour l’instant. Sauve dès qu’il y a des pièces lockées (plein ou bloqué).</p>
+            <p className="text-sm text-text-muted">
+              Sauve des parties : un seul bloc `[ ... ]` à coller dans `tetris.ts` → `TAPES`.
+            </p>
           ) : (
-            <div className="flex max-h-[28rem] flex-col gap-3 overflow-auto">
-              {saved.map((text, index) => (
-                <pre
-                  key={index}
-                  className="overflow-x-auto rounded-md border border-border bg-bg-secondary p-2 font-mono text-[10px] text-text-muted"
-                >
-                  {text}
-                </pre>
-              ))}
-            </div>
+            <pre className="max-h-[28rem] overflow-auto rounded-md border border-border bg-bg-secondary p-2 font-mono text-[10px] text-text-muted">
+              {formatLabTapes(saved)}
+            </pre>
           )}
         </aside>
       </div>

@@ -1,11 +1,16 @@
 import { seededRandom } from './chain'
+import {
+  LAB_PREVIEW_ROWS,
+  labSimulateTape,
+  type LabColor,
+  type LabTape,
+} from './tetrisLab'
 
 export const TETRIS_COLS = 8
 export const TETRIS_ROWS = 8
-/** Default spawn above the well when the drop path is clear. */
 export const TETRIS_SPAWN_Y = -2
-/** First slice of each piece's time slot is the fall; the rest is a pause. */
-export const TETRIS_DROP_SHARE = 0.5
+/** Fraction of each event slot spent “in motion” (rest = hold pose). */
+export const TETRIS_DROP_SHARE = 0.7
 
 /** Classic tetromino palette — saturated Game Boy / Guideline vibes. */
 export const TETRIS_PALETTE = {
@@ -40,261 +45,90 @@ export type TetrisFalling = {
   color: Exclude<TetrisColor, 'mine'>
 }
 
-type Raw = Omit<TetrisPiece, 'kind'>
+export type TetrisTape = LabTape
 
 /**
- * Lab recordings (tetris-lab). Blocks need not be perfect / full.
- * landY may be negative when a piece locked in the lab preview rows.
+ * Paste lab exports here (single block from “Tout copier”).
  */
-const RECORDED: Raw[][] = [
-  [
-    { cells: [[0, 0], [1, 0], [2, 0], [3, 0]], x: 0, landY: 7, color: 'cyan' },
-    { cells: [[2, 1], [1, 1], [0, 1], [1, 0]], x: 0, landY: 5, color: 'purple' },
-    { cells: [[0, 0], [1, 0], [0, 1], [1, 1]], x: 3, landY: 5, color: 'yellow' },
-    { cells: [[1, 0], [1, 1], [1, 2], [0, 2]], x: 4, landY: 5, color: 'blue' },
-    { cells: [[0, 0], [0, 1], [0, 2], [1, 2]], x: 6, landY: 5, color: 'orange' },
-    { cells: [[0, 2], [0, 1], [1, 1], [1, 0]], x: 2, landY: 3, color: 'red' },
-    { cells: [[1, 0], [2, 0], [0, 1], [1, 1]], x: 0, landY: 3, color: 'green' },
-    { cells: [[1, 0], [2, 0], [0, 1], [1, 1]], x: 5, landY: 3, color: 'green' },
-    { cells: [[0, 2], [0, 1], [1, 1], [1, 0]], x: 4, landY: 2, color: 'red' },
-    { cells: [[0, 0], [1, 0], [2, 0], [3, 0]], x: 1, landY: 2, color: 'cyan' },
-    { cells: [[0, 0], [1, 0], [0, 1], [1, 1]], x: 6, landY: 1, color: 'yellow' },
-    { cells: [[2, 1], [1, 1], [0, 1], [1, 0]], x: 3, landY: 0, color: 'purple' },
-  ],
-  [
-    { cells: [[0, 0], [1, 0], [1, 1], [2, 1]], x: 5, landY: 6, color: 'red' },
-    { cells: [[2, 1], [1, 1], [0, 1], [0, 0]], x: 3, landY: 6, color: 'blue' },
-    { cells: [[0, 1], [0, 0], [1, 2], [1, 1]], x: 3, landY: 4, color: 'green' },
-    { cells: [[0, 3], [0, 2], [0, 1], [0, 0]], x: 0, landY: 4, color: 'cyan' },
-    { cells: [[0, 0], [0, 1], [0, 2], [1, 2]], x: 1, landY: 5, color: 'orange' },
-    { cells: [[1, 0], [1, 1], [1, 2], [0, 1]], x: 4, landY: 3, color: 'purple' },
-    { cells: [[0, 0], [1, 0], [0, 1], [1, 1]], x: 6, landY: 4, color: 'yellow' },
-    { cells: [[1, 0], [2, 0], [0, 1], [1, 1]], x: 3, landY: 2, color: 'green' },
-    { cells: [[1, 0], [1, 1], [1, 2], [0, 1]], x: 0, landY: 2, color: 'purple' },
-    { cells: [[0, 2], [0, 1], [1, 1], [1, 0]], x: 2, landY: 1, color: 'red' },
-    { cells: [[0, 0], [0, 1], [0, 2], [1, 2]], x: 5, landY: -1, color: 'orange' },
-    { cells: [[0, 0], [1, 0], [2, 0], [3, 0]], x: 3, landY: -2, color: 'cyan' },
-  ],
-  [
-    { cells: [[0, 0], [1, 0], [1, 1], [2, 1]], x: 5, landY: 6, color: 'red' },
-    { cells: [[0, 0], [1, 0], [2, 0], [3, 0]], x: 2, landY: 7, color: 'cyan' },
-    { cells: [[1, 0], [1, 1], [1, 2], [0, 1]], x: 5, landY: 3, color: 'purple' },
-    { cells: [[1, 0], [1, 1], [1, 2], [0, 2]], x: 0, landY: 5, color: 'blue' },
-    { cells: [[0, 0], [0, 1], [0, 2], [1, 2]], x: 2, landY: 4, color: 'orange' },
-    { cells: [[0, 1], [0, 0], [1, 2], [1, 1]], x: 3, landY: 4, color: 'green' },
-    { cells: [[0, 0], [1, 0], [0, 1], [1, 1]], x: 0, landY: 3, color: 'yellow' },
-    { cells: [[0, 3], [0, 2], [0, 1], [0, 0]], x: 4, landY: 1, color: 'cyan' },
-    { cells: [[0, 0], [1, 0], [0, 1], [1, 1]], x: 2, landY: 2, color: 'yellow' },
-    { cells: [[0, 2], [0, 1], [1, 1], [1, 0]], x: 0, landY: 0, color: 'red' },
-    { cells: [[1, 0], [2, 0], [0, 1], [1, 1]], x: 2, landY: 0, color: 'green' },
-    { cells: [[0, 0], [1, 0], [2, 0], [1, 1]], x: 3, landY: -2, color: 'purple' },
-  ],
-  [
-    { cells: [[0, 0], [1, 0], [1, 1], [2, 1]], x: 5, landY: 6, color: 'red' },
-    { cells: [[0, 1], [0, 0], [1, 1], [1, 0]], x: 0, landY: 6, color: 'yellow' },
-    { cells: [[2, 1], [1, 1], [0, 1], [0, 0]], x: 3, landY: 6, color: 'blue' },
-    { cells: [[0, 3], [0, 2], [0, 1], [0, 0]], x: 2, landY: 4, color: 'cyan' },
-    { cells: [[0, 0], [1, 0], [2, 0], [1, 1]], x: 3, landY: 5, color: 'purple' },
-    { cells: [[0, 1], [0, 0], [1, 2], [1, 1]], x: 6, landY: 4, color: 'green' },
-    { cells: [[0, 0], [0, 1], [0, 2], [1, 2]], x: 0, landY: 3, color: 'orange' },
-    { cells: [[0, 2], [0, 1], [1, 1], [1, 0]], x: 1, landY: 2, color: 'red' },
-    { cells: [[0, 1], [1, 1], [2, 1], [2, 0]], x: 3, landY: 3, color: 'orange' },
-    { cells: [[0, 0], [1, 0], [0, 1], [1, 1]], x: 3, landY: 2, color: 'yellow' },
-    { cells: [[1, 0], [1, 1], [1, 2], [0, 2]], x: 6, landY: 1, color: 'blue' },
-    { cells: [[0, 0], [1, 0], [2, 0], [3, 0]], x: 3, landY: 1, color: 'cyan' },
-    { cells: [[1, 0], [2, 0], [0, 1], [1, 1]], x: 0, landY: 1, color: 'green' },
-    { cells: [[0, 0], [1, 0], [2, 0], [1, 1]], x: 1, landY: -1, color: 'purple' },
-    { cells: [[0, 0], [1, 0], [2, 0], [3, 0]], x: 3, landY: -2, color: 'cyan' },
-  ],
-  [
-    { cells: [[0, 0], [1, 0], [2, 0], [3, 0]], x: 0, landY: 7, color: 'cyan' },
-    { cells: [[0, 0], [1, 0], [1, 1], [2, 1]], x: 3, landY: 6, color: 'red' },
-    { cells: [[2, 1], [1, 1], [0, 1], [0, 0]], x: 0, landY: 5, color: 'blue' },
-    { cells: [[0, 0], [0, 1], [0, 2], [1, 2]], x: 6, landY: 5, color: 'orange' },
-    { cells: [[0, 0], [1, 0], [0, 1], [1, 1]], x: 1, landY: 4, color: 'yellow' },
-    { cells: [[1, 0], [1, 1], [1, 2], [0, 1]], x: 4, landY: 4, color: 'purple' },
-    { cells: [[1, 0], [2, 0], [0, 1], [1, 1]], x: 3, landY: 3, color: 'green' },
-    { cells: [[1, 0], [1, 1], [1, 2], [0, 2]], x: 6, landY: 2, color: 'blue' },
-    { cells: [[2, 1], [1, 1], [0, 1], [1, 0]], x: 0, landY: 2, color: 'purple' },
-    { cells: [[2, 0], [1, 0], [0, 0], [0, 1]], x: 3, landY: 2, color: 'orange' },
-    { cells: [[0, 0], [1, 0], [2, 0], [3, 0]], x: 4, landY: 1, color: 'cyan' },
-    { cells: [[0, 1], [0, 0], [1, 2], [1, 1]], x: 1, landY: 0, color: 'green' },
-    { cells: [[0, 2], [0, 1], [1, 1], [1, 0]], x: 2, landY: -2, color: 'red' },
-  ],
-  [
-    { cells: [[0, 0], [1, 0], [2, 0], [3, 0]], x: 0, landY: 7, color: 'cyan' },
-    { cells: [[2, 1], [1, 1], [0, 1], [1, 0]], x: 4, landY: 6, color: 'purple' },
-    { cells: [[0, 1], [0, 0], [1, 2], [1, 1]], x: 6, landY: 5, color: 'green' },
-    { cells: [[0, 0], [1, 0], [0, 1], [1, 1]], x: 3, landY: 5, color: 'yellow' },
-    { cells: [[0, 1], [1, 1], [2, 1], [2, 0]], x: 0, landY: 5, color: 'orange' },
-    { cells: [[0, 2], [0, 1], [1, 1], [1, 0]], x: 5, landY: 3, color: 'red' },
-    { cells: [[1, 0], [1, 1], [1, 2], [0, 2]], x: 0, landY: 3, color: 'blue' },
-    { cells: [[2, 1], [1, 1], [0, 1], [1, 0]], x: 2, landY: 3, color: 'purple' },
-    { cells: [[1, 0], [1, 1], [1, 2], [0, 2]], x: 4, landY: 1, color: 'blue' },
-    { cells: [[0, 0], [1, 0], [2, 0], [3, 0]], x: 0, landY: 2, color: 'cyan' },
-    { cells: [[0, 0], [1, 0], [0, 1], [1, 1]], x: 0, landY: 0, color: 'yellow' },
-    { cells: [[0, 0], [1, 0], [1, 1], [2, 1]], x: 2, landY: 0, color: 'red' },
-  ],
+export const TAPES: TetrisTape[] = [
+  { colors: ["orange","purple","green","cyan","yellow","blue","red","purple","blue","green","cyan","yellow","red","orange"] as const, events: ["L","L","G","L","HD","CW","CW","G","HD","L","HD","CW","R","G","R","R","G","R","R","G","HD","R","R","G","R","L","G","HD","CW","CW","G","CW","CW","G","R","R","G","HD","CW","L","G","HD","CW","CW","G","CW","CW","G","L","CW","G","L","HD","CW","CW","G","R","HD","L","L","G","HD","L","R","G","R","CW","G","HD","R","HD","R","R","G","R","HD","R","CW","G"] as const },
+  { colors: ["green","red","purple","blue","yellow","cyan","orange","blue","green","red","orange","cyan","yellow","purple","red","green"] as const, events: ["L","L","G","HD","L","CW","G","L","HD","CW","CW","G","R","S","S","S","S","S","S","S","L","HD","R","R","G","HD","R","R","G","L","HD","CW","R","G","R","R","G","R","R","G","HD","CW","CW","G","CW","HD","CW","CW","G","L","HD","CW","R","G","R","R","G","HD","CW","L","G","L","HD","R","R","G","R","HD","CW","R","G","R","HD","L","HD","L","L","G","CW","CW","G","HD"] as const },
+  { colors: ["purple","orange","blue","yellow","red","cyan","green","purple","green","orange","cyan","yellow","blue"] as const, events: ["CW","CW","G","HD","L","L","G","L","HD","CW","L","G","L","CW","G","CW","CW","G","HD","R","R","G","R","HD","R","L","G","L","R","G","R","HD","CW","L","G","HD","CW","R","G","R","HD","R","R","G","CW","R","G","R","L","G","CW","CW","G","CW","HD","CW","HD","HD","L","L","G","CW","HD","L","L","G","HD"] as const },
+  { colors: ["yellow","blue","green","red","cyan","purple","orange","purple","red","green","yellow","orange","cyan","blue"] as const, events: ["L","L","G","L","HD","CW","CW","G","CW","L","G","HD","CW","HD","R","R","G","HD","R","CW","G","R","R","G","R","R","G","HD","CW","CW","G","CW","R","G","R","R","G","HD","L","L","G","L","HD","R","HD","CW","L","G","HD","L","L","G","HD","HD","R","R","G","R","L","G","CW","HD","L","L","G","HD"] as const },
+  { colors: ["purple","red","orange","yellow","blue","green","cyan","red","orange","blue","cyan","green","yellow","purple","orange"] as const, events: ["CW","CW","G","L","L","G","HD","HD","R","R","G","CW","CW","G","CW","CW","G","CW","HD","R","R","G","R","L","G","HD","CW","L","G","HD","CW","R","G","R","R","G","R","HD","HD","CW","L","G","L","HD","CW","CW","G","CW","L","G","L","L","G","HD","CW","CW","G","CW","HD","R","R","G","HD","R","R","G","L","L","G","L","HD","L","L","G","L","HD","R","R","G","R","CW","G"] as const },
+  { colors: ["blue","red","green","purple","orange","yellow","cyan","yellow","green","red","blue","cyan","purple","orange","cyan"] as const, events: ["HD","L","CW","G","R","HD","CW","R","G","R","R","G","R","HD","R","R","G","HD","L","L","G","L","HD","L","L","G","HD","R","R","G","CW","R","G","R","R","G","HD","R","R","G","HD","CW","HD","L","L","G","CW","HD","CW","CW","G","R","HD","L","L","G","HD","R","R","G","R","HD","L","CW","G","HD"] as const },
+  { colors: ["red","purple","green","cyan","orange","blue","yellow","purple","green","cyan","yellow","blue","red","orange","cyan","yellow","green"] as const, events: ["R","R","G","R","HD","CW","CW","G","S","S","S","S","S","S","S","R","HD","L","L","G","R","HD","CW","L","G","L","HD","CW","CW","G","CW","L","G","L","HD","CW","CW","G","CW","CW","G","CW","R","G","R","HD","R","R","G","R","HD","R","HD","L","HD","L","CW","G","L","HD","R","R","G","R","HD","R","HD","CW","L","G","HD","HD","R","R","G","HD","L","L","G","HD"] as const },
 ]
 
-function emptyOcc(): boolean[][] {
-  return Array.from({ length: TETRIS_ROWS }, () => Array.from({ length: TETRIS_COLS }, () => false))
-}
-
-function emptyGrid(): TetrisCell[][] {
+function emptyCafe(): TetrisCell[][] {
   return Array.from({ length: TETRIS_ROWS }, () => Array.from({ length: TETRIS_COLS }, () => null))
 }
 
-function fits(occ: boolean[][], cells: [number, number][], x: number, y: number): boolean {
-  return cells.every(([dx, dy]) => {
-    const px = x + dx
-    const py = y + dy
-    if (px < 0 || px >= TETRIS_COLS || py >= TETRIS_ROWS) {
-      return false
-    }
-    if (py < 0) {
-      return true
-    }
-    return !occ[py]?.[px]
-  })
-}
-
-function cover(occ: boolean[][], cells: [number, number][], x: number, y: number) {
-  for (const [dx, dy] of cells) {
-    const px = x + dx
-    const py = y + dy
-    const row = occ[py]
-    if (row && px >= 0 && px < TETRIS_COLS) {
-      row[px] = true
-    }
-  }
-}
-
-function paintsInWell(piece: Raw): boolean {
-  return piece.cells.some(([dx, dy]) => {
-    const px = piece.x + dx
-    const py = piece.landY + dy
-    return px >= 0 && px < TETRIS_COLS && py >= 0 && py < TETRIS_ROWS
-  })
-}
-
-const BUILT: TetrisPiece[][] = RECORDED.map((raw) =>
-  raw.filter(paintsInWell).map((item) => ({ ...item, kind: 'npc' as const })),
-).filter((plan) => plan.length > 0)
-
-function stamp(
-  grid: TetrisCell[][],
-  item: { cells: [number, number][]; x: number; y: number; kind: TetrisKind; color: Exclude<TetrisColor, 'mine'> },
-) {
-  for (const [dx, dy] of item.cells) {
-    const row = grid[Math.round(item.y) + dy]
-    const x = item.x + dx
-    if (row && x >= 0 && x < TETRIS_COLS) {
-      row[x] = { color: item.color, kind: item.kind }
-    }
-  }
-}
-
-function occupiedBefore(plan: TetrisPiece[], index: number): boolean[][] {
-  const occ = emptyOcc()
-  for (const item of plan.slice(0, index)) {
-    cover(occ, item.cells, item.x, item.landY)
-  }
-  return occ
-}
-
-/** True if every intermediate drop pose from spawn sits only on empty cells. */
-export function tetrisPathClear(plan: TetrisPiece[], index: number): boolean {
-  const piece = plan[index]
-  if (!piece) {
-    return false
-  }
-  return tetrisSpawnY(plan, index) <= TETRIS_SPAWN_Y
-}
-
-/**
- * Highest Y from which the final pose can fall straight down onto landY
- * without overlapping already-landed tiles. No cosmetic hop through the stack:
- * if the piece was packed sideways in the lab, the fall starts just above the seat.
- */
-export function tetrisSpawnY(plan: TetrisPiece[], index: number): number {
-  const piece = plan[index]
-  if (!piece) {
-    return TETRIS_SPAWN_Y
-  }
-  const occ = occupiedBefore(plan, index)
-  let spawn = piece.landY
-  for (let y = piece.landY - 1; y >= TETRIS_SPAWN_Y; y -= 1) {
-    let clear = true
-    for (let t = y; t <= piece.landY; t += 1) {
-      if (!fits(occ, piece.cells, piece.x, t)) {
-        clear = false
-        break
+function toCafeGrid(
+  occupied: (LabColor | null)[][],
+  locks: { cells: [number, number][]; x: number; y: number; color: LabColor }[],
+  minePieces: number,
+): TetrisCell[][] {
+  const grid = emptyCafe()
+  for (let y = 0; y < TETRIS_ROWS; y += 1) {
+    for (let x = 0; x < TETRIS_COLS; x += 1) {
+      const color = occupied[y + LAB_PREVIEW_ROWS]?.[x] ?? null
+      if (color) {
+        grid[y]![x] = { color, kind: 'npc' }
       }
     }
-    if (!clear) {
-      break
-    }
-    spawn = y
   }
-  return spawn
+  if (minePieces <= 0) {
+    return grid
+  }
+  const mineFrom = Math.max(0, locks.length - minePieces)
+  for (let i = mineFrom; i < locks.length; i += 1) {
+    const lock = locks[i]!
+    for (const [dx, dy] of lock.cells) {
+      const cafeY = lock.y + dy - LAB_PREVIEW_ROWS
+      const cafeX = lock.x + dx
+      if (cafeY >= 0 && cafeY < TETRIS_ROWS && cafeX >= 0 && cafeX < TETRIS_COLS && grid[cafeY]?.[cafeX]) {
+        grid[cafeY]![cafeX] = { color: lock.color, kind: 'mine' }
+      }
+    }
+  }
+  return grid
 }
 
-export function tetrisPlan(seed: string, txCount: number, minePieces = 0): TetrisPiece[] {
-  if (BUILT.length === 0) {
-    throw new Error('No tetris scenarios available')
+export function tetrisPlan(seed: string, txCount: number, _minePieces = 0): TetrisTape {
+  if (TAPES.length === 0) {
+    throw new Error('No tetris tapes available')
   }
   const random = seededRandom(`${seed}|${txCount}|scene`)
-  const base = BUILT[Math.floor(random() * BUILT.length)]!
-  const mineFrom = Math.max(0, base.length - Math.max(0, minePieces))
-  return base.map((item, index) => ({
-    ...item,
-    kind: index >= mineFrom ? 'mine' : 'npc',
-  }))
+  return TAPES[Math.floor(random() * TAPES.length)]!
 }
 
-export function tetrisSnapshot(plan: TetrisPiece[], progress: number): {
+export function tetrisSnapshot(
+  tape: TetrisTape,
+  progress: number,
+  minePieces = 0,
+): {
   landed: TetrisCell[][]
   falling: TetrisFalling | null
 } {
   const t = Math.min(1, Math.max(0, progress))
-  const grid = emptyGrid()
-  if (plan.length === 0 || t >= 1) {
-    for (const item of plan) {
-      stamp(grid, { ...item, y: item.landY })
-    }
-    return { landed: grid, falling: null }
-  }
+  const total = Math.max(1, tape.events.length)
+  const eventCount = t >= 1 ? total : Math.floor(t * total)
+  const state = labSimulateTape(tape, eventCount)
+  const landed = toCafeGrid(state.occupied, state.locks, minePieces)
 
-  const pos = t * plan.length
-  const index = Math.min(plan.length - 1, Math.floor(pos))
-  const frac = pos - Math.floor(pos)
-  const locked = frac >= TETRIS_DROP_SHARE ? index + 1 : index
-  for (const item of plan.slice(0, locked)) {
-    stamp(grid, { ...item, y: item.landY })
+  if (t >= 1 || !state.active) {
+    return { landed, falling: null }
   }
-
-  if (frac >= TETRIS_DROP_SHARE) {
-    return { landed: grid, falling: null }
-  }
-
-  const current = plan[index]
-  if (!current) {
-    return { landed: grid, falling: null }
-  }
-
-  const spawnY = tetrisSpawnY(plan, index)
-  const dropT = frac / TETRIS_DROP_SHARE
-  const travel = current.landY - spawnY
 
   return {
-    landed: grid,
+    landed,
     falling: {
-      cells: current.cells,
-      x: current.x,
-      y: spawnY + dropT * travel,
-      kind: current.kind,
-      color: current.color,
+      cells: state.active.cells,
+      x: state.active.x,
+      y: state.active.y - LAB_PREVIEW_ROWS,
+      kind: 'npc',
+      color: state.active.color,
     },
   }
 }
@@ -317,20 +151,23 @@ export function tetrisCellFill(cell: TetrisCell | Pick<TetrisFalling, 'color' | 
   return TETRIS_PALETTE[cell.color]
 }
 
-/** Lab recordings are allowed to be imperfect / not full. */
 export function tetrisWellsAreFull(): boolean {
   return false
 }
 
 export function tetrisScenarioCount(): number {
-  return BUILT.length
+  return TAPES.length
 }
 
-/** Expected painted cells for a finished plan (in-bounds only). */
-export function tetrisPlanPaintedCount(plan: TetrisPiece[]): number {
-  const grid = emptyGrid()
-  for (const item of plan) {
-    stamp(grid, { ...item, y: item.landY })
-  }
-  return tetrisFilledCount(grid)
+export function tetrisPlanPaintedCount(tape: TetrisTape): number {
+  return tetrisFilledCount(tetrisSnapshot(tape, 1).landed)
+}
+
+/** @deprecated Pose-path helpers — action tapes replay steps instead. */
+export function tetrisPathClear(_plan: unknown, _index: number): boolean {
+  return true
+}
+
+export function tetrisSpawnY(_plan: unknown, _index: number): number {
+  return TETRIS_SPAWN_Y
 }
