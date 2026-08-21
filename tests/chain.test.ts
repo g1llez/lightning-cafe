@@ -4,6 +4,7 @@ import {
   estimateFeeSats,
   formatCountdown,
   INITIAL_MARKET_RATE,
+  lanePackProgress,
   marketQuotes,
   mineBlock,
   MINING_POOLS,
@@ -79,6 +80,11 @@ describe('chain simulation', () => {
     expect(toneForFee(2)).toBe('bg-block-low')
     expect(toneForFee(4)).toBe('bg-block-mid')
     expect(toneForFee(18)).toBe('bg-block-high')
+    expect(lanePackProgress(1, 8, 8)).toBe(1)
+    expect(lanePackProgress(1, 4, 8)).toBe(0.5)
+    expect(lanePackProgress(1, 6, 8)).toBe(0.75)
+    expect(lanePackProgress(0.5, 4, 8)).toBe(0.25)
+    expect(lanePackProgress(1, 1, 100)).toBe(0.15)
     expect(randomTxCount(() => 0)).toBe(1_600)
     expect(randomTxCount(() => 0.999)).toBeLessThan(4_000)
     expect(randomTxCount(() => 0.999)).toBeGreaterThan(3_500)

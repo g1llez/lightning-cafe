@@ -83,6 +83,21 @@ export function toneForFee(feeRate: number): string {
   return 'bg-block-low'
 }
 
+/**
+ * Mempool packing progress vs the high lane: feeLane/feeHigh (e.g. 4/8 → 50%).
+ * High stays at full packingFill; low/medium advance slower in the same block window.
+ */
+export function lanePackProgress(
+  packingFill: number,
+  feeLane: number,
+  feeHigh: number,
+  minRatio = 0.15,
+): number {
+  const high = Math.max(1, feeHigh)
+  const ratio = Math.min(1, Math.max(minRatio, feeLane / high))
+  return Math.min(1, Math.max(0, packingFill) * ratio)
+}
+
 export function randomTxCount(random = Math.random): number {
   return 1_600 + Math.floor(random() * 2_400)
 }
