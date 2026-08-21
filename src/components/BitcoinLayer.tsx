@@ -213,6 +213,16 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
   const lastMinedId = useRef(chain.confirmed[0]?.id)
   const [mining, setMining] = useState<ConfirmedBlock | null>(null)
   const [inspect, setInspect] = useState<InspectTarget | null>(null)
+  /** Narrow viewports: fewer confirmed tiles so the row fits. */
+  const [confirmedVisible, setConfirmedVisible] = useState(5)
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 767px)')
+    const sync = () => setConfirmedVisible(media.matches ? 3 : 5)
+    sync()
+    media.addEventListener('change', sync)
+    return () => media.removeEventListener('change', sync)
+  }, [])
 
   useEffect(() => {
     const head = chain.confirmed[0]
@@ -287,7 +297,7 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
         </p>
       </div>
 
-      {/* Left padding keeps the floating wallet card from covering the mempool blocks. */}
+      {/* Left padding (md+) keeps the floating wallet from covering the mempool. */}
       <div
         className={`flex h-full justify-center px-4 pb-4 pt-20 md:pl-[23rem] ${
           fill ? 'items-center' : 'items-end'
@@ -342,7 +352,7 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
               {t('layers.confirmed')}
             </p>
             <div className="flex items-center justify-center gap-3">
-              {chain.confirmed.map((block: ConfirmedBlock, index) => {
+              {chain.confirmed.slice(0, confirmedVisible).map((block: ConfirmedBlock, index) => {
                 const mine = ownSettledInBlock(player, block.height)
                 return (
                   <BlockTile

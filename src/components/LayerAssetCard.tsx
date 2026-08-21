@@ -12,7 +12,7 @@ export function LayerAssetCard({ title, action, onBack, backLabel, children }: L
   return (
     <div
       data-fly="wallet"
-      className="absolute top-1/2 left-4 z-10 w-[min(22rem,calc(100%-2rem))] -translate-y-1/2 rounded-lg border border-border bg-bg-panel/95 p-3 shadow-lg backdrop-blur"
+      className="absolute top-16 left-4 z-10 w-[min(20rem,calc(100%-2rem))] rounded-lg border border-border bg-bg-panel/95 p-3 shadow-lg backdrop-blur md:top-20 md:left-6"
     >
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-1.5">
