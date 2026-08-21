@@ -50,16 +50,16 @@ export type LayoutTuning = {
 }
 
 export const DEFAULT_LAYOUT: LayoutTuning = {
-  repulsion: 240,
-  spring: 0.016,
-  restLength: 24,
-  gravity: 0.006,
-  damping: 0.93,
-  padding: 11,
+  repulsion: 300,
+  spring: 0.04,
+  restLength: 22,
+  gravity: 0.014,
+  damping: 0.88,
+  padding: 10,
 }
 
-/** ~2.5s to settle at 60fps with dt 0.38. */
-export const LAYOUT_DT = 0.38
+/** Live step: about 1s of leftover motion after the start ring. */
+export const LAYOUT_DT = 0.72
 export const PACKET_HIDE_T = 0.84
 
 export type PacketKind = 'ambient' | 'tx' | 'block'
@@ -80,16 +80,23 @@ export function scatterBodies(
   ids: string[],
   random: () => number = Math.random,
   box: GraphBox = DEFAULT_BOX,
-  spread = 4,
 ): GraphBody[] {
-  const around = { x: box.width / 2, y: box.height / 2 }
-  return ids.map((id) => ({
-    id,
-    x: around.x + (random() - 0.5) * spread * 2,
-    y: around.y + (random() - 0.5) * spread * 2,
-    vx: (random() - 0.5) * 0.35,
-    vy: (random() - 0.5) * 0.35,
-  }))
+  const cx = box.width / 2
+  const cy = box.height / 2
+  const n = Math.max(ids.length, 1)
+  const rx = Math.min(box.width * 0.28, 28)
+  const ry = Math.min(box.height * 0.34, rx)
+  return ids.map((id, index) => {
+    const angle = (index / n) * Math.PI * 2 + random() * 0.35
+    const jitter = 0.75 + random() * 0.25
+    return {
+      id,
+      x: cx + Math.cos(angle) * rx * jitter,
+      y: cy + Math.sin(angle) * ry * jitter,
+      vx: (random() - 0.5) * 0.2,
+      vy: (random() - 0.5) * 0.2,
+    }
+  })
 }
 
 /** Drop a body in (e.g. flying from a table) and nudge the others to make room. */
@@ -328,8 +335,9 @@ export function fanoutFrom(fromId: string, links: GraphLink[]): { fromId: string
 }
 
 /**
- * Gossip flood: at each hop a node sends to every neighbor that does not
- * already have the info. Same delayMs = same visual wave.
+ * Gossip flood: when a node learns the tx it announces to every neighbor
+ * except the peer it heard it from. Already-informed peers still get a hop
+ * so the second wave is visible.
  */
 export function floodHops(
   originId: string,
@@ -337,22 +345,24 @@ export function floodHops(
   hopMs: number,
 ): { fromId: string; toId: string; delayMs: number }[] {
   const hops: { fromId: string; toId: string; delayMs: number }[] = []
-  const informed = new Set<string>([originId])
-  const queue: { id: string; atMs: number }[] = [{ id: originId, atMs: 0 }]
+  const informedAt = new Map<string, number>([[originId, 0]])
+  const parent = new Map<string, string | null>([[originId, null]])
+  const queue: string[] = [originId]
 
   while (queue.length > 0) {
     const current = queue.shift()!
-    const wave: { fromId: string; toId: string; delayMs: number }[] = []
-    for (const next of neighborIds(current.id, links)) {
-      if (informed.has(next)) {
+    const t = informedAt.get(current) ?? 0
+    const from = parent.get(current)
+    for (const next of neighborIds(current, links)) {
+      if (next === from) {
         continue
       }
-      informed.add(next)
-      wave.push({ fromId: current.id, toId: next, delayMs: current.atMs + hopMs })
-    }
-    for (const hop of wave) {
-      hops.push(hop)
-      queue.push({ id: hop.toId, atMs: hop.delayMs })
+      hops.push({ fromId: current, toId: next, delayMs: t + hopMs })
+      if (!informedAt.has(next)) {
+        informedAt.set(next, t + hopMs)
+        parent.set(next, current)
+        queue.push(next)
+      }
     }
   }
 

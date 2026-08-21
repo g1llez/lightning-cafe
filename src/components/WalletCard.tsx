@@ -714,10 +714,15 @@ export function WalletCard({ onMessage, onSatsSent }: WalletCardProps) {
                   text={ownReady ? t('layers.nodeOwnTip') : t('layers.nodeSyncingTip')}
                   side="top"
                 >
-                  <span className="mt-0.5 inline-block cursor-help font-mono text-[10px] text-text-muted">
-                    {ownReady
-                      ? t('assets.nodeReady')
-                      : t('assets.nodeSyncing', { percent: syncPercent })}
+                  <span className="mt-0.5 flex cursor-help flex-col font-mono text-[10px] leading-tight text-text-muted">
+                    {ownReady ? (
+                      t('assets.nodeReady')
+                    ) : (
+                      <>
+                        <span>{t('assets.nodeSyncing', { percent: syncPercent })}</span>
+                        <span>{t('assets.nodeValidating')}</span>
+                      </>
+                    )}
                   </span>
                 </Tooltip>
               </div>

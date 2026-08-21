@@ -64,6 +64,7 @@ export function NetworkCanvas({
   const arriveRef = useRef(onPacketArrive)
   arriveRef.current = onPacketArrive
   const seenPackets = useRef(new Set<string>())
+  const startedPackets = useRef(new Set<string>())
   const edgesRef = useRef(edges)
   edgesRef.current = edges
   const graphRef = useRef<GraphBox>(DEFAULT_BOX)
@@ -129,7 +130,7 @@ export function NetworkCanvas({
 
     let next: GraphBody[]
     if (known.size === 0) {
-      next = scatterBodies(ids, Math.random, box)
+      next = settleBodies(scatterBodies(ids, Math.random, box), edgesRef.current, 18, undefined, box)
     } else {
       next = dropBodyMany(bodiesRef.current, removed)
       for (const id of added) {
@@ -199,8 +200,13 @@ export function NetworkCanvas({
 
   useEffect(() => {
     const stamp = now
+    const starting: GraphPacket[] = []
     const fresh: GraphPacket[] = []
     for (const packet of packets) {
+      if (stamp >= packet.bornAt && !startedPackets.current.has(packet.id)) {
+        startedPackets.current.add(packet.id)
+        starting.push(packet)
+      }
       if (stamp < packet.bornAt + packet.duration) {
         continue
       }
@@ -210,7 +216,7 @@ export function NetworkCanvas({
       seenPackets.current.add(packet.id)
       fresh.push(packet)
     }
-    if (fresh.length === 0) {
+    if (starting.length === 0 && fresh.length === 0) {
       return
     }
     setAmbientPackets((current) =>
@@ -218,6 +224,9 @@ export function NetworkCanvas({
     )
     setEatingUntil((current) => {
       const next = { ...current }
+      for (const packet of starting) {
+        next[packet.fromId] = stamp + EAT_MS
+      }
       for (const packet of fresh) {
         next[packet.toId] = stamp + EAT_MS
         arriveRef.current?.(packet)

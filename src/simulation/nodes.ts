@@ -213,8 +213,8 @@ export function visibleEdges(nodeIds: Set<string>): NetworkEdge[] {
 }
 
 /**
- * Gossip flood from origin. A node sends to every neighbor that does not
- * already have the info, all at the same delayMs (one visual wave).
+ * Gossip flood from origin. A node announces to every neighbor except the
+ * peer it heard the tx from, even if that neighbor already has it.
  */
 export function propagationHops(
   originId: string,

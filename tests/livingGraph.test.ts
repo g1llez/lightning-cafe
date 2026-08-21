@@ -19,14 +19,16 @@ import {
 } from '../src/simulation/livingGraph'
 
 describe('living graph layout', () => {
-  it('scatters every id near the center', () => {
+  it('scatters every id around the center, not on top of each other', () => {
     const bodies = scatterBodies(['a', 'b', 'c'], () => 0.25)
     expect(bodies.map((body) => body.id)).toEqual(['a', 'b', 'c'])
+    const xs = new Set(bodies.map((body) => body.x.toFixed(2)))
+    expect(xs.size).toBe(3)
     for (const body of bodies) {
-      expect(body.x).toBeGreaterThan(30)
-      expect(body.x).toBeLessThan(70)
-      expect(body.y).toBeGreaterThan(30)
-      expect(body.y).toBeLessThan(70)
+      expect(body.x).toBeGreaterThan(15)
+      expect(body.x).toBeLessThan(85)
+      expect(body.y).toBeGreaterThan(15)
+      expect(body.y).toBeLessThan(85)
     }
   })
 
@@ -110,12 +112,29 @@ describe('living graph layout', () => {
     )
     const first = hops.filter((hop) => hop.fromId === 'a')
     expect(first.map((hop) => hop.toId).sort()).toEqual(['b', 'c'])
-    expect(first[0]?.delayMs).toBe(500)
-    expect(first[1]?.delayMs).toBe(500)
-    const second = hops.filter((hop) => hop.fromId !== 'a')
-    expect(second).toHaveLength(1)
-    expect(second[0]?.toId).toBe('d')
-    expect(second[0]?.delayMs).toBe(1000)
+    expect(first.every((hop) => hop.delayMs === 500)).toBe(true)
+    expect(hops.some((hop) => hop.fromId === 'b' && hop.toId === 'd' && hop.delayMs === 1000)).toBe(
+      true,
+    )
+    expect(hops.some((hop) => hop.fromId === 'c' && hop.toId === 'd' && hop.delayMs === 1000)).toBe(
+      true,
+    )
+  })
+
+  it('a receiver announces to its other peers, not only new ones', () => {
+    const hops = floodHops(
+      'a',
+      [
+        { a: 'a', b: 'b' },
+        { a: 'a', b: 'c' },
+        { a: 'b', b: 'c' },
+        { a: 'b', b: 'd' },
+      ],
+      500,
+    )
+    const fromB = hops.filter((hop) => hop.fromId === 'b').map((hop) => hop.toId).sort()
+    expect(fromB).toEqual(['c', 'd'])
+    expect(hops.some((hop) => hop.fromId === 'b' && hop.toId === 'a')).toBe(false)
   })
 
   it('picks a one-hop broadcast from a node', () => {

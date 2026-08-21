@@ -148,21 +148,19 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
           )
 
           return (
-            <div className="relative">
-              {syncing && (
-                <span
-                  className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-accent/35"
-                  style={{
-                    width: '48px',
-                    height: '48px',
-                    background: `conic-gradient(var(--color-accent, #f7931a) ${syncProgress * 360}deg, transparent 0)`,
-                    mask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px))',
-                    WebkitMask:
-                      'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px))',
-                  }}
-                />
-              )}
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            <div className="relative h-0 w-0">
+              <div className="absolute left-0 top-0 h-10 w-10 -translate-x-1/2 -translate-y-1/2">
+                {syncing && (
+                  <span
+                    className="pointer-events-none absolute -inset-1 rounded-full"
+                    style={{
+                      background: `conic-gradient(var(--color-accent, #f7931a) ${syncProgress * 360}deg, transparent 0)`,
+                      mask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px))',
+                      WebkitMask:
+                        'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px))',
+                    }}
+                  />
+                )}
                 {tipText ? (
                   <Tooltip text={tipText} side="top">
                     {icon}
@@ -171,10 +169,7 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
                   icon
                 )}
               </div>
-              <div
-                className="absolute left-1/2 flex -translate-x-1/2 flex-col items-center gap-0.5"
-                style={{ top: '26px' }}
-              >
+              <div className="absolute left-0 top-[22px] flex -translate-x-1/2 flex-col items-center gap-0.5">
                 <span className="max-w-[6.5rem] truncate text-center text-xs font-medium text-text-primary md:text-[13px]">
                   {node.name}
                 </span>
@@ -183,10 +178,15 @@ export function NodeNetwork({ onSatsSent }: NodeNetworkProps) {
                     text={ownReady ? t('layers.nodeOwnTip') : t('layers.nodeSyncingTip')}
                     side="top"
                   >
-                    <span className="cursor-help font-mono text-[11px] text-text-muted">
-                      {ownReady
-                        ? t('assets.nodeReady')
-                        : t('assets.nodeSyncing', { percent: syncPercent })}
+                    <span className="flex cursor-help flex-col items-center font-mono text-[11px] leading-tight text-text-muted">
+                      {ownReady ? (
+                        t('assets.nodeReady')
+                      ) : (
+                        <>
+                          <span>{t('assets.nodeSyncing', { percent: syncPercent })}</span>
+                          <span>{t('assets.nodeValidating')}</span>
+                        </>
+                      )}
                     </span>
                   </Tooltip>
                 )}
