@@ -11,10 +11,13 @@ import {
 
 type BlockTetrisProps = {
   seed: string
+  /** 0..1 position in the current block window (unscaled). */
   fill: number
   txCount: number
   minePieces: number
   interval: number
+  /** Pack speed vs high lane (1 = full tape over `interval`). Default 1. */
+  pace?: number
 }
 
 function cellStyle(cell: TetrisCell | Pick<TetrisFalling, 'color' | 'kind'>, falling = false): {
@@ -34,33 +37,42 @@ function cellStyle(cell: TetrisCell | Pick<TetrisFalling, 'color' | 'kind'>, fal
 }
 
 /**
- * Replays a lab action tape step-by-step (moves / rotates / gravity / drops).
- * No vertical ghosting: the active piece is drawn at its recorded pose each event.
+ * Replays a lab action tape step-by-step.
+ * Clock is locked to seed/interval/pace — not to every parent `fill` tick (that caused pose flicker).
  */
-export function BlockTetris({ seed, fill, txCount, minePieces, interval }: BlockTetrisProps) {
+export function BlockTetris({ seed, fill, txCount, minePieces, interval, pace = 1 }: BlockTetrisProps) {
   const fillRef = useRef(fill)
   fillRef.current = fill
-  const [progress, setProgress] = useState(fill)
-  const tape = useMemo(() => tetrisPlan(seed, txCount, minePieces), [seed, txCount, minePieces])
+  const [progress, setProgress] = useState(() => Math.min(1, fill * pace))
+  const tape = useMemo(() => tetrisPlan(seed, txCount), [seed, txCount])
   const frozen = interval <= 0
+  const paceSafe = Math.min(1, Math.max(0.01, pace))
 
   useEffect(() => {
     if (frozen) {
-      setProgress(fill)
+      setProgress(Math.min(1, fillRef.current * paceSafe))
       return
     }
 
+    // Sync once to the block window; then RAF only (ignore per-second fill updates).
     const started = performance.now() - fillRef.current * interval * 1000
     let frame = 0
     const tick = (now: number) => {
-      setProgress(Math.min(1, Math.max(0, (now - started) / (interval * 1000))))
+      const blockProgress = Math.min(1, Math.max(0, (now - started) / (interval * 1000)))
+      setProgress(Math.min(1, blockProgress * paceSafe))
       frame = window.requestAnimationFrame(tick)
     }
     frame = window.requestAnimationFrame(tick)
     return () => window.cancelAnimationFrame(frame)
-  }, [seed, interval, frozen, fill])
+  }, [seed, interval, frozen, paceSafe])
 
-  const snap = tetrisSnapshot(tape, frozen ? fill : progress, minePieces)
+  useEffect(() => {
+    if (frozen) {
+      setProgress(Math.min(1, fill * paceSafe))
+    }
+  }, [frozen, fill, paceSafe])
+
+  const snap = tetrisSnapshot(tape, progress, minePieces)
   const width = 100 / TETRIS_COLS
   const height = 100 / TETRIS_ROWS
 
@@ -87,7 +99,7 @@ export function BlockTetris({ seed, fill, txCount, minePieces, interval }: Block
             return (
               <span
                 key={`${dx}-${dy}`}
-                className={`absolute rounded-[1px] transition-[top,left] duration-75 ease-linear ${look.className}`}
+                className={`absolute rounded-[1px] ${look.className}`}
                 style={{
                   ...look.style,
                   left: `${(snap.falling!.x + dx) * width}%`,

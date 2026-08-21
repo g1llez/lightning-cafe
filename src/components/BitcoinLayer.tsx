@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   formatCountdown,
-  lanePackProgress,
+  lanePackPace,
   sandboxBlockInterval,
   toneForFee,
   type ConfirmedBlock,
@@ -43,7 +43,14 @@ type BlockTileProps = {
   ghost?: boolean
   testId?: string
   onInspect?: () => void
-  packing?: { seed: string; fill: number; txCount: number; minePieces: number; interval: number }
+  packing?: {
+    seed: string
+    fill: number
+    txCount: number
+    minePieces: number
+    interval: number
+    pace?: number
+  }
 }
 
 function BlockTile({
@@ -88,6 +95,7 @@ function BlockTile({
                 txCount={packing.txCount}
                 minePieces={packing.minePieces}
                 interval={packing.interval}
+                pace={packing.pace}
               />
             ) : null}
           </div>
@@ -307,10 +315,11 @@ export function BitcoinLayer({ fill, onMessage, onSatsSent }: BitcoinLayerProps)
                     testId={`block-mempool-${block.priority}`}
                     packing={{
                       seed: block.id,
-                      fill: lanePackProgress(packingFill, block.feeRate, highFee),
+                      fill: packingFill,
                       txCount: block.txCount,
                       minePieces: myPending.length,
                       interval,
+                      pace: lanePackPace(block.feeRate, highFee),
                     }}
                     onInspect={() => setInspect({ kind: 'mempool', block })}
                     blockTip={mempoolTip(block)}

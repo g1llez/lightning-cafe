@@ -93,9 +93,13 @@ export function lanePackProgress(
   feeHigh: number,
   minRatio = 0.15,
 ): number {
+  return Math.min(1, Math.max(0, packingFill) * lanePackPace(feeLane, feeHigh, minRatio))
+}
+
+/** feeLane/feeHigh — how fast this mempool lane packs vs high (e.g. 4/8 → 0.5). */
+export function lanePackPace(feeLane: number, feeHigh: number, minRatio = 0.15): number {
   const high = Math.max(1, feeHigh)
-  const ratio = Math.min(1, Math.max(minRatio, feeLane / high))
-  return Math.min(1, Math.max(0, packingFill) * ratio)
+  return Math.min(1, Math.max(minRatio, feeLane / high))
 }
 
 export function randomTxCount(random = Math.random): number {
